@@ -221,3 +221,13 @@ compile but XCTest never runs them (dead coverage for Google Tasks). To fix.
   an active device:
   `testSpotifyStartPlaybackOnActiveDevice` (PROVEN 2026-09-12: played a track,
   got the `.spotifyPlaybackStarted` receipt once a device was active).
+
+### 2026-09-12 (later still) — read-endpoint coverage completed
+- Audit found 3 of 10 read ops had no live proof. Now proven green on the LIVE
+  sim: `googleTasks` (count=1), `outlookCalendarEvents` (count=0, empty calendar),
+  `slackHistory` (channel C0BK1RZJVPX, count=2).
+- `outlookCalendarEvents` first failed `.unavailable`; diagnosed to a Graph **400**
+  (`calendarView` max range 1825 days) caused by a 15-year test window — not a
+  scope or connector bug. Fixed the test window (2024→2027). `/me/events` → 200
+  confirms the account is connected and `Calendars.Read` is granted.
+- **Status: every read (10) + write (6) op and Notion read+write proven live.**

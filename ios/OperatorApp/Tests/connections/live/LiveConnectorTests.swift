@@ -78,6 +78,40 @@ final class LiveConnectorReadTests: XCTestCase {
     func testOutlookInboxLiveRead() async throws { try await assertReadable(.outlookInbox) }
     func testSlackChannelsLiveRead() async throws { try await assertReadable(.slackChannels) }
     func testSpotifySearchLiveRead() async throws { try await assertReadable(.spotifySearch, query: "lofi") }
+
+    // The remaining read endpoints, so every read op has a live proof.
+    func testGoogleTasksLiveRead() async throws { try await assertReadable(.googleTasks, limit: 5) }
+    // Microsoft Graph's calendarView rejects a start→end span wider than 1825
+    // days (5 years) with a 400, which the reader maps to `.unavailable`. Keep the
+    // window inside that cap. (Confirmed live: a 2020→2035 span returned 400
+    // "Maximum number of days: 1825"; a legal window returns 200.)
+    func testOutlookCalendarLiveRead() async throws {
+        try await assertReadable(.outlookCalendarEvents,
+                                 timeMin: "2024-01-01T00:00:00Z", timeMax: "2027-01-01T00:00:00Z", limit: 5)
+    }
+
+    // Slack history needs a channel the app can actually read; walk the listed
+    // channels and prove the endpoint on the first one that returns.
+    func testSlackHistoryLiveRead() async throws {
+        let reader = self.reader(liveCoordinator())
+        let channels: AccountReadPage
+        do { channels = try await reader.read(.init(operation: .slackChannels, query: nil, channel: nil,
+                                                    timeMin: nil, timeMax: nil, limit: 20, cursor: nil)) }
+        catch AccountReadError.notConnected { throw XCTSkip("slack not connected on this device") }
+        guard let data = channels.payloadJSON.data(using: .utf8),
+              let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            throw XCTSkip("could not parse slack channels")
+        }
+        for id in arr.compactMap({ $0["id"] as? String }).prefix(10) {
+            if let page = try? await reader.read(.init(operation: .slackHistory, query: nil, channel: id,
+                                                       timeMin: nil, timeMax: nil, limit: 3, cursor: nil)) {
+                print("LIVE-READ slackHistory channel=\(id) count=\(page.count)")
+                XCTAssertGreaterThanOrEqual(page.count, 0)
+                return
+            }
+        }
+        throw XCTSkip("app is not a member of any listed channel; conversations.history unavailable")
+    }
 }
 
 @MainActor

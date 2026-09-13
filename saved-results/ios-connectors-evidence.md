@@ -1211,3 +1211,34 @@ and started it via `DirectAccountWriter.writeAfterOwnerConfirmation(.spotifyStar
 (`PUT /v1/me/player/play`) — audibly changing what was playing on the owner's
 device — and got the `.spotifyPlaybackStarted` receipt. **All in-scope Operator
 connectors now have live read + write proof.**
+
+### Read endpoints — full coverage (2026-09-12, later)
+Completeness audit: of the 10 `AccountReadOperation` cases, 7 already had live
+proof (`googleCalendarEvents`, `googleDriveFiles`, `gmailMessages`, `outlookInbox`,
+`slackChannels`, `spotifySearch`, `spotifyPlayback`). The remaining 3 are now
+proven live on the LIVE sim, all green together:
+```
+LIVE-READ googleTasks count=1 nextCursor=false
+LIVE-READ outlookCalendarEvents count=0 nextCursor=false
+LIVE-READ slackHistory channel=C0BK1RZJVPX count=2
+Executed 3 tests, with 0 failures — ** TEST SUCCEEDED **
+```
+Tests: `LiveConnectorReadTests.testGoogleTasksLiveRead`,
+`testOutlookCalendarLiveRead`, `testSlackHistoryLiveRead` (the last walks the
+listed channels and proves history on the first the app can read).
+`outlookCalendarEvents count=0` = the connected mailbox's calendar is genuinely
+empty (verified: `GET /me/events` → 200 `value:[]`), not a failure.
+
+**calendarView 1825-day cap (diagnosed, then fixed the test):** the Outlook
+calendar read first failed with `AccountReadError.unavailable`. A one-off
+diagnostic hit the exact URL and got the real cause — **HTTP 400**
+`ErrorInvalidRequest: "…range between the start and end dates is greater than the
+allowed range. Maximum number of days: 1825"`. So it was **not** a missing scope
+(that returns 403 → `.permissionDenied`) and **not** a connector bug — the test
+passed a 15-year window (2020→2035). Fixed the test to a legal window
+(2024→2027, ~1096 days); it now returns 200. Note for the product: a caller
+requesting a >5-year calendar span will get `.unavailable` from Graph; realistic
+ranges are well inside the cap, so the connector is usable as-is.
+
+**Every read (10) and every write (6) Operator connector operation, plus Notion
+read+write, now has a live proof on the owner's real accounts.**
