@@ -208,3 +208,16 @@ compile but XCTest never runs them (dead coverage for Google Tasks). To fix.
   (calendar/drive/outlook-draft/outlook-send/slack pass; spotify skipped). Paid
   on ChatGPT ssdear@gmail.com. **Both a read and a write now have full
   LLM→connector→chat proof; nothing in-scope remains unproven end-to-end.**
+
+### 2026-09-12 (later) — Notion + Spotify edges closed
+- **Notion live READ+WRITE proven** at the connector layer (free), on the live sim.
+  Read: `testNotionListToolsAndSearch` (43 tools, real workspace search). Write:
+  `testNotionAppendVerifyRemove` — reversible append→verify→remove on a reused
+  fixture page (`inserted=true`, `removed=true`), zero net change.
+- **Finding:** the Notion connector has no delete/archive path (no MCP tool; MCP
+  token 401s on api.notion.com REST). Reversible-edit design used instead.
+- **Spotify search + track-URI resolve proven** (`spotify:track:<id>` from the
+  `id` field; sanitizer omits `uri`). **Playback PROVEN** once the owner had Spotify open (Premium) so Connect had
+  an active device:
+  `testSpotifyStartPlaybackOnActiveDevice` (PROVEN 2026-09-12: played a track,
+  got the `.spotifyPlaybackStarted` receipt once a device was active).

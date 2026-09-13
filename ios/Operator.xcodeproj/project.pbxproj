@@ -64,6 +64,7 @@
 		927E4629901EF1BA4F78240B /* NativeNotionSetupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D490F4DB23A72D1FB9731241 /* NativeNotionSetupCoordinator.swift */; };
 		92BFBCCD34A8D9FE09040AD7 /* LoopbackPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BE69740E2DDC14AE4876FE3 /* LoopbackPort.swift */; };
 		951A0E155F073F63DE0A69E9 /* NotionNodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A816D04CA467DDAB4D4ADAEC /* NotionNodeTests.swift */; };
+		976D9A3CB299B486F06CE930 /* LiveNotionSpotifyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ABE8E24F2E4D5ECA767C7B3 /* LiveNotionSpotifyTests.swift */; };
 		9A726EF954FE2A991803299B /* ForegroundDeviceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9E3D881095DD2A08566CBAE /* ForegroundDeviceService.swift */; };
 		9DD7EB7D50A1F516DA87BC40 /* NativeAccountSetupCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EFCEC0ED2A7FEA62302B8D /* NativeAccountSetupCoordinatorTests.swift */; };
 		9FFAEA362A6B83E9C383E7A4 /* LocalOpenClawChatGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB89572B23DFFD774B38433 /* LocalOpenClawChatGateway.swift */; };
@@ -183,6 +184,7 @@
 		1593E68D6DA83F3D5323D640 /* ChatSessionModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSessionModelTests.swift; sourceTree = "<group>"; };
 		15F0E99008A7C89E6F2AF6D6 /* InAppMediaOpener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppMediaOpener.swift; sourceTree = "<group>"; };
 		19B41231B05CA6BD56434A3E /* DirectAccountWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectAccountWriter.swift; sourceTree = "<group>"; };
+		1ABE8E24F2E4D5ECA767C7B3 /* LiveNotionSpotifyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveNotionSpotifyTests.swift; sourceTree = "<group>"; };
 		1AE5460B988CFB89F203E229 /* OperatorAppUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OperatorAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D0A121D6D416362695FBAFB /* ForegroundMapsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMapsService.swift; sourceTree = "<group>"; };
 		1DF224F395BA8CA84CDE93F7 /* OfflineDictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineDictation.swift; sourceTree = "<group>"; };
@@ -996,6 +998,7 @@
 			isa = PBXGroup;
 			children = (
 				BBA3F03E905D5FE1B11D4D9B /* LiveConnectorTests.swift */,
+				1ABE8E24F2E4D5ECA767C7B3 /* LiveNotionSpotifyTests.swift */,
 			);
 			path = live;
 			sourceTree = "<group>";
@@ -1125,18 +1128,18 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_B2835AE0-F926-4D5E-A272-3302FCD030A7" /* runtime */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = runtime;
-			sourceTree = "<group>";
-		};
-		"TEMP_E17F8CE2-B0E7-46F3-9B1A-4A72B1023430" /* embedded */ = {
+		"TEMP_4C913B6D-C87D-4A74-A07C-8A68487551C8" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			path = embedded;
+			sourceTree = "<group>";
+		};
+		"TEMP_A6BA1F1D-CE93-434D-9FE6-81A503C8A823" /* runtime */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = runtime;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1299,6 +1302,7 @@
 				252756A97D7DF7DC0A6E14D2 /* ForegroundMessageComposeServiceTests.swift in Sources */,
 				E205AB20591B7E22AF0D49D3 /* ForegroundRemindersServiceTests.swift in Sources */,
 				BC5AEB0A44E7AC11D8E001D1 /* LiveConnectorTests.swift in Sources */,
+				976D9A3CB299B486F06CE930 /* LiveNotionSpotifyTests.swift in Sources */,
 				C3512DBBB74F4E7B8460FC83 /* LocalModelSetupGatewayTests.swift in Sources */,
 				FF8DBD1712E44931AC36FDB1 /* LocalOpenClawChatGatewayTests.swift in Sources */,
 				88573980BCFBB4421850EC00 /* MediaServicesTests.swift in Sources */,

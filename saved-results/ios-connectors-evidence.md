@@ -1140,3 +1140,74 @@ googleDriveCreateTextFile, outlookCreateDraft, outlookSendMail, slackPostMessage
 all **passed**; spotifyStartPlayback skipped (intrusive, manual). So both a
 read and a write now have full LLM→connector→chat proof, and the write also
 proves the owner-approval gate.
+
+---
+
+## Notion live read + write, and Spotify read/resolve — 2026-09-12
+
+Connector-layer live proofs (FREE — no LLM turn; only the connector HTTPS calls
+run) on the live sim (Operator iPhone 14 Pro, `49A153C3-…`), via the
+`OperatorAppLive` scheme (`OPERATOR_LIVE=1`). New tests:
+`ios/OperatorApp/Tests/connections/live/LiveNotionSpotifyTests.swift`.
+
+### Notion — READ proven
+`LiveNotionTests.testNotionListToolsAndSearch` **passed**. Through the app's
+`NotionMCPClient` (stored Keychain token, service `app.operator.ios.notion`) it
+listed **43 tools** and ran a real `notion-search` that returned the owner's live
+workspace (e.g. "PPV Command Center 2026", "Action Items", "sinchana", …).
+
+### Notion — WRITE proven (reversible, zero litter)
+`LiveNotionTests.testNotionAppendVerifyRemove` **passed**. Ground-truth LIVE
+lines:
+```
+LIVE-NOTION-WRITE fixture=3dae6004-5e9f-8131-a66b-ec4c2919ebcb inserted=true
+LIVE-NOTION-WRITE inserted=true removed=true
+```
+It appends a uniquely-marked line to a reused fixture page via
+`notion-update-page insert_content`, fetches it back and confirms the mark
+landed (`inserted=true`), then removes the line via `update_content` and fetches
+again to confirm it is gone (`removed=true`). Net change to the workspace: none.
+A first attempt created a fresh page and proved create+fetch directly (page id
+`3dae6004-…`, title "Operator Live Connector Test …", verified=true); that page
+was then repurposed as the fixture ("Operator Live Test Fixture — safe to
+delete"), fetched afterward to confirm it holds only the fixture note.
+
+**Connector limitation found:** the Operator Notion connector can
+create/read/update pages but has **no delete/archive path** — no MCP tool
+exposes one, and the MCP OAuth token is rejected **401** by `api.notion.com`
+REST (`PATCH …/pages/{id} {"archived":true}` → 401). Hence the reversible
+append/remove design instead of create-then-delete. One clearly-labelled fixture
+page persists in the workspace by design; delete it from Notion manually if
+unwanted.
+
+### Spotify — search + track-URI resolve proven; playback needs an active device
+`LiveSpotifyPlaybackTests.testSpotifyDetectDeviceAndResolveTrack` **passed**:
+```
+LIVE-SPOTIFY playbackState count=0 payload=[]
+LIVE-SPOTIFY resolvedTrackURI=spotify:track:4aK4LNijbD7kkCg54UoIij activeDevice=<none>
+```
+The search read returns tracks; the `.spotifySearch` sanitizer keeps `id` (the
+22-char track id) but **not** `uri`, so the playable URI is reconstructed as
+`spotify:track:<id>`. `.spotifyPlayback` (GET /v1/me/player) returns 204 → empty
+when nothing is playing, so `count=0` = **no active Spotify device**.
+
+`LiveSpotifyPlaybackTests.testSpotifyStartPlaybackOnActiveDevice` starts real
+playback (`PUT /v1/me/player/play`, body `{"uris":[trackURI]}`, via the app's
+`DirectAccountWriter.writeAfterOwnerConfirmation(.spotifyStartPlayback…)`), but
+**skips** when `count==0`. **Precondition (owner-only):** open Spotify on a
+device and press play then pause (Spotify **Premium** required) so Spotify Connect
+has an active device; then this test plays a track and asserts the
+`.spotifyPlaybackStarted` receipt. Playback is fundamentally impossible when no
+Spotify client is running anywhere (Connect has zero devices).
+
+### Spotify — PLAYBACK proven (2026-09-12, later)
+Once the owner started a track (giving Spotify Connect an active device),
+`LiveSpotifyPlaybackTests.testSpotifyStartPlaybackOnActiveDevice` **passed**:
+```
+LIVE-SPOTIFY-PLAY trackURI=spotify:track:4aK4LNijbD7kkCg54UoIij device=548901877a38738a667ec2865d20846f30547ac0 receipt=spotifyPlaybackStarted
+```
+The app read the active device from `.spotifyPlayback`, resolved a real track,
+and started it via `DirectAccountWriter.writeAfterOwnerConfirmation(.spotifyStartPlayback…)`
+(`PUT /v1/me/player/play`) — audibly changing what was playing on the owner's
+device — and got the `.spotifyPlaybackStarted` receipt. **All in-scope Operator
+connectors now have live read + write proof.**
