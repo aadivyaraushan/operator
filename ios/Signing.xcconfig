@@ -21,3 +21,8 @@ OPERATOR_BUNDLE_ID_PREFIX = app.operator
 OPERATOR_DEVELOPMENT_TEAM =
 
 #include? "Local.xcconfig"
+
+// Supplied here rather than in the target so that Xcode's Signing &
+// Capabilities team picker, which writes target-level settings, still wins.
+// Empty is fine and is what the simulator uses; it signs ad hoc.
+DEVELOPMENT_TEAM = $(OPERATOR_DEVELOPMENT_TEAM)

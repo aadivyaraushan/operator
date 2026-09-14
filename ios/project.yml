@@ -68,8 +68,6 @@ targets:
         # entitlements file is required.
         "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": OperatorApp/Sources/runtime/embedded/signing/Simulator.entitlements
         "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
-        "CODE_SIGN_STYLE[sdk=iphoneos*]": Automatic
-        "DEVELOPMENT_TEAM[sdk=iphoneos*]": $(OPERATOR_DEVELOPMENT_TEAM)
         CLANG_CXX_LANGUAGE_STANDARD: c++17
         PRODUCT_MODULE_NAME: OperatorApp
         PRODUCT_NAME: Operator
@@ -89,8 +87,6 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(OPERATOR_BUNDLE_ID_PREFIX).ios.widget
-        "CODE_SIGN_STYLE[sdk=iphoneos*]": Automatic
-        "DEVELOPMENT_TEAM[sdk=iphoneos*]": $(OPERATOR_DEVELOPMENT_TEAM)
         PRODUCT_MODULE_NAME: OperatorWidget
         PRODUCT_NAME: OperatorWidget
         MARKETING_VERSION: "1.0"

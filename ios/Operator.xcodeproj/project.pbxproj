@@ -870,8 +870,6 @@
                 LIBRARY_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/build/native-whatsapp", );
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = ("$(inherited)", "-lWacliBridge", );
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]" = WacliBridgeUnavailable.c;
-				"CODE_SIGN_STYLE[sdk=iphoneos*]" = Automatic;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = "$(OPERATOR_DEVELOPMENT_TEAM)";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = OperatorApp/Sources/runtime/embedded/signing/Simulator.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
@@ -902,8 +900,6 @@
                 LIBRARY_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/build/native-whatsapp", );
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = ("$(inherited)", "-lWacliBridge", );
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]" = WacliBridgeUnavailable.c;
-				"CODE_SIGN_STYLE[sdk=iphoneos*]" = Automatic;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = "$(OPERATOR_DEVELOPMENT_TEAM)";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = OperatorApp/Sources/runtime/embedded/signing/Simulator.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
@@ -961,8 +957,6 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(OPERATOR_BUNDLE_ID_PREFIX).ios.widget";
-				"CODE_SIGN_STYLE[sdk=iphoneos*]" = Automatic;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = "$(OPERATOR_DEVELOPMENT_TEAM)";
 				PRODUCT_MODULE_NAME = OperatorWidget;
 				PRODUCT_NAME = OperatorWidget;
 				SDKROOT = iphoneos;
@@ -986,8 +980,6 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(OPERATOR_BUNDLE_ID_PREFIX).ios.widget";
-				"CODE_SIGN_STYLE[sdk=iphoneos*]" = Automatic;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = "$(OPERATOR_DEVELOPMENT_TEAM)";
 				PRODUCT_MODULE_NAME = OperatorWidget;
 				PRODUCT_NAME = OperatorWidget;
 				SDKROOT = iphoneos;
