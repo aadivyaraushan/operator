@@ -228,3 +228,78 @@ final class LiveConnectorWriteTests: XCTestCase {
         throw XCTSkip("Spotify start-playback is intrusive and needs an active device; left for a manual owner run")
     }
 }
+
+// Removes the real objects the LLM-path end-to-end run created in the owner's own
+// accounts. Those runs go through the chat (LLM → connections.write → owner taps
+// Allow), so nothing cleans up after them; this test finds everything tagged with
+// the run marker and deletes it. Safe to rerun: it only touches items whose
+// name/subject/text contains the marker, and prints what it removed.
+@MainActor
+final class LiveConnectorCleanupTests: XCTestCase {
+    private let marker = "operatore2e0912"
+
+    override func setUp() async throws {
+        try XCTSkipUnless(liveEnabled(), "live-account test; run via the OperatorAppLive scheme (OPERATOR_LIVE=1)")
+    }
+
+    private func token(_ provider: OAuthProvider, _ coordinator: NativeAccountSetupCoordinator) async throws -> String {
+        do { return try await coordinator.accessToken(provider) }
+        catch { throw XCTSkip("\(provider.rawValue) not connected on this device") }
+    }
+
+    private func ids(_ body: [String: Any]?, list: String, key: String = "id") -> [String] {
+        ((body?[list] as? [[String: Any]]) ?? []).compactMap { $0[key] as? String }
+    }
+
+    func testCleanupGoogleDriveAndCalendar() async throws {
+        let accessToken = try await token(.google, liveCoordinator())
+        var query = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
+        query.queryItems = [.init(name: "q", value: "name contains '\(marker)' and trashed = false"), .init(name: "fields", value: "files(id,name)")]
+        let (_, files) = await authed("GET", query.url!, token: accessToken)
+        var removedFiles = 0
+        for id in ids(files, list: "files") {
+            let (status, _) = await authed("DELETE", URL(string: "https://www.googleapis.com/drive/v3/files/\(id)")!, token: accessToken)
+            if status == 204 { removedFiles += 1 }
+        }
+        var events = URLComponents(string: "https://www.googleapis.com/calendar/v3/calendars/primary/events")!
+        events.queryItems = [.init(name: "q", value: marker), .init(name: "timeMin", value: "2035-03-01T00:00:00Z"), .init(name: "timeMax", value: "2035-03-05T00:00:00Z")]
+        let (_, eventBody) = await authed("GET", events.url!, token: accessToken)
+        var removedEvents = 0
+        for id in ids(eventBody, list: "items") {
+            let (status, _) = await authed("DELETE", URL(string: "https://www.googleapis.com/calendar/v3/calendars/primary/events/\(id)")!, token: accessToken)
+            if status == 204 { removedEvents += 1 }
+        }
+        print("LIVE-CLEANUP google driveFiles=\(removedFiles) calendarEvents=\(removedEvents)")
+    }
+
+    func testCleanupOutlookDraftsAndSent() async throws {
+        let accessToken = try await token(.microsoftOutlook, liveCoordinator())
+        var removed = 0
+        for folder in ["drafts", "sentitems"] {
+            var query = URLComponents(string: "https://graph.microsoft.com/v1.0/me/mailFolders/\(folder)/messages")!
+            query.queryItems = [.init(name: "$filter", value: "subject eq '\(marker)'"), .init(name: "$select", value: "id,subject")]
+            let (_, body) = await authed("GET", query.url!, token: accessToken)
+            for id in ids(body, list: "value") {
+                let (status, _) = await authed("DELETE", URL(string: "https://graph.microsoft.com/v1.0/me/messages/\(id)")!, token: accessToken)
+                if status == 204 { removed += 1 }
+            }
+        }
+        print("LIVE-CLEANUP outlook messages=\(removed)")
+    }
+
+    func testCleanupSlackSelfDM() async throws {
+        let accessToken = try await token(.slack, liveCoordinator())
+        let channel = "D0BK8RHK6KW"  // the owner's own DM, discovered by testSlackPostToSelfDM
+        var query = URLComponents(string: "https://slack.com/api/conversations.history")!
+        query.queryItems = [.init(name: "channel", value: channel), .init(name: "limit", value: "50")]
+        let (status, body) = await authed("GET", query.url!, token: accessToken)
+        guard status == 200, body?["ok"] as? Bool == true else { throw XCTSkip("Slack conversations.history unavailable (scope)") }
+        var removed = 0
+        for message in (body?["messages"] as? [[String: Any]]) ?? [] {
+            guard let text = message["text"] as? String, text.contains(marker), let ts = message["ts"] as? String else { continue }
+            let (_, deleted) = await authed("POST", URL(string: "https://slack.com/api/chat.delete")!, token: accessToken, json: ["channel": channel, "ts": ts])
+            if deleted?["ok"] as? Bool == true { removed += 1 }
+        }
+        print("LIVE-CLEANUP slack messages=\(removed)")
+    }
+}

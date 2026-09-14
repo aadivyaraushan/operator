@@ -1,5 +1,88 @@
 # iPhone connectors — evidence
 
+## Full LLM-path proofs for every write + Notion, cleanup green — September 13
+
+**What this proves:** not just "the connector code can call the API" but the
+whole product path a user hits: type a natural-language prompt in the app →
+the LLM (ChatGPT, owner's account ssdear@gmail.com, pre-approved) picks the
+connector tool and fills its parameters → the app shows the "Allow account
+action?" alert → owner taps Allow → real API call → reply lands in chat.
+
+Log signature for each proof (`log stream --level info`, subsystem
+`app.operator.ios`): `[chat] staged input` → `[account-write] input
+operation=X` → `request` → `response operation=X status=2xx` → `complete` →
+`[chat] reply persisted`. The `input` line only logs **after** Allow, so it is
+proof the alert was accepted, not just shown.
+
+| Operation | pid | `response … status` | time (Sep 13) |
+|---|---|---|---|
+| googleCalendarCreateEvent | 14137 | 200 | 19:42:01 |
+| outlookCreateDraft | 14502 | 201 | 19:43:00 |
+| outlookSendMail (to ssdear@gmail.com) | 14779 | 202 | 19:44:00 |
+| slackPostMessage (channel D0BK8RHK6KW, own DM) | 17926 | 200 | 19:56:05 |
+| googleDriveCreateTextFile | 69414 | 200 | Sep 12 23:20:02 |
+| Notion read: `notion.tools` → `notion.call` notion-fetch(self) → notion-search("Operator Live") | 20043 | reply "History project / bb2fff87-…" on screen | 20:02:01 |
+| Notion write: notion-create-pages (draft) → notion-fetch verify | 20487 | reply "Page ID 3db27879-aaa0-81d0-b83b-e57d03cbebca, exact line present: Yes" | 20:03:50 |
+
+Notion has no `[account-write]` lines (it goes through `ForegroundNotionService`,
+which logs only `handling command=notion.call`); the proof there is the on-screen
+reply carrying real workspace data plus the alert screenshots taken before each
+Allow (tool name and arguments visible: `notion-fetch {"id":"self"}`,
+`notion-search {"query":"Operator Live","page_size":1}`,
+`notion-create-pages {...}`).
+
+All 10 reads were proven via the LLM path on Sep 12 (see below).
+
+**Not done via LLM path:** `spotifyStartPlayback` — needs an active Spotify
+Premium device (owner must open Spotify and press play/pause first); playback
+would be audible. Direct-API proof exists from Sep 12.
+
+**Cleanup (green, 20:04):** `LiveConnectorCleanupTests` (OperatorAppLive scheme,
+live sim, scratch derivedData) deleted every `operatore2e0912` artifact:
+`google driveFiles=1 calendarEvents=1`, `outlook messages=2` (draft + sent),
+`slack messages=1`. Left behind on purpose: the Notion draft page
+`Operator Live Test Fixture - safe to delete` (`3db27879-…`) — the connector has
+no delete/archive tool; owner deletes it by hand.
+
+**Driving recipe that finally worked** (for reproducing): `inject.sh "<prompt>"`
+sets the conversation draft and relaunches; then computer-use `app_click` on
+`AXButton "Send"`, wait for the alert (for writes ~15 s; for Notion, wait for
+`handling command=notion.call` in the log — there is one alert per tool call),
+`app_click` on `AXButton "Allow"` — the result must say `AXPress`. A "raw input"
+result also worked once the window was on the current Space.
+
+**Lessons / gotchas (cost several hours):**
+1. **Never pass `CODE_SIGNING_ALLOWED=NO` when building for the live sim.** It
+   installs an unentitled binary that cannot read the data-protection keychain →
+   `KeychainStoreError` for every provider, Notion `state=failed`, runtime gate
+   closed. Tokens were not lost; a normal signed rebuild + `simctl install`
+   (upgrade, not uninstall) restored everything. That flag is only for the
+   throwaway sim.
+2. Simulator window on a full-screen / other Space: Send still works via AX
+   click-through but the alert's Allow does not — every write timed out (30 s
+   cap in `ForegroundAccountWriteConfirmationService`). Fix: keep the Simulator
+   on the current, non-full-screen Space.
+3. Waiting on `[account-write] input` before tapping Allow is a deadlock — that
+   line logs after Allow. Poll the screen instead.
+4. `log stream` needs `--level info` or the `[chat]` lines never appear.
+5. The Notion fixture page id from Sep 12 (`3dae6004-…`) now returns 404 —
+   the owner reconnected Notion (token had expired overnight) and the page is
+   not reachable from the current connection. The live test self-heals by
+   creating a new draft; the LLM run did the same.
+
+**Product gaps surfaced (not test-setup problems):**
+- LLM cannot discover the owner's own Slack DM channel id; it guessed one and
+  got `INVALID_REQUEST` (`rejected branch=typed-validation`). Works once the id
+  is in the prompt. Needs a "my DM" lookup in `connections.describe`/read.
+- Every Notion tool call prompts — including reads and even fetching the
+  markdown spec — so "create a page" = 3 alerts. Reads should not prompt.
+- 30 s alert timeout is tight when the owner is not staring at the phone.
+- Notion connector has no delete/archive tool, so writes are not fully
+  reversible.
+
+**Cost:** ~14 ChatGPT chat turns today on ssdear@gmail.com (pre-approved).
+Connector API calls are free.
+
 ## Unavailable-action checks — September 11, 19:14
 
 Separate website retry opened19:15:18.223, reply completed19:15:22.331 (21.215s), remains visible. Escape key accepted but did not dismiss; invalid ESC spelling produced keyNotFound with no input. Manual Done check requested via async question. Read SystemAppHandoffOpener.swift and InAppMediaOpener.swift: normal Safari presentation. Apple docs safariViewControllerDidFinish state the view is dismissed afterwards; no confirmed missing-dismiss bug and no patch. Do not substitute app restart for manual return. CLI tap exists but requires exposed elementRef, no raw-coordinate route.

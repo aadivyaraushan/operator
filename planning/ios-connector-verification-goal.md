@@ -231,3 +231,17 @@ compile but XCTest never runs them (dead coverage for Google Tasks). To fix.
   scope or connector bug. Fixed the test window (2024→2027). `/me/events` → 200
   confirms the account is connected and `Calendars.Read` is granted.
 - **Status: every read (10) + write (6) op and Notion read+write proven live.**
+
+### 2026-09-13 — full LLM-path proofs + cleanup
+- Every write op except Spotify playback proven through the real product path
+  (prompt → LLM → Allow alert → API → reply) on the live sim: Calendar 200,
+  Outlook draft 201, Outlook send 202, Slack DM 200, Drive 200 (Sep 12).
+  Notion read (search) and write (create draft page + fetch-back) proven the
+  same way. Details and pids in `saved-results/ios-connectors-evidence.md`.
+- New `LiveConnectorCleanupTests` deletes all `operatore2e0912` artifacts;
+  ran green (Drive 1, Calendar 1, Outlook 2, Slack 1).
+- Open: Spotify playback via LLM (owner must have an active device); owner to
+  delete the Notion draft page `3db27879-…` (no delete tool); commit/push
+  pending owner OK.
+- Product gaps logged: no Slack self-DM discovery, Notion prompts on reads,
+  30 s alert timeout, no Notion delete.
