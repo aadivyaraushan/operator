@@ -30,7 +30,7 @@ const walk = (dir) =>
     return entry.isDirectory() ? walk(full) : [full];
   });
 
-const compiled = walk(sourcesRoot).filter((file) => /\.(swift|mm)$/.test(file));
+const compiled = walk(sourcesRoot).filter((file) => /\.(swift|mm|c)$/.test(file));
 assert.ok(compiled.length > 0, "found no compilable sources; this test would pass by finding nothing");
 
 // Basenames are the join key. Verified unique across the tree below, because

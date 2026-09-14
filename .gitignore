@@ -58,3 +58,6 @@ Thumbs.db
 
 # Browser tool scratch output
 .playwright-mcp/
+
+# Per-developer signing settings (team ID, bundle-ID prefix)
+ios/Local.xcconfig
