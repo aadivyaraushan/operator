@@ -252,3 +252,69 @@ result) and tool-schema quarantine (no quarantine record exists).
   unchangeable from inside the app.
 - **The evidence rule still holds.** A row may only leave `unproven` when a
   human watched it happen. Most rows above are still machine-observed only.
+
+---
+
+## 2026-09-14: first run on a physical iPhone
+
+Device: iPhone 17 (`iPhone18,3`), iOS 26.6.2, free Apple Development
+signing, team set in the gitignored `Local.xcconfig`. Automatic provisioning
+created the `app.operator.ios` profile on the first device build, so the
+bundle ID was not held by another team.
+
+### What was proven
+
+| Check | Result |
+| --- | --- |
+| Device build signs | yes — `Apple Development`, `get-task-allow` |
+| Embedded Node boots under the iOS sandbox | **yes** — the open question from 261f925 |
+| Gateway ready on a fresh install | yes, 10.8s |
+| Gateway ready on relaunch with existing state | yes, 7.5s |
+| Chat websocket connects, `sessions.messages.subscribe` completes | **yes** — first time on a device |
+| Node connects, publishes 8 agent tools, surface approved | yes |
+| ChatGPT sign-in, any connector call | **not yet** — nothing below the runtime has been exercised |
+
+### Three sandbox failures, each hiding the next
+
+All three read as the same "Operator's bundled runtime could not start."
+The status file gave the stage and bundled frames; the phone's own log gave
+the cause each time, as a one-line `Sandbox: Operator deny(...)` entry.
+
+1. **`/tmp` is outside the sandbox** (fb809a0). openclaw hardcodes `/tmp` for
+   its lifecycle lock database. Patched at staging time to honour
+   `OPERATOR_STATE_LOCK_DIR`, which the host sets to `<state>/locks`.
+2. **The container root is not writable** (ad64a31). openclaw's read-only
+   SQLite snapshot root is `~/.cache/openclaw`; on iOS `~` is the container
+   root, where only `Documents`, `Library` and `tmp` may be created. Fixed
+   with `XDG_CACHE_HOME=<state>/cache`, which openclaw already honours.
+3. **iOS re-homes the data container on every install** (ee768a7). The
+   recorded `WorkspaceVanishedError` bug, now fixed in `prepareState`.
+
+### Two facts worth knowing before touching the runtime again
+
+- **`process.platform` is `"ios"` under NodeMobile, not `"darwin"`.** Every
+  `=== "darwin"` branch in openclaw is skipped on the phone (and, presumably,
+  on the Simulator). The `.cache` path above is how this surfaced.
+- **The Simulator hides every one of these.** Its `/tmp` is the Mac's, its
+  container sits on a filesystem that allows dotfiles at the root, and its
+  container UUID is stable across `simctl install` most of the time. A
+  Simulator pass says nothing about the sandbox.
+
+### How to read the phone
+
+`xcrun devicectl` cannot stream logs. What worked, with no sudo and no
+system install:
+
+```sh
+python3 -m venv pmd3 && pmd3/bin/pip install pymobiledevice3
+NO_COLOR=1 pmd3/bin/pymobiledevice3 syslog live -m Operator
+```
+
+Then relaunch and grep for `Sandbox: Operator` and `[embedded-runtime]`.
+The runtime's own status file is at
+`Library/Application Support/Operator/openclaw/native-runtime-status.json`
+in the app container, readable with `devicectl device copy from`.
+
+One benign denial remains in every launch: `deny(1) process-fork`. Something
+in openclaw tries to spawn a child at startup and carries on when refused.
+Not investigated.
