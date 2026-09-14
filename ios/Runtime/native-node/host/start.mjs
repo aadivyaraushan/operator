@@ -22,6 +22,10 @@ export async function startEmbeddedRuntime({stateDirectory, runtimeDirectory, ga
     // OpenClaw's lifecycle locks default to /tmp, which an iPhone cannot write.
     // Keep them beside the gateway lock files in the state directory the app owns.
     process.env.OPERATOR_STATE_LOCK_DIR = path.join(stateDirectory, 'locks');
+    // Under NodeMobile process.platform is "ios", not "darwin", so OpenClaw
+    // roots its cache at ~/.cache -- the container root, which iOS refuses to
+    // let the app create files in. XDG_CACHE_HOME is honoured first.
+    process.env.XDG_CACHE_HOME = path.join(stateDirectory, 'cache');
     // iOS owns the process. OpenClaw must restart its server in this process.
     process.env.OPENCLAW_NO_RESPAWN = '1';
     process.env.OPENCLAW_GATEWAY_PORT = String(requiredGatewayPort);
