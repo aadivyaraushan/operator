@@ -18,6 +18,27 @@ export function prepareState(state) {
   } catch (error) {
     if (error.code !== 'EEXIST') throw error;
     // OpenClaw owns parsing and validating existing configuration, including JSON5.
-    return {configPath, created: false};
+    return {configPath, created: false, workspaceRepointed: repointVanishedWorkspace(configPath, workspace)};
   }
+}
+
+// iOS gives the app a new data container on every install, so the absolute
+// workspace path OpenClaw stored at first launch stops existing and every turn
+// fails with WorkspaceVanishedError. Repoint that one key, and only when the
+// recorded directory is really gone; anything else in the file, and any file
+// that is not plain JSON, is left exactly as OpenClaw wrote it.
+function repointVanishedWorkspace(configPath, workspace) {
+  let config;
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  } catch {
+    return false;
+  }
+  const recorded = config?.agents?.defaults?.workspace;
+  if (typeof recorded !== 'string' || recorded === workspace || fs.existsSync(recorded)) return false;
+  config.agents.defaults.workspace = workspace;
+  const staged = `${configPath}.repoint`;
+  fs.writeFileSync(staged, JSON.stringify(config, null, 2), {mode: 0o600});
+  fs.renameSync(staged, configPath);
+  return true;
 }

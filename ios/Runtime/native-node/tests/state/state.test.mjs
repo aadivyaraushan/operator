@@ -54,3 +54,37 @@ test('storage errors fail instead of silently creating another state directory',
   assert.throws(() => prepareState(state));
   assert.equal(fs.readFileSync(state, 'utf8'), 'not a directory');
 });
+
+test('a workspace that vanished with its container is repointed and nothing else changes', t => {
+  const state = sandbox(t);
+  const first = prepareState(state);
+  const config = JSON.parse(fs.readFileSync(first.configPath, 'utf8'));
+  const gone = path.join(path.dirname(state), 'previous-container', 'openclaw', 'workspace');
+  config.agents.defaults.workspace = gone;
+  config.agents.defaults.model = {primary: 'openai/test-model'};
+  config.meta = {lastTouchedVersion: '2026.9.1'};
+  fs.writeFileSync(first.configPath, JSON.stringify(config, null, 2));
+  const result = prepareState(state);
+  assert.equal(result.created, false);
+  assert.equal(result.workspaceRepointed, true);
+  const repointed = JSON.parse(fs.readFileSync(first.configPath, 'utf8'));
+  assert.equal(repointed.agents.defaults.workspace, path.join(state, 'workspace'));
+  assert.deepEqual(repointed.agents.defaults.model, {primary: 'openai/test-model'});
+  assert.deepEqual(repointed.meta, {lastTouchedVersion: '2026.9.1'});
+  assert.equal(repointed.gateway.auth.token, config.gateway.auth.token);
+  assert.equal(fs.statSync(first.configPath).mode & 0o777, 0o600);
+  assert.ok(!fs.existsSync(`${first.configPath}.repoint`));
+});
+
+test('a workspace the owner pointed elsewhere is left alone while it exists', t => {
+  const state = sandbox(t);
+  const first = prepareState(state);
+  const elsewhere = path.join(path.dirname(state), 'chosen-workspace');
+  fs.mkdirSync(elsewhere);
+  const config = JSON.parse(fs.readFileSync(first.configPath, 'utf8'));
+  config.agents.defaults.workspace = elsewhere;
+  const saved = JSON.stringify(config, null, 2);
+  fs.writeFileSync(first.configPath, saved);
+  assert.equal(prepareState(state).workspaceRepointed, false);
+  assert.equal(fs.readFileSync(first.configPath, 'utf8'), saved);
+});
