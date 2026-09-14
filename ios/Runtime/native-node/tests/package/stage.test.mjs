@@ -18,6 +18,8 @@ test('packages the real entry contract and patches only the copied public packag
   fs.writeFileSync(path.join(source, 'dist/openclaw-state-db-Bh3Bq87y.js'), original);
   const lifecycle = fs.readFileSync(new URL('../../../../build/runtime-recovery/openclaw-source/package/dist/run-CrJnbDWP.js', import.meta.url), 'utf8');
   fs.writeFileSync(path.join(source, 'dist/run-CrJnbDWP.js'), lifecycle);
+  const locks = fs.readFileSync(new URL('../../../../build/runtime-recovery/openclaw-source/package/dist/state-database-coordinator-DKD8Uulb.js', import.meta.url), 'utf8');
+  fs.writeFileSync(path.join(source, 'dist/state-database-coordinator-DKD8Uulb.js'), locks);
   const templateSource = new URL('../../../../build/runtime-recovery/r6-official-codex-runtime/extracted/usr/local/lib/node_modules/openclaw/docs/reference/templates/', import.meta.url);
   fs.cpSync(templateSource, path.join(source, 'docs/reference/templates'), {recursive: true});
   fs.writeFileSync(path.join(source, 'private-account.json'), 'must-not-package');
@@ -31,6 +33,8 @@ test('packages the real entry contract and patches only the copied public packag
   assert.equal(JSON.parse(fs.readFileSync(path.join(output, 'manifest.json'))).lifecycleModule, 'dist/run-CrJnbDWP.js');
   assert.match(fs.readFileSync(path.join(output, 'openclaw/dist/run-CrJnbDWP.js'), 'utf8'), /export \{ runGatewayCommand, runGatewayLoop \};/);
   assert.equal(fs.readFileSync(path.join(source, 'dist/run-CrJnbDWP.js'), 'utf8'), lifecycle);
+  assert.match(fs.readFileSync(path.join(output, 'openclaw/dist/state-database-coordinator-DKD8Uulb.js'), 'utf8'), /process\.env\.OPERATOR_STATE_LOCK_DIR/);
+  assert.equal(fs.readFileSync(path.join(source, 'dist/state-database-coordinator-DKD8Uulb.js'), 'utf8'), locks);
   for (const name of fs.readdirSync(templateSource)) {
     // AGENTS.md is the one template the staged copy extends; see below.
     if (name === 'AGENTS.md') continue;

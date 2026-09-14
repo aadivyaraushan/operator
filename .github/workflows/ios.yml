@@ -36,7 +36,7 @@ jobs:
         run: node --test ios/OperatorApp/Tests/capabilities/handoff/catalog/commerce-safety.test.mjs
       - name: Native dependency bootstrap
         run: node --test ios/Runtime/tests/bootstrap.test.mjs
-      # Only the hermetic three. tests/package/stage, compat/sqlite/ownership
+      # Only the hermetic four. tests/package/stage, compat/sqlite/ownership
       # and compat/lifecycle/export all read staged openclaw output out of
       # ios/build/runtime-recovery/, which no clean clone has, so they run on
       # a machine that has completed the bootstrap. See Runtime/DEPENDENCIES.md.
@@ -45,6 +45,7 @@ jobs:
           node --test \
             ios/Runtime/native-node/tests/state/state.test.mjs \
             ios/Runtime/native-node/tests/state/bootstrap.test.mjs \
-            ios/Runtime/native-node/tests/host/start.test.mjs
+            ios/Runtime/native-node/tests/host/start.test.mjs \
+            ios/Runtime/native-node/compat/locks/tests/runtime-directory.test.mjs
       - name: Property lists are well formed
         run: plutil -lint ios/OperatorApp/Info.plist ios/OperatorWidget/Info.plist ios/Operator.xcodeproj/project.pbxproj

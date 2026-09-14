@@ -3,6 +3,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {patchNativeOwnershipAdmission} from '../compat/sqlite/ownership.mjs';
 import {patchNativeGatewayLoopExport} from '../compat/lifecycle/export.mjs';
+import {patchNativeLockRuntimeDirectory} from '../compat/locks/runtime-directory.mjs';
 import {OPERATOR_WORKSPACE_GUIDANCE} from './workspace-guidance.mjs';
 
 export function stageRuntime(packageRoot, output) {
@@ -16,6 +17,8 @@ export function stageRuntime(packageRoot, output) {
   const patched = patchNativeOwnershipAdmission(fs.readFileSync(path.join(packageRoot, ownershipModule), 'utf8'));
   const lifecycleModule = 'dist/run-CrJnbDWP.js';
   const lifecycle = patchNativeGatewayLoopExport(fs.readFileSync(path.join(packageRoot, lifecycleModule), 'utf8'));
+  const locksModule = 'dist/state-database-coordinator-DKD8Uulb.js';
+  const locks = patchNativeLockRuntimeDirectory(fs.readFileSync(path.join(packageRoot, locksModule), 'utf8'));
   const sourceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   fs.mkdirSync(output, {recursive: true});
   const copy = (source, target) => fs.cpSync(source, target, {
@@ -48,8 +51,9 @@ export function stageRuntime(packageRoot, output) {
   }
   fs.writeFileSync(path.join(output, 'openclaw', ownershipModule), patched);
   fs.writeFileSync(path.join(output, 'openclaw', lifecycleModule), lifecycle);
+  fs.writeFileSync(path.join(output, 'openclaw', locksModule), locks);
   fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify({
     openclawVersion: metadata.version, gatewayModule: `dist/${modules[0]}`,
-    lifecycleModule, patches: ['native-sqlite-ownership', 'native-gateway-loop-export']
+    lifecycleModule, patches: ['native-sqlite-ownership', 'native-gateway-loop-export', 'native-lock-directory']
   }, null, 2));
 }

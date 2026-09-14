@@ -29,7 +29,7 @@ function fixture(t, fail = false) {
     import fs from 'node:fs';
     export async function startGatewayServerCore(port, options) {
       ${fail ? 'throw new Error(options.auth.token);' : ''}
-      fs.writeFileSync(process.env.OPENCLAW_STATE_DIR + '/observed.json', JSON.stringify({port, options, recovery: typeof options.hotReloadRecovery, gatewayPort: process.env.OPENCLAW_GATEWAY_PORT}));
+      fs.writeFileSync(process.env.OPENCLAW_STATE_DIR + '/observed.json', JSON.stringify({port, options, recovery: typeof options.hotReloadRecovery, gatewayPort: process.env.OPENCLAW_GATEWAY_PORT, lockDirectory: process.env.OPERATOR_STATE_LOCK_DIR}));
       return {startupSettled: Promise.resolve()};
     }
   `);
@@ -45,6 +45,7 @@ test('native host uses actual package entry and vault token, then marks matching
   const observed = JSON.parse(fs.readFileSync(path.join(input.stateDirectory, 'observed.json')));
   assert.equal(observed.port, 19123);
   assert.equal(observed.gatewayPort, '19123');
+  assert.equal(observed.lockDirectory, path.join(input.stateDirectory, 'locks'));
   assert.deepEqual(observed.options.auth, {mode: 'token', token: input.gatewayToken});
   assert.equal(observed.options.bind, 'loopback');
   assert.equal(observed.recovery, 'function');

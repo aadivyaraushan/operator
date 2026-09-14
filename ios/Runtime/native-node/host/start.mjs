@@ -19,6 +19,9 @@ export async function startEmbeddedRuntime({stateDirectory, runtimeDirectory, ga
     const prepared = prepareState(stateDirectory);
     process.env.OPENCLAW_STATE_DIR = stateDirectory;
     process.env.OPENCLAW_CONFIG_PATH = prepared.configPath;
+    // OpenClaw's lifecycle locks default to /tmp, which an iPhone cannot write.
+    // Keep them beside the gateway lock files in the state directory the app owns.
+    process.env.OPERATOR_STATE_LOCK_DIR = path.join(stateDirectory, 'locks');
     // iOS owns the process. OpenClaw must restart its server in this process.
     process.env.OPENCLAW_NO_RESPAWN = '1';
     process.env.OPENCLAW_GATEWAY_PORT = String(requiredGatewayPort);
