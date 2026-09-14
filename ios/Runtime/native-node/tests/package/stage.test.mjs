@@ -32,8 +32,20 @@ test('packages the real entry contract and patches only the copied public packag
   assert.match(fs.readFileSync(path.join(output, 'openclaw/dist/run-CrJnbDWP.js'), 'utf8'), /export \{ runGatewayCommand, runGatewayLoop \};/);
   assert.equal(fs.readFileSync(path.join(source, 'dist/run-CrJnbDWP.js'), 'utf8'), lifecycle);
   for (const name of fs.readdirSync(templateSource)) {
+    // AGENTS.md is the one template the staged copy extends; see below.
+    if (name === 'AGENTS.md') continue;
     assert.deepEqual(fs.readFileSync(path.join(output, 'openclaw/docs/reference/templates', name)),
       fs.readFileSync(new URL(name, templateSource)), `bundled workspace template ${name}`);
   }
+  // OpenClaw writes AGENTS.md into a new workspace from this template and only
+  // when it is missing, so guidance that is not in the template is absent from
+  // every clean install. The staged copy carries the upstream body verbatim
+  // plus the Operator section, and the public package is left untouched.
+  const stagedAgents = fs.readFileSync(path.join(output, 'openclaw/docs/reference/templates/AGENTS.md'), 'utf8');
+  const upstreamAgents = fs.readFileSync(new URL('AGENTS.md', templateSource), 'utf8');
+  assert.ok(stagedAgents.startsWith(upstreamAgents.trimEnd()), 'staged AGENTS.md must preserve the upstream template');
+  assert.match(stagedAgents, /## When you cannot carry something out/);
+  assert.match(stagedAgents, /never claim you have done something you have\nnot done/);
+  assert.equal(fs.readFileSync(path.join(source, 'docs/reference/templates/AGENTS.md'), 'utf8'), upstreamAgents);
   assert.throws(() => stageRuntime(source, output), /exists/i);
 });

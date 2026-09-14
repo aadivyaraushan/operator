@@ -3,6 +3,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {patchNativeOwnershipAdmission} from '../compat/sqlite/ownership.mjs';
 import {patchNativeGatewayLoopExport} from '../compat/lifecycle/export.mjs';
+import {OPERATOR_WORKSPACE_GUIDANCE} from './workspace-guidance.mjs';
 
 export function stageRuntime(packageRoot, output) {
   packageRoot = fs.realpathSync(packageRoot);
@@ -33,7 +34,15 @@ export function stageRuntime(packageRoot, output) {
   }
   // OpenClaw reads these public files when preparing an agent's workspace.
   // They are runtime inputs even though the upstream package keeps them in docs.
-  copy(path.join(packageRoot, 'docs/reference/templates'), path.join(output, 'openclaw/docs/reference/templates'));
+  const templates = path.join(output, 'openclaw/docs/reference/templates');
+  copy(path.join(packageRoot, 'docs/reference/templates'), templates);
+  // OpenClaw seeds AGENTS.md from this template and only when it is missing, so
+  // the template is the only place guidance survives a clean install. Appended
+  // to the staged copy, never to the public package.
+  const agentsTemplate = path.join(templates, 'AGENTS.md');
+  const seeded = fs.readFileSync(agentsTemplate, 'utf8');
+  if (seeded.includes('## When you cannot carry something out')) throw new Error('Upstream AGENTS.md template already carries the Operator guidance');
+  fs.writeFileSync(agentsTemplate, `${seeded.trimEnd()}\n${OPERATOR_WORKSPACE_GUIDANCE}`);
   for (const name of ['entry.mjs', 'host/start.mjs', 'gateway/state.mjs']) {
     copy(path.join(sourceRoot, name), path.join(output, name));
   }
