@@ -242,7 +242,7 @@ struct DiscordAccountSetupView: View {
             } header: {
                 Text("Announcement channels")
             } footer: {
-                Text("In Discord, long-press the channel and choose Copy Link. Operator reads only the channels listed here, at most \(DiscordReadPace.dailyCap) times a day.")
+                Text("In Discord, long-press the channel and choose Copy Link. Operator reads only the channels listed here, each at most once every \(DiscordReadPace.channelCooldownSeconds / 60) minutes.")
             }
 
             if self.model.isConnected {

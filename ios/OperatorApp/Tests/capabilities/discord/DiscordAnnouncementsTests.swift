@@ -32,10 +32,13 @@ private actor RoutedTransport: PhoneHTTPTransport {
 private final class MemoryHistory: DiscordReadHistoryStore, @unchecked Sendable {
     var passes: [Date] = []
     var pausedUntil: Date?
+    var reads: [String: Date] = [:]
     func loadPassDates() -> [Date] { self.passes }
     func savePassDates(_ dates: [Date]) { self.passes = dates }
     func loadPausedUntil() -> Date? { self.pausedUntil }
     func savePausedUntil(_ date: Date?) { self.pausedUntil = date }
+    func loadChannelReads() -> [String: Date] { self.reads }
+    func saveChannelReads(_ reads: [String: Date]) { self.reads = reads }
 }
 
 private final class MemoryCache: DiscordReadCacheStore, @unchecked Sendable {
@@ -121,23 +124,36 @@ final class DiscordUserClientTests: XCTestCase {
 
 @MainActor
 final class DiscordReadPaceTests: XCTestCase {
-    func testFourPassesADayTwoHoursApartAndADayOffAfterA429() {
+    func testAChannelIsDueOnceEveryTenMinutesWhetherOrNotItsReadSucceeded() {
         let history = MemoryHistory()
         var now = Date(timeIntervalSince1970: 1_800_000_000)
         let pace = DiscordReadPace(history: history, now: { now })
-        XCTAssertNil(pace.check())
-        pace.recordPass()
-        XCTAssertEqual(pace.check(), .tooSoon(retryAfterSeconds: 7_200))
-        now = now.addingTimeInterval(7_199)
-        XCTAssertEqual(pace.check(), .tooSoon(retryAfterSeconds: 1))
+        XCTAssertTrue(pace.isDue(channelID: "a"))
+        XCTAssertEqual(pace.secondsUntilDue(channelIDs: ["a"]), 0)
+        pace.recordRead(channelID: "a")
+        XCTAssertFalse(pace.isDue(channelID: "a"))
+        XCTAssertTrue(pace.isDue(channelID: "b"), "another channel is not held by a's read")
+        XCTAssertEqual(pace.secondsUntilDue(channelIDs: ["a"]), 600)
+        XCTAssertEqual(pace.secondsUntilDue(channelIDs: ["a", "b"]), 0, "the soonest channel decides")
+        now = now.addingTimeInterval(599)
+        XCTAssertFalse(pace.isDue(channelID: "a"))
+        XCTAssertEqual(pace.secondsUntilDue(channelIDs: ["a"]), 1)
         now = now.addingTimeInterval(1)
-        XCTAssertNil(pace.check())
-        for _ in 0..<3 { pace.recordPass(); now = now.addingTimeInterval(7_200) }
+        XCTAssertTrue(pace.isDue(channelID: "a"))
+        XCTAssertNil(pace.check(), "the cooldown is per channel; check() is the day's cap and the pause")
+        XCTAssertTrue(DiscordReadRefusal.tooSoon(retryAfterSeconds: 90).message.contains("once every 10 minutes"))
+    }
+
+    func testTwentyFourPassesADayAndADayOffAfterA429() {
+        let history = MemoryHistory()
+        var now = Date(timeIntervalSince1970: 1_800_000_000)
+        let pace = DiscordReadPace(history: history, now: { now })
+        for _ in 0..<DiscordReadPace.dailyCap { XCTAssertNil(pace.check()); pace.recordPass(); now = now.addingTimeInterval(600) }
         XCTAssertEqual(pace.passesLeftToday, 0)
-        guard case .dailyCapReached = pace.check() else { return XCTFail("fourth pass used the day") }
+        guard case .dailyCapReached = pace.check() else { return XCTFail("the day is used") }
         now = now.addingTimeInterval(86_400)
         XCTAssertNil(pace.check(), "a day later the ration is back")
-        XCTAssertEqual(pace.passesLeftToday, 4)
+        XCTAssertEqual(pace.passesLeftToday, 24)
 
         pace.recordRateLimit()
         XCTAssertEqual(pace.check(), .paused(resumesInSeconds: 86_400))
@@ -149,8 +165,13 @@ final class DiscordReadPaceTests: XCTestCase {
     func testTheHistorySurvivesInTheStoreNotTheObject() {
         let history = MemoryHistory()
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        DiscordReadPace(history: history, now: { now }).recordPass()
-        XCTAssertEqual(DiscordReadPace(history: history, now: { now.addingTimeInterval(60) }).check(), .tooSoon(retryAfterSeconds: 7_140))
+        let first = DiscordReadPace(history: history, now: { now })
+        first.recordPass()
+        first.recordRead(channelID: "a")
+        let later = DiscordReadPace(history: history, now: { now.addingTimeInterval(60) })
+        XCTAssertEqual(later.passesLeftToday, DiscordReadPace.dailyCap - 1)
+        XCTAssertFalse(later.isDue(channelID: "a"))
+        XCTAssertEqual(later.secondsUntilDue(channelIDs: ["a"]), 540)
     }
 }
 
@@ -221,7 +242,9 @@ final class DiscordAccountSetupModelTests: XCTestCase {
 
 @MainActor
 final class ForegroundDiscordAnnouncementsServiceTests: XCTestCase {
-    private func service(_ transport: RoutedTransport, channels: [DiscordChannelEntry], history: MemoryHistory = MemoryHistory(), cache: MemoryCache = MemoryCache(), now: @escaping () -> Date = { Date(timeIntervalSince1970: 1_800_000_000) }) -> ForegroundDiscordAnnouncementsService {
+    private static let start = Date(timeIntervalSince1970: 1_800_000_000)
+
+    private func service(_ transport: RoutedTransport, channels: [DiscordChannelEntry], history: MemoryHistory = MemoryHistory(), cache: MemoryCache = MemoryCache(), now: @escaping () -> Date = { start }) -> ForegroundDiscordAnnouncementsService {
         ForegroundDiscordAnnouncementsService(
             client: DiscordUserClient(transport: transport, token: { fixtureToken }),
             channels: { channels },
@@ -235,122 +258,136 @@ final class ForegroundDiscordAnnouncementsServiceTests: XCTestCase {
         return try XCTUnwrap(JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [String: Any])
     }
 
+    private func channels(_ object: [String: Any]) throws -> [[String: Any]] {
+        try XCTUnwrap(object["channels"] as? [[String: Any]])
+    }
+
     func testAPassReadsEachListedChannelOnceAndTellsTheModelHowToUseIt() async throws {
         let transport = RoutedTransport([
             "/channels/111111111111111111/messages": [.ok(messagesBody)],
             "/channels/222222222222222222/messages": [.ok("[]")],
         ])
         let history = MemoryHistory()
-        let result = await self.service(transport, channels: [general, events], history: history).handleNodeCommand("discord.announcements", paramsJSON: #"{"limit":10}"#, timeoutMilliseconds: nil)
+        let cache = MemoryCache()
+        let result = await self.service(transport, channels: [general, events], history: history, cache: cache).handleNodeCommand("discord.announcements", paramsJSON: #"{"limit":10}"#, timeoutMilliseconds: nil)
         let object = try self.object(result)
-        let channels = try XCTUnwrap(object["channels"] as? [[String: Any]])
+        let channels = try self.channels(object)
         XCTAssertEqual(channels.map { $0["server"] as? String }, ["Robotics Club", "CS Society"])
         XCTAssertEqual((channels[0]["messages"] as? [[String: Any]])?.count, 3)
         XCTAssertEqual((channels[1]["messages"] as? [[String: Any]])?.count, 0)
-        XCTAssertEqual(object["passesLeftToday"] as? Int, 3)
+        XCTAssertEqual(channels.map { $0["fromCache"] as? Bool }, [false, false])
+        XCTAssertEqual(channels.map { $0["readAt"] as? String }, ["2027-01-15T08:00:00Z", "2027-01-15T08:00:00Z"])
         XCTAssertEqual(object["fromCache"] as? Bool, false)
+        XCTAssertEqual(object["passesLeftToday"] as? Int, 23)
+        XCTAssertNil(object["note"])
         XCTAssertTrue((object["nextStep"] as? String ?? "").contains("googleCalendarCreateEvent"))
         let paths = await transport.paths()
         XCTAssertEqual(paths, ["/channels/111111111111111111/messages?limit=10", "/channels/222222222222222222/messages?limit=10"])
         XCTAssertEqual(history.passes.count, 1)
+        XCTAssertEqual(Set(history.reads.keys), [general.id, events.id], "each channel's cooldown starts with its request")
+        XCTAssertEqual(cache.cache?.channels.map(\.id), [general.id, events.id])
+        XCTAssertEqual(cache.cache?.channels[0].messages.count, 3, "the cache keeps the whole read, unfiltered")
     }
 
     func testSinceFiltersOutOlderMessages() async throws {
         let transport = RoutedTransport(["/channels/111111111111111111/messages": [.ok(messagesBody)]])
         let result = await self.service(transport, channels: [general]).handleNodeCommand("discord.announcements", paramsJSON: #"{"sinceRFC3339":"2026-09-14T00:00:00Z"}"#, timeoutMilliseconds: nil)
-        let object = try self.object(result)
-        let messages = try XCTUnwrap((object["channels"] as? [[String: Any]])?[0]["messages"] as? [[String: Any]])
+        let messages = try XCTUnwrap(try self.channels(self.object(result))[0]["messages"] as? [[String: Any]])
         XCTAssertEqual(messages.map { $0["id"] as? String }, ["333333333333333333", "333333333333333332"])
         let paths = await transport.paths()
         XCTAssertEqual(paths, ["/channels/111111111111111111/messages?limit=25"], "the default limit; since filters locally")
     }
 
-    func testThePaceGuardRefusesBeforeAnyRequestAndWithNothingCachedTheRefusalNamesTheWait() async {
-        let transport = RoutedTransport([:])
-        let history = MemoryHistory()
-        history.passes = [Date(timeIntervalSince1970: 1_800_000_000 - 600)]
-        let result = await self.service(transport, channels: [general], history: history).handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil)
-        guard case let .failure(code, message) = result else { return XCTFail("\(result)") }
-        XCTAssertEqual(code, "RATE_LIMITED")
-        XCTAssertTrue(message.contains("Do not retry"))
-        let count = await transport.requests.count
-        XCTAssertEqual(count, 0)
-        XCTAssertEqual(history.passes.count, 1, "a refused pass is not counted")
-    }
-
-    func testARefusedPassIsAnsweredFromThePreviousOneWithNoRequestAndSaysSo() async throws {
+    func testInsideTheCooldownEveryChannelComesFromItsLastReadWithNoRequest() async throws {
         let transport = RoutedTransport([
             "/channels/111111111111111111/messages": [.ok(messagesBody)],
             "/channels/222222222222222222/messages": [.ok("[]")],
         ])
         let history = MemoryHistory()
         let cache = MemoryCache()
-        var clock = Date(timeIntervalSince1970: 1_800_000_000)
+        var clock = Self.start
         let service = self.service(transport, channels: [general, events], history: history, cache: cache, now: { clock })
         _ = try self.object(await service.handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil))
-        XCTAssertEqual(cache.saves, 1)
-        XCTAssertEqual(cache.cache?.channels.map(\.id), [general.id, events.id])
-        XCTAssertEqual(cache.cache?.channels[0].messages.count, 3, "the cache keeps the whole read, unfiltered")
 
-        clock = clock.addingTimeInterval(40 * 60)
+        clock = clock.addingTimeInterval(4 * 60)
         let again = try self.object(await service.handleNodeCommand("discord.announcements", paramsJSON: #"{"sinceRFC3339":"2026-09-14T00:00:00Z","limit":1}"#, timeoutMilliseconds: nil))
         XCTAssertEqual(again["fromCache"] as? Bool, true)
-        XCTAssertEqual(again["readAt"] as? String, "2027-01-15T08:00:00Z", "the previous pass's time, not now")
         let note = try XCTUnwrap(again["note"] as? String)
-        XCTAssertTrue(note.contains("Do not retry before then"), note)
-        XCTAssertTrue(note.contains("previous read, made 40 minutes ago"), note)
-        let channels = try XCTUnwrap(again["channels"] as? [[String: Any]])
-        XCTAssertEqual(channels.map { $0["server"] as? String }, ["Robotics Club", "CS Society"])
+        XCTAssertTrue(note.contains("next read is possible in 6 minutes"), note)
+        XCTAssertTrue(note.contains("say when it was read"), note)
+        let channels = try self.channels(again)
+        XCTAssertEqual(channels.map { $0["fromCache"] as? Bool }, [true, true])
+        XCTAssertEqual(channels.map { $0["readAt"] as? String }, ["2027-01-15T08:00:00Z", "2027-01-15T08:00:00Z"], "each channel's own read time, not now")
         XCTAssertEqual((channels[0]["messages"] as? [[String: Any]])?.map { $0["id"] as? String }, ["333333333333333333"], "since and limit apply to the cached read")
-        XCTAssertEqual(again["passesLeftToday"] as? Int, 3)
+        XCTAssertEqual(again["passesLeftToday"] as? Int, 23, "serving the last read is not a pass")
         let count = await transport.requests.count
         XCTAssertEqual(count, 2, "the second ask reached Discord zero times")
-        XCTAssertEqual(history.passes.count, 1)
-        XCTAssertEqual(cache.saves, 1, "serving the cache does not rewrite it")
+        XCTAssertEqual(cache.saves, 1)
     }
 
-    func testThePreviousPassIsCutToTheChannelsListedNowAndIsNotReplacedByAPassThatReadNothing() async throws {
-        let cache = MemoryCache()
-        let history = MemoryHistory()
-        cache.cache = .init(
-            readAt: Date(timeIntervalSince1970: 1_800_000_000 - 3_600), limit: 25,
-            channels: [
-                .init(id: general.id, name: general.name, server: general.guildName, messages: [.init(id: "1", at: "2026-09-15T14:00:00Z", author: "prez", text: "hi", link: "https://discord.com/channels/9/1/1", attachments: 0)], error: nil),
-                .init(id: events.id, name: events.name, server: events.guildName, messages: [], error: nil),
-            ],
-            note: nil)
-        history.passes = [Date(timeIntervalSince1970: 1_800_000_000 - 3_600)]
-
-        // events was removed from the list since the cached pass.
-        let refused = try self.object(await self.service(RoutedTransport([:]), channels: [general], history: history, cache: cache).handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil))
-        XCTAssertEqual((refused["channels"] as? [[String: Any]])?.map { $0["id"] as? String }, [general.id])
-
-        // Nothing listed now was in the cached pass: the refusal stands, nothing is served.
+    func testOnlyTheChannelsThatAreDueAreRequestedAndTheRestAreMergedIn() async throws {
         let third = DiscordChannelEntry(id: "444444444444444444", name: "third", guildName: "Added Since", guildID: "777777777777777777")
-        let nothingShared = await self.service(RoutedTransport([:]), channels: [third], history: history, cache: cache).handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil)
-        guard case .failure(let code, _) = nothingShared, code == "RATE_LIMITED" else { return XCTFail("\(nothingShared)") }
-        XCTAssertEqual(history.passes.count, 1)
+        let transport = RoutedTransport([
+            "/channels/111111111111111111/messages": [.ok(messagesBody), .ok("[]")],
+            "/channels/222222222222222222/messages": [.ok("[]"), .ok(messagesBody)],
+            "/channels/444444444444444444/messages": [.ok("[]")],
+        ])
+        let history = MemoryHistory()
+        let cache = MemoryCache()
+        var clock = Self.start
+        var listed = [general, events]
+        let service = ForegroundDiscordAnnouncementsService(
+            client: DiscordUserClient(transport: transport, token: { fixtureToken }),
+            channels: { listed }, pace: DiscordReadPace(history: history, now: { clock }), cache: cache, now: { clock })
+        _ = try self.object(await service.handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil))
 
-        // A fresh pass in which every channel fails leaves the previous pass in place.
-        history.passes = []
-        let failing = RoutedTransport(["/channels/111111111111111111/messages": [.init(status: 500, body: "{}", headers: [:])]])
-        let failed = try self.object(await self.service(failing, channels: [general], history: history, cache: cache).handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil))
-        XCTAssertEqual((failed["channels"] as? [[String: Any]])?.first?["error"] as? String, "could not be read")
-        XCTAssertEqual(cache.saves, 0)
-        XCTAssertEqual(cache.cache?.channels.first?.messages.first?.id, "1")
+        // A channel added inside the cooldown is read at once; the others are not.
+        clock = clock.addingTimeInterval(3 * 60)
+        listed = [general, events, third]
+        let mixed = try self.object(await service.handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil))
+        let channels = try self.channels(mixed)
+        XCTAssertEqual(channels.map { $0["fromCache"] as? Bool }, [true, true, false])
+        XCTAssertEqual(channels[2]["readAt"] as? String, "2027-01-15T08:03:00Z")
+        XCTAssertEqual(mixed["fromCache"] as? Bool, false)
+        XCTAssertTrue((mixed["note"] as? String ?? "").hasPrefix("1 of 3 channels were read now"), mixed["note"] as? String ?? "")
+        var paths = await transport.paths()
+        XCTAssertEqual(paths.count, 3, "one request for the new channel only")
+        XCTAssertEqual(history.passes.count, 2, "a call that requests anything is a pass")
+
+        // After the cooldown everything is due again, and the new reads replace the old.
+        clock = clock.addingTimeInterval(8 * 60)
+        let fresh = try self.channels(self.object(await service.handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil)))
+        XCTAssertEqual(fresh.map { $0["fromCache"] as? Bool }, [false, false, true], "third was read 8 minutes ago and is still inside its cooldown")
+        XCTAssertEqual((fresh[1]["messages"] as? [[String: Any]])?.count, 3)
+        paths = await transport.paths()
+        XCTAssertEqual(paths.count, 5)
+        XCTAssertEqual(cache.cache?.channels.map(\.id), [general.id, events.id, third.id])
     }
 
-    func testTheFileStoreRoundTripsAPassAndAnsweredNothingBeforeOne() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("discord-cache-\(UUID().uuidString)", isDirectory: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let store = FileDiscordReadCacheStore(supportDirectory: directory)
-        XCTAssertNil(store.load())
-        let pass = DiscordReadCache(
-            readAt: Date(timeIntervalSince1970: 1_800_000_000), limit: 10,
-            channels: [.init(id: general.id, name: general.name, server: general.guildName, messages: [.init(id: "1", at: "2026-09-15T14:00:00Z", author: "prez", text: "Hack night", link: "https://discord.com/channels/9/1/1", attachments: 1)], error: nil)],
-            note: "ended early")
-        store.save(pass)
-        XCTAssertEqual(FileDiscordReadCacheStore(supportDirectory: directory).load(), pass)
+    func testTheDayCapAndThePauseAreAnsweredFromTheLastReadsOrRefusedWhenThereAreNone() async throws {
+        let history = MemoryHistory()
+        let cache = MemoryCache()
+        history.passes = Array(repeating: Self.start.addingTimeInterval(-3_600), count: DiscordReadPace.dailyCap)
+        let transport = RoutedTransport([:])
+        let refused = await self.service(transport, channels: [general], history: history, cache: cache).handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil)
+        guard case let .failure(code, message) = refused else { return XCTFail("\(refused)") }
+        XCTAssertEqual(code, "DAILY_CAP_REACHED")
+        XCTAssertTrue(message.contains("Do not retry"))
+
+        cache.cache = .init(channels: [
+            .init(id: general.id, name: general.name, server: general.guildName, readAt: Self.start.addingTimeInterval(-3_600), messages: [.init(id: "1", at: "2026-09-15T14:00:00Z", author: "prez", text: "hi", link: "https://discord.com/channels/9/1/1", attachments: 0)], error: nil),
+        ])
+        let served = try self.object(await self.service(transport, channels: [general], history: history, cache: cache).handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil))
+        XCTAssertEqual(served["fromCache"] as? Bool, true)
+        XCTAssertTrue((served["note"] as? String ?? "").contains("limit resets in"), served["note"] as? String ?? "")
+        XCTAssertEqual(try self.channels(served).first?["readAt"] as? String, "2027-01-15T07:00:00Z")
+
+        history.passes = []
+        history.pausedUntil = Self.start.addingTimeInterval(3_600)
+        let paused = try self.object(await self.service(transport, channels: [general], history: history, cache: cache).handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil))
+        XCTAssertTrue((paused["note"] as? String ?? "").contains("paused"), paused["note"] as? String ?? "")
+        let count = await transport.requests.count
+        XCTAssertEqual(count, 0)
     }
 
     func testA429EndsThePassPausesForADayAndStillReportsWhatWasRead() async throws {
@@ -362,12 +399,37 @@ final class ForegroundDiscordAnnouncementsServiceTests: XCTestCase {
         let third = DiscordChannelEntry(id: "444444444444444444", name: "third", guildName: "Never Read", guildID: "777777777777777777")
         let result = await self.service(transport, channels: [general, events, third], history: history).handleNodeCommand("discord.announcements", paramsJSON: "{}", timeoutMilliseconds: nil)
         let object = try self.object(result)
-        XCTAssertEqual((object["channels"] as? [[String: Any]])?.count, 1, "the channel that hit 429 and everything after it are not in the result")
+        let channels = try self.channels(object)
+        XCTAssertEqual((channels[0]["messages"] as? [Any])?.count, 3)
+        XCTAssertEqual(channels[1]["error"] as? String, "not read: the pass stopped before it", "the channel that hit 429")
+        XCTAssertEqual(channels[2]["error"] as? String, "not read: the pass stopped before it", "and everything after it")
         XCTAssertTrue((object["note"] as? String ?? "").contains("paused for a day"))
         let count = await transport.requests.count
         XCTAssertEqual(count, 2, "the third channel was never requested")
         XCTAssertNotNil(history.pausedUntil)
-        XCTAssertEqual(object["passesLeftToday"] as? Int, 3)
+        XCTAssertEqual(object["passesLeftToday"] as? Int, 23)
+    }
+
+    func testAFailedReadKeepsTheLastGoodOneAndIsNotRetriedInsideTheCooldown() async throws {
+        let transport = RoutedTransport([
+            "/channels/111111111111111111/messages": [.ok(messagesBody), .init(status: 500, body: "{}", headers: [:])],
+        ])
+        let history = MemoryHistory()
+        let cache = MemoryCache()
+        var clock = Self.start
+        let service = self.service(transport, channels: [general], history: history, cache: cache, now: { clock })
+        _ = try self.object(await service.handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil))
+
+        clock = clock.addingTimeInterval(11 * 60)
+        let failed = try self.channels(self.object(await service.handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil)))
+        XCTAssertEqual(failed[0]["fromCache"] as? Bool, true, "the read that failed is not shown; the last good one is")
+        XCTAssertEqual((failed[0]["messages"] as? [Any])?.count, 3)
+        XCTAssertEqual(failed[0]["readAt"] as? String, "2027-01-15T08:00:00Z")
+
+        clock = clock.addingTimeInterval(60)
+        _ = try self.object(await service.handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil))
+        let count = await transport.requests.count
+        XCTAssertEqual(count, 2, "the failed channel is inside its cooldown; no third request")
     }
 
     func testAnInvalidTokenEndsThePassAndAnInvisibleChannelIsReportedInPlace() async throws {
@@ -381,9 +443,25 @@ final class ForegroundDiscordAnnouncementsServiceTests: XCTestCase {
             "/channels/222222222222222222/messages": [.ok("[]")],
         ])
         let partial = await self.service(forbidden, channels: [general, events]).handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil)
-        let channels = try XCTUnwrap(try self.object(partial)["channels"] as? [[String: Any]])
+        let channels = try self.channels(self.object(partial))
         XCTAssertEqual(channels[0]["error"] as? String, "not visible to this account")
+        XCTAssertEqual(channels[0]["fromCache"] as? Bool, false)
         XCTAssertEqual((channels[1]["messages"] as? [Any])?.count, 0)
+    }
+
+    func testARemovedChannelIsNeitherServedNorKept() async throws {
+        let cache = MemoryCache()
+        let history = MemoryHistory()
+        cache.cache = .init(channels: [
+            .init(id: general.id, name: general.name, server: general.guildName, readAt: Self.start.addingTimeInterval(-60), messages: [], error: nil),
+            .init(id: events.id, name: events.name, server: events.guildName, readAt: Self.start.addingTimeInterval(-60), messages: [], error: nil),
+        ])
+        history.reads = [general.id: Self.start.addingTimeInterval(-60), events.id: Self.start.addingTimeInterval(-60)]
+        let transport = RoutedTransport([:])
+        let served = try self.object(await self.service(transport, channels: [general], history: history, cache: cache).handleNodeCommand("discord.announcements", paramsJSON: nil, timeoutMilliseconds: nil))
+        XCTAssertEqual(try self.channels(served).map { $0["id"] as? String }, [general.id])
+        let count = await transport.requests.count
+        XCTAssertEqual(count, 0)
     }
 
     func testNoChannelsBadParametersAndOtherCommandsAreRefusedWithoutARequest() async {
@@ -401,5 +479,17 @@ final class ForegroundDiscordAnnouncementsServiceTests: XCTestCase {
         XCTAssertEqual(otherCode, "UNSUPPORTED_COMMAND")
         let count = await transport.requests.count
         XCTAssertEqual(count, 0)
+    }
+
+    func testTheFileStoreRoundTripsAndAnswersNothingBeforeARead() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("discord-cache-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = FileDiscordReadCacheStore(supportDirectory: directory)
+        XCTAssertNil(store.load())
+        let reads = DiscordReadCache(channels: [
+            .init(id: general.id, name: general.name, server: general.guildName, readAt: Self.start, messages: [.init(id: "1", at: "2026-09-15T14:00:00Z", author: "prez", text: "Hack night", link: "https://discord.com/channels/9/1/1", attachments: 1)], error: nil),
+        ])
+        store.save(reads)
+        XCTAssertEqual(FileDiscordReadCacheStore(supportDirectory: directory).load(), reads)
     }
 }

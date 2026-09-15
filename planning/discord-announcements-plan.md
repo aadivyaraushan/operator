@@ -30,6 +30,14 @@ See the conversation record in saved-results/ios-connectors-evidence.md.
 - **Pace**: at most 4 passes per rolling 24 h, at least 2 h between passes;
   one request per channel per pass; a 429 ends the pass and is honoured.
   Persisted in UserDefaults like the WhatsApp send history.
+  *Amended 2026-09-15, after the first setup:* each channel is requested at
+  most once every 10 minutes, at most 24 passes per rolling 24 h, and a
+  channel inside its cooldown is answered from its last read (kept in one
+  file in Application Support). The 429 rule is unchanged. Reasoning in
+  saved-results/discord-read-frequency-ban-research-2026-09-15.md: every
+  read-only lock on record was a burst or an unattended loop, and the
+  guard's job is to make sure the model cannot turn the owner's questions
+  into either; the old numbers rationed a human for no measured gain.
 - **REST only**, never the gateway websocket: no always-on session, which is
   what the reported bans have in common.
 - **Client headers** match the official iOS app's shape.

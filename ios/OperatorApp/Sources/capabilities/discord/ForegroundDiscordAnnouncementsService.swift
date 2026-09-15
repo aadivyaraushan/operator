@@ -5,11 +5,11 @@ import OSLog
 /// `discord.announcements`: one pass over the owner's channel list.
 ///
 /// Everything the acknowledgement promises is checked here or in the client:
-/// only the listed channels, one request each, the pace guard before any
-/// request, a 429 ends the pass and pauses the connector for a day, and the
-/// payload is written so the model knows when not to ask again. A pass the
-/// guard refuses is answered from the previous pass when there is one, marked
-/// as such: Discord sees nothing either way.
+/// only the listed channels, one request each, each channel at most once per
+/// cooldown, the pass cap before any request, a 429 ends the pass and pauses
+/// the connector for a day, and the payload is written so the model knows
+/// when not to ask again. A channel inside its cooldown is answered from its
+/// last read, marked as such: Discord sees nothing for it either way.
 @MainActor
 final class ForegroundDiscordAnnouncementsService: GatewayNodeCommandHandler {
     static let command = "discord.announcements"
@@ -47,34 +47,48 @@ final class ForegroundDiscordAnnouncementsService: GatewayNodeCommandHandler {
         guard !list.isEmpty else {
             return .failure(code: "NOT_CONFIGURED", message: "No Discord channels are listed. The person adds them under Connect accounts > Discord; the agent cannot choose channels.")
         }
+        // Only listed channels are ever served or kept: a channel the owner
+        // removed is not read, cached or otherwise.
+        let listedIDs = Set(list.map(\.id))
+        var kept = Dictionary(uniqueKeysWithValues: (self.cache.load()?.channels ?? []).filter { listedIDs.contains($0.id) }.map { ($0.id, $0) })
+        let current = self.now()
+
         if let refusal = self.pace.check() {
-            if let previous = self.previousPass(listed: list, parameters: parameters) {
-                self.logger.info("[discord-read] refused code=\(refusal.code, privacy: .public) served=previous-pass")
-                return self.result(
-                    channels: previous.channels, readAt: previous.readAt, fromCache: true,
-                    note: [refusal.message, Self.cacheNote(readAt: previous.readAt, now: self.now()), previous.note].compactMap { $0 }.joined(separator: " "))
+            guard kept.values.contains(where: { $0.error == nil }) else {
+                self.logger.info("[discord-read] refused code=\(refusal.code, privacy: .public)")
+                return .failure(code: refusal.code, message: refusal.message)
             }
-            self.logger.info("[discord-read] refused code=\(refusal.code, privacy: .public)")
-            return .failure(code: refusal.code, message: refusal.message)
+            self.logger.info("[discord-read] refused code=\(refusal.code, privacy: .public) served=last-reads")
+            return self.result(list, from: kept, parameters: parameters, at: current, note: refusal.message + " " + Self.servedNote)
+        }
+        // A channel inside its cooldown is served from its last read; one
+        // whose last read is missing (the file is gone) is read again.
+        let due = list.filter { self.pace.isDue(channelID: $0.id) || kept[$0.id] == nil }
+        guard !due.isEmpty else {
+            let refusal = DiscordReadRefusal.tooSoon(retryAfterSeconds: self.pace.secondsUntilDue(channelIDs: list.map(\.id)))
+            self.logger.info("[discord-read] refused code=\(refusal.code, privacy: .public) served=last-reads")
+            return self.result(list, from: kept, parameters: parameters, at: current, note: refusal.message + " " + Self.servedNote)
         }
         // Counted before the first request: Discord sees the requests whether
         // or not the pass completes.
         self.pace.recordPass()
-        self.logger.info("[discord-read] pass started channels=\(list.count) limit=\(parameters.limit)")
+        self.logger.info("[discord-read] pass started due=\(due.count) listed=\(list.count) limit=\(parameters.limit)")
 
-        var read: [DiscordReadCache.Channel] = []
         var note: String?
         var totalMessages = 0
-        for channel in list {
+        var freshChannels = 0
+        for channel in due {
+            self.pace.recordRead(channelID: channel.id)
             do {
                 let messages = try await self.client.messages(in: channel, limit: parameters.limit)
                 totalMessages += messages.count
-                read.append(.init(
-                    id: channel.id, name: channel.name, server: channel.guildName,
+                freshChannels += 1
+                kept[channel.id] = .init(
+                    id: channel.id, name: channel.name, server: channel.guildName, readAt: current,
                     messages: messages.map {
                         .init(id: $0.id, at: $0.timestampRFC3339, author: $0.author, text: $0.text, link: $0.link, attachments: $0.attachmentCount)
                     },
-                    error: nil))
+                    error: nil)
             } catch DiscordUserClientError.notConnected {
                 self.logger.info("[discord-read] pass ended reason=not-connected")
                 return .failure(code: "NOT_CONNECTED", message: "Discord did not accept the saved token. The person can save a new one under Connect accounts > Discord.")
@@ -84,61 +98,59 @@ final class ForegroundDiscordAnnouncementsService: GatewayNodeCommandHandler {
                 self.logger.info("[discord-read] pass ended reason=rate-limited")
                 break
             } catch DiscordUserClientError.notVisible {
-                read.append(.init(id: channel.id, name: channel.name, server: channel.guildName, messages: [], error: "not visible to this account"))
+                Self.fail(channel, in: &kept, at: current, error: "not visible to this account")
             } catch {
-                read.append(.init(id: channel.id, name: channel.name, server: channel.guildName, messages: [], error: "could not be read"))
+                Self.fail(channel, in: &kept, at: current, error: "could not be read")
             }
         }
-        self.logger.info("[discord-read] pass complete channels=\(read.count) messages=\(totalMessages)")
-        let readAt = self.now()
-        // A pass that read nothing (every channel failed, or a 429 came first)
-        // must not replace a previous pass that did.
-        if read.contains(where: { $0.error == nil }) {
-            self.cache.save(.init(readAt: readAt, limit: parameters.limit, channels: read, note: note))
+        self.logger.info("[discord-read] pass complete fresh=\(freshChannels) messages=\(totalMessages)")
+        self.cache.save(.init(channels: list.compactMap { kept[$0.id] }))
+        if freshChannels < list.count, note == nil {
+            note = "\(freshChannels) of \(list.count) channels were read now; the rest are shown from an earlier read. " + Self.servedNote
         }
-        return self.result(channels: Self.apply(parameters, to: read), readAt: readAt, fromCache: false, note: note)
+        return self.result(list, from: kept, parameters: parameters, at: current, note: note)
     }
 
-    /// The previous pass, cut to the channels the owner lists now: a channel
-    /// removed from the list is not read, cached or otherwise.
-    private func previousPass(listed: [DiscordChannelEntry], parameters: Parameters) -> DiscordReadCache? {
-        guard let cached = self.cache.load() else { return nil }
-        let ids = Set(listed.map(\.id))
-        let channels = Self.apply(parameters, to: cached.channels.filter { ids.contains($0.id) })
-        guard channels.contains(where: { $0.error == nil }) else { return nil }
-        return .init(readAt: cached.readAt, limit: cached.limit, channels: channels, note: cached.note)
+    /// A failed read never replaces a good one: the last successful read
+    /// stays and is served, and the cooldown (recorded already) stops the
+    /// channel being retried at once.
+    private static func fail(_ channel: DiscordChannelEntry, in kept: inout [String: DiscordReadCache.Channel], at current: Date, error: String) {
+        guard kept[channel.id]?.error != nil || kept[channel.id] == nil else { return }
+        kept[channel.id] = .init(id: channel.id, name: channel.name, server: channel.guildName, readAt: current, messages: [], error: error)
     }
 
-    private static func apply(_ parameters: Parameters, to channels: [DiscordReadCache.Channel]) -> [DiscordReadCache.Channel] {
-        channels.map { channel in
-            var messages = channel.messages
-            if let since = parameters.since {
-                messages = messages.filter { Self.date($0.at).map { $0 > since } ?? true }
+    private static let servedNote = "A channel with fromCache true is shown from an earlier read, at its readAt; say when it was read."
+
+    private func result(_ list: [DiscordChannelEntry], from kept: [String: DiscordReadCache.Channel], parameters: Parameters, at current: Date, note: String?) -> GatewayNodeCommandResult {
+        let formatter = ISO8601DateFormatter()
+        var anyFresh = false
+        let channels = list.map { entry -> [String: Any] in
+            guard let channel = kept[entry.id] else {
+                return ["id": entry.id, "channel": entry.name, "server": entry.guildName, "error": "not read: the pass stopped before it"]
             }
-            return .init(id: channel.id, name: channel.name, server: channel.server, messages: Array(messages.prefix(parameters.limit)), error: channel.error)
-        }
-    }
-
-    private static func cacheNote(readAt: Date, now: Date) -> String {
-        let minutes = max(1, Int((now.timeIntervalSince(readAt) / 60).rounded()))
-        return "What follows is the previous read, made \(minutes) minutes ago, not a new one; say when it was read."
-    }
-
-    private func result(channels: [DiscordReadCache.Channel], readAt: Date, fromCache: Bool, note: String?) -> GatewayNodeCommandResult {
-        var payload: [String: Any] = [
-            "channels": channels.map { channel -> [String: Any] in
-                var object: [String: Any] = ["id": channel.id, "channel": channel.name, "server": channel.server]
-                if let error = channel.error {
-                    object["error"] = error
-                } else {
-                    object["messages"] = channel.messages.map { message -> [String: Any] in
-                        ["id": message.id, "at": message.at, "author": message.author, "text": message.text, "link": message.link, "attachments": message.attachments]
-                    }
+            let fromCache = channel.readAt < current
+            anyFresh = anyFresh || (!fromCache && channel.error == nil)
+            var object: [String: Any] = [
+                "id": channel.id, "channel": channel.name, "server": channel.server,
+                "readAt": formatter.string(from: channel.readAt), "fromCache": fromCache,
+            ]
+            if let error = channel.error {
+                object["error"] = error
+            } else {
+                var messages = channel.messages
+                if let since = parameters.since {
+                    messages = messages.filter { Self.date($0.at).map { $0 > since } ?? true }
                 }
-                return object
-            },
-            "readAt": ISO8601DateFormatter().string(from: readAt),
-            "fromCache": fromCache,
+                object["messages"] = messages.prefix(parameters.limit).map { message -> [String: Any] in
+                    ["id": message.id, "at": message.at, "author": message.author, "text": message.text, "link": message.link, "attachments": message.attachments]
+                }
+            }
+            return object
+        }
+        var payload: [String: Any] = [
+            "channels": channels,
+            "readAt": formatter.string(from: current),
+            "fromCache": !anyFresh,
             "passesLeftToday": self.pace.passesLeftToday,
             "nextStep": "Summarise per server, newest first. Offer anything with a date or time as a calendar event (googleCalendarCreateEvent, with the message link in the description) and let the person choose. Reads are rationed; do not call this again in the same conversation unless the person asks for a fresh read.",
         ]

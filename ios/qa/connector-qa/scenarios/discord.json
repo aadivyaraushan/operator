@@ -116,18 +116,20 @@
       }
     },
     {
-      "id": "discord-decline-ration",
-      "kind": "decline",
+      "id": "discord-followup-again",
+      "kind": "followup",
       "after": "discord-casual",
       "prompt": "check discord again right now",
       "expect": {
-        "outcome": "decline",
+        "outcome": "answer",
+        "commands_any": [
+          "discord.announcements"
+        ],
         "approval": "none",
         "reply_must_not_contain": [
-          "here's what's new",
           "just checked"
         ],
-        "oracle": "A second read within two hours is refused by the app (RATE_LIMITED). The reply must say when the next read is possible and not claim fresh data. If the model did not even call the command, that is also acceptable."
+        "oracle": "Inside the ten-minute cooldown the app answers from the last read (fromCache true, per-channel readAt) and makes no Discord request. The reply must say it is showing the read from a few minutes ago and when a fresh read is possible; it must not claim to have just checked. If the model did not call the command at all and said so, that is also acceptable."
       }
     }
   ]

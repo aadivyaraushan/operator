@@ -129,11 +129,12 @@ public enum GatewayNodeAgentTools {
             description: """
             Read the newest messages in the Discord announcement channels the person chose in \
             Operator, through their own account. Use for "what did I miss", "any announcements", \
-            or to find dated items to put on their calendar. Reads are rationed to a few passes \
-            a day to protect the account; inside the ration the result is the previous read \
-            (fromCache true, readAt says when), and if it refuses, say so and do not retry. \
-            Read-only: it cannot post, react, or mark anything read, and it cannot read a \
-            channel the person has not listed.
+            or to find dated items to put on their calendar. To protect the account each channel \
+            is requested at most once every ten minutes, with a daily cap; a channel read more \
+            recently comes back from that read (fromCache true on the channel, readAt says \
+            when), and if the whole call is refused, say so and do not retry. Read-only: it \
+            cannot post, react, or mark anything read, and it cannot read a channel the person \
+            has not listed.
             """,
             parameters: .init(properties: [
                 "sinceRFC3339": .string("Only messages after this time. Omit to get the newest messages in each channel."),

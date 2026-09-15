@@ -189,7 +189,7 @@ public enum ConnectorCatalog {
                   ],
                   confirmLabel: "Turn on anyway")),
         .init(id: .discord, title: "Discord (your account)",
-              readSummary: "Announcements from channels you choose, read through your own Discord account at most a few times a day. Unofficial: Discord can ban the account; you will be asked to accept that every time you turn this on.",
+              readSummary: "Announcements from channels you choose, read through your own Discord account, each channel at most once every ten minutes. Unofficial: Discord can ban the account; you will be asked to accept that every time you turn this on.",
               writeSummary: nil,
               readCommands: ["discord.announcements"], writeCommands: [],
               systemPermission: nil, requiresAccount: true,
@@ -198,7 +198,7 @@ public enum ConnectorCatalog {
                   title: "This can get the Discord account banned",
                   paragraphs: [
                       "Operator reads these channels the way a script with your login would, not through Discord's bot API. Discord's terms forbid automating a user account, and the sanction they name is closing the account: every server, every DM, the name.",
-                      "What Operator does to stay quiet, enforced in code rather than promised: it only reads, never posts, reacts or marks anything read; it reads only the channels you list here; it makes at most four passes in any 24 hours and never two within two hours; it never holds an open connection; and it stops for the day the moment Discord asks it to slow down.",
+                      "What Operator does to stay quiet, enforced in code rather than promised: it only reads, never posts, reacts or marks anything read; it reads only the channels you list here; it requests any one channel at most once every ten minutes and makes at most 24 reads in any 24 hours, answering from the last read in between; it never holds an open connection; and it stops for the day the moment Discord asks it to slow down.",
                       "Reported enforcement targets spam, mass joins, command bots and always-on sessions, none of which this does, but Discord does not publish its rules and Operator cannot see or predict them. Use a second account that is a member of the same servers, so the worst case is losing that one.",
                   ],
                   statements: [
