@@ -1464,3 +1464,73 @@ ranges are well inside the cap, so the connector is usable as-is.
 
 **Every read (10) and every write (6) Operator connector operation, plus Notion
 read+write, now has a live proof on the owner's real accounts.**
+
+---
+
+## 2026-09-15: permissions, first writes, and the first message sent for the owner
+
+All on the iPhone 17, watched by the owner, with the device log alongside.
+
+### Rows that moved
+
+| Connector | Command | Live result |
+| --- | --- | --- |
+| Contacts | `contacts.search` | **read live** - denied, granted from the in-chat banner, then answered |
+| Device | `device.status` | **read live** through the permission gate |
+| Messages (composer) | `sms.compose` | **write live** - system sheet presented, owner tapped Send, `outcome=sent` |
+| Open apps | `apps.open` | **write live** - YouTube opened inside Operator |
+| Messages, sent for you | `sms.send` | **write live** - handed to the shortcut, iMessage arrived, x-callback `success` recorded |
+
+### What the permission layer did on its first live run
+
+Every step visible in the log, none of it reasoned about afterwards:
+
+    contacts.search  -> denied connector=contacts access=read
+                     -> (owner taps Allow on the banner)
+                     -> granted; published agent tools count=2
+    contacts.search  -> ran
+    sms.compose      -> denied connector=messages access=write
+                     -> granted
+
+The default was truly nothing: on first launch the node published
+`count=0` tools and the model was offered none until the owner allowed
+one. Republishing on a live socket worked without a reconnect.
+
+### Two defects the run surfaced, both fixed the same session
+
+- **Two verbs for one intent.** The model called `sms.compose`, the
+  command it knew, so `sms.send` never ran. The "sent for you" grant now
+  decides how a compose goes out (48c15e6); the model's choice of verb no
+  longer matters.
+- **Stale seeded guidance.** The workspace `AGENTS.md` still said the
+  agent had no tool that sends a message, because OpenClaw writes it only
+  when missing. The agent believed it and the owner had to prompt twice.
+  The section is now refreshed on every start, inside markers (a0a5543).
+
+### How the shortcut gets installed, and what did not work
+
+Only an iCloud share link opened directly installs a shortcut on iOS 18
+and 26. Tried and refused, each reproduced on the Simulator:
+`shortcuts://import-shortcut` with a signed file on GitHub ("The shortcut
+URL provided was invalid" - and the same for a plain README URL, so not
+encoding); the same scheme pointed at the iCloud link ("The file isn't in
+the correct format"). Unsigned files are refused outright since iOS 15.
+The link was produced by sharing the checked-in signed file from the
+Shortcuts app on the developer's Mac; sharing it again renews the link.
+
+### Still open, in the order they matter
+
+- **Recipient allowlist for sent-for-you.** The only gate on who a
+  silently sent message reaches is the model's judgement and the prose in
+  AGENTS.md. A prompt-injected reminder saying "text everyone" has
+  nothing in code stopping it. This should land before the feature is
+  used for anything but the owner's own number.
+- **Cross-service-turn gate** (no sending in a turn that also read
+  external content) - prose only.
+- **openclaw's own outbound tools** (`web_fetch`, `browser`, `message`)
+  are still enabled and ungated; the setup branch also turned on native
+  web search. The permission page governs Operator's connectors, not
+  these.
+- **App switch drops the node.** Returning from Shortcuts shows "Starting
+  Operator" while the node reconnects; the x-callback still landed 30s
+  later. Harmless today, worth smoothing.
