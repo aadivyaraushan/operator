@@ -9,7 +9,7 @@ private extension ModelSetupState {
 }
 
 enum ChatMessageText {
-    static func accessibilityLabel(for message: ChatMessage) -> String {
+    static func accessibilityLabel(for message: ChatMessage, inFlight: Bool = false) -> String {
         let speaker = message.role == .user ? "You" : "Operator"
         let text: String
         if case let .weather(card) = message.attachment {
@@ -18,10 +18,23 @@ enum ChatMessageText {
             text = String(displayText(for: message).characters)
         }
         var label = "\(speaker), \(text)"
-        if message.role == .user, message.delivery != .accepted {
-            label += message.delivery == .sending ? ", Sending" : ", Waiting"
+        if let state = deliveryLabel(for: message, inFlight: inFlight) {
+            label += ", \(state)"
         }
         return label
+    }
+
+    /// The word under a person's bubble, or nil once the runtime has the
+    /// message. The store says "sending" until the reply is saved, because
+    /// the outbox is how a reply survives a dropped connection; the person
+    /// only needs to know the message is being worked on.
+    static func deliveryLabel(for message: ChatMessage, inFlight: Bool) -> String? {
+        guard message.role == .user, !inFlight else { return nil }
+        switch message.delivery {
+        case .accepted: return nil
+        case .sending: return "Sending"
+        default: return "Waiting"
+        }
     }
 
     static func displayText(for message: ChatMessage) -> AttributedString {
@@ -127,7 +140,10 @@ struct ChatScreen: View {
                             SetupStatus(setup: self.setup)
                         }
                         ForEach(self.model.messages) { message in
-                            MessageBubble(message: message, steps: self.model.stepsByReply[message.id] ?? [])
+                            MessageBubble(
+                                message: message,
+                                steps: self.model.stepsByReply[message.id] ?? [],
+                                inFlight: self.model.inFlight.contains(message.id))
                                 .id(message.id)
                         }
                         ForEach(self.model.approvals) { approval in
@@ -334,6 +350,8 @@ private struct MessageBubble: View {
     /// What the agent did to produce this reply, this launch. Empty for
     /// anything restored from disk.
     var steps: [ChatActivityStep] = []
+    /// The runtime has taken this message; the activity bubble shows the rest.
+    var inFlight = false
 
     var body: some View {
         VStack(alignment: self.message.role == .user ? .trailing : .leading, spacing: 4) {
@@ -353,8 +371,8 @@ private struct MessageBubble: View {
                     .padding(.vertical, 10)
                     .background(self.message.role == .user ? Color.accentColor.opacity(0.16) : Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
-            if self.message.role == .user, self.message.delivery != .accepted {
-                Text(self.message.delivery == .sending ? "Sending" : "Waiting")
+            if let state = ChatMessageText.deliveryLabel(for: self.message, inFlight: self.inFlight) {
+                Text(state)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -363,7 +381,7 @@ private struct MessageBubble: View {
             maxWidth: .infinity,
             alignment: self.message.role == .user ? .trailing : .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(ChatMessageText.accessibilityLabel(for: self.message))
+        .accessibilityLabel(ChatMessageText.accessibilityLabel(for: self.message, inFlight: self.inFlight))
     }
 }
 

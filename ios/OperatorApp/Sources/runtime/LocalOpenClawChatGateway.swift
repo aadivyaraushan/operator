@@ -277,6 +277,12 @@ actor LocalOpenClawChatGateway: ChatGateway {
                         await update(.working)
                     case let .activity(runID, activity):
                         self.activeRunID = runID
+                        switch activity {
+                        case let .toolStarted(tool, _, command, _):
+                            self.logger.info("[gateway] activity tool=\(tool, privacy: .public) command=\(command ?? "-", privacy: .public) phase=start")
+                        case let .toolFinished(tool, _, isError):
+                            self.logger.info("[gateway] activity tool=\(tool, privacy: .public) phase=result error=\(isError)")
+                        }
                         await update(.activity(activity))
                     case let .stream(runID, text):
                         self.activeRunID = runID

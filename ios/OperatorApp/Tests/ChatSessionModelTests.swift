@@ -32,6 +32,11 @@ final class ChatSessionModelTests: XCTestCase {
         XCTAssertEqual(
             ChatMessageText.accessibilityLabel(for: ChatMessage(role: .user, text: "Sent")),
             "You, Sent")
+        XCTAssertEqual(
+            ChatMessageText.accessibilityLabel(for: ChatMessage(role: .user, text: "Taken", delivery: .sending), inFlight: true),
+            "You, Taken", "once the runtime has the message there is nothing to say under it")
+        XCTAssertNil(ChatMessageText.deliveryLabel(for: ChatMessage(role: .user, text: "Taken", delivery: .sending), inFlight: true))
+        XCTAssertEqual(ChatMessageText.deliveryLabel(for: ChatMessage(role: .user, text: "Queued", delivery: .waiting), inFlight: false), "Waiting")
     }
 
     func testAssistantTextParsesMarkdownWhileUserTextStaysLiteral() throws {
@@ -153,6 +158,9 @@ final class ChatSessionModelTests: XCTestCase {
         await gateway.waitForStage(1)
         XCTAssertEqual(model.liveActivity, ChatLiveActivity(), "accepted: thinking, no steps yet")
         XCTAssertEqual(model.liveActivity?.statusLine, "Thinking…")
+        let sent = try XCTUnwrap(model.messages.first { $0.role == .user })
+        XCTAssertEqual(sent.delivery, .sending, "the store keeps it in the outbox until the reply")
+        XCTAssertTrue(model.inFlight.contains(sent.id), "but the bubble no longer says Sending")
 
         await gateway.proceed()
         await gateway.waitForStage(2)
@@ -180,6 +188,7 @@ final class ChatSessionModelTests: XCTestCase {
         XCTAssertEqual(reply.text, "Here is the digest")
         XCTAssertEqual(model.stepsByReply[reply.id]?.map(\.title), ["Read Discord announcements", "Read Gmail"], "the steps stay under the reply they produced")
         XCTAssertNil(model.streamingReply)
+        XCTAssertTrue(model.inFlight.isEmpty)
     }
 
     func testRestoreDoesNotClaimReadyWhenGatewayConnectionFails() async {

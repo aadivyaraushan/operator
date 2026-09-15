@@ -36,6 +36,10 @@ final class ChatSessionModel: ObservableObject {
     @Published private(set) var streamingReply: String?
     /// What the agent is doing for the message in flight; nil when idle.
     @Published private(set) var liveActivity: ChatLiveActivity?
+    /// Messages the runtime has taken and is working on. The store keeps them
+    /// in the outbox until the reply, so that a dropped connection can recover
+    /// the reply from history; this is only what the bubble says meanwhile.
+    @Published private(set) var inFlight: Set<UUID> = []
     /// The steps behind each reply of this launch, keyed by the reply's id.
     /// Not persisted: it is a record of what was done, not of what was said.
     @Published private(set) var stepsByReply: [UUID: [ChatActivityStep]] = [:]
@@ -275,6 +279,7 @@ final class ChatSessionModel: ObservableObject {
                 self.lastError = Self.userMessage(for: error)
                 self.streamingReply = nil
                 self.liveActivity = nil
+                self.inFlight.remove(entry.id)
                 self.logger.error("[chat] delivery paused id=\(entry.id.uuidString, privacy: .public)")
                 shouldReconnectAfterFlush = true
                 break
@@ -342,14 +347,17 @@ final class ChatSessionModel: ObservableObject {
         do {
             switch update {
             case .accepted, .working:
+                self.inFlight.insert(entryID)
                 if self.liveActivity == nil { self.liveActivity = ChatLiveActivity() }
                 self.connectionState = .working
             case let .activity(activity):
+                self.inFlight.insert(entryID)
                 var live = self.liveActivity ?? ChatLiveActivity()
                 live.apply(activity)
                 self.liveActivity = live
                 self.connectionState = .working
             case let .stream(text):
+                self.inFlight.insert(entryID)
                 self.streamingReply = text
                 var live = self.liveActivity ?? ChatLiveActivity()
                 live.phase = .writing
@@ -365,23 +373,27 @@ final class ChatSessionModel: ObservableObject {
                 }
                 self.streamingReply = nil
                 self.liveActivity = nil
+                self.inFlight.remove(entryID)
                 self.connectionState = .ready
                 self.logger.info("[chat] reply persisted for id=\(entryID.uuidString, privacy: .public)")
             case let .failed(message):
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.streamingReply = nil
                 self.liveActivity = nil
+                self.inFlight.remove(entryID)
                 self.lastError = message
                 self.connectionState = .ready
             case .stopped:
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.streamingReply = nil
                 self.liveActivity = nil
+                self.inFlight.remove(entryID)
                 self.connectionState = .ready
             }
         } catch {
             self.connectionState = .offline
             self.liveActivity = nil
+            self.inFlight.remove(entryID)
             self.lastError = "Operator replied, but the result could not be saved."
             self.logger.error("[chat] delivery update persistence failed")
         }
