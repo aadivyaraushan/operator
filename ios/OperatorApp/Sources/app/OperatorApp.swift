@@ -157,6 +157,7 @@ struct OperatorApp: App {
         // reaches a connector, and the model is offered only the tools those
         // grants allow. A fresh install grants nothing.
         let permissions = ConnectorPermissionCenter(store: UserDefaultsConnectorGrantStore())
+        let whatsappRead = NativeWhatsAppReadClient(supportDirectory: supportDirectory)
         let messageSend = ForegroundMessageSendService(
             runner: SystemShortcutRunner(),
             isAppActive: { UIApplication.shared.applicationState == .active })
@@ -188,11 +189,12 @@ struct OperatorApp: App {
                 messageSend: messageSend,
                 maps: ForegroundMapsService(),
                 handoff: ForegroundAppHandoffService(),
-                whatsapp: ForegroundWhatsAppReadService(client: NativeWhatsAppReadClient(supportDirectory: supportDirectory)),
-                    whatsappCompose: ForegroundWhatsAppComposeService(
+                whatsapp: ForegroundWhatsAppReadService(client: whatsappRead),
+                whatsappCompose: ForegroundWhatsAppComposeService(
                     presenter: SystemWhatsAppComposePresenter(),
                     sender: NativeWhatsAppSendClient(supportDirectory: supportDirectory),
-                    isAppActive: { UIApplication.shared.applicationState == .active }),
+                    isAppActive: { UIApplication.shared.applicationState == .active },
+                    guardrail: WhatsAppSendGuard(recipients: whatsappRead, history: UserDefaultsWhatsAppSendHistoryStore())),
                 accounts: accountReader,
                 accountWrite: accountWrite,
                 discovery: discovery,

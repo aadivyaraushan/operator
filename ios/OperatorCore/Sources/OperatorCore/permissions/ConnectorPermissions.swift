@@ -25,6 +25,25 @@ public enum SystemPermission: String, Sendable, Hashable {
     case reminders, calendars, contacts, photos, music, location
 }
 
+/// A warning the owner must read and accept, statement by statement, before a
+/// write grant is written at all. Shown every time the grant is turned on,
+/// never remembered. Exists for the one connector whose writes can cost the
+/// owner an account.
+public struct ConnectorAcknowledgement: Equatable, Sendable {
+    public let title: String
+    public let paragraphs: [String]
+    /// Each must be accepted individually.
+    public let statements: [String]
+    public let confirmLabel: String
+
+    public init(title: String, paragraphs: [String], statements: [String], confirmLabel: String) {
+        self.title = title
+        self.paragraphs = paragraphs
+        self.statements = statements
+        self.confirmLabel = confirmLabel
+    }
+}
+
 public struct ConnectorDescriptor: Sendable, Identifiable, Equatable {
     public let id: ConnectorID
     public let title: String
@@ -39,12 +58,16 @@ public struct ConnectorDescriptor: Sendable, Identifiable, Equatable {
     public let requiresAccount: Bool
     /// One-time setup the owner must do outside Operator before the grant does anything.
     public let setupInstructions: String?
+    /// Required before the write grant can be turned on. Nil for every connector
+    /// whose writes cannot cost the owner more than the action itself.
+    public let writeAcknowledgement: ConnectorAcknowledgement?
 
     public init(
         id: ConnectorID, title: String, readSummary: String?, writeSummary: String?,
         readCommands: [String], writeCommands: [String], systemPermission: SystemPermission?,
-        requiresAccount: Bool, setupInstructions: String? = nil)
+        requiresAccount: Bool, setupInstructions: String? = nil, writeAcknowledgement: ConnectorAcknowledgement? = nil)
     {
+        self.writeAcknowledgement = writeAcknowledgement
         self.id = id
         self.title = title
         self.readSummary = readSummary
@@ -136,10 +159,24 @@ public enum ConnectorCatalog {
               readCommands: [], writeCommands: ["apps.open"],
               systemPermission: nil, requiresAccount: false),
         .init(id: .whatsapp, title: "WhatsApp",
-              readSummary: "Your chats and messages, once WhatsApp is linked.",
-              writeSummary: "Send a message after you approve it.",
+              readSummary: "Your chats and messages, once WhatsApp is linked, through an unofficial client.",
+              writeSummary: "Send a WhatsApp message to someone already in your chats, after you approve it. Can get your account banned; you will be asked to accept that every time you turn this on.",
               readCommands: ["whatsapp.chats", "whatsapp.messages", "whatsapp.sync"], writeCommands: ["whatsapp.compose"],
-              systemPermission: nil, requiresAccount: true),
+              systemPermission: nil, requiresAccount: true,
+              writeAcknowledgement: .init(
+                  title: "This can get your WhatsApp account banned",
+                  paragraphs: [
+                      "Operator sends WhatsApp messages through an unofficial client that behaves like WhatsApp Web linked to your phone. WhatsApp's terms of service prohibit unofficial clients, and Meta enforces that against real accounts.",
+                      "What enforcement looks like: usually a temporary block first, from hours to a day, with a notice about an unsupported app; then longer blocks; then a permanent ban. Appeals are opaque and repeat strikes are rarely reversed. A permanent ban loses this number's chat history, its groups, and the number itself as the people in your life know it.",
+                      "What Operator does to look like you and not a bot, enforced in code rather than promised: it only messages people who are already in your chats and never opens a conversation with someone new; it sends at most one message every 20 seconds and 20 in any 24 hours; and it shows you every message for a tap before it goes.",
+                      "None of that binds Meta. Their systems decide what counts as automation, they do not publish the rules, and Operator cannot see or predict them. Reading your chats through the same client is lower risk; this switch is only about sending, it is off by default, and you will be asked this every time you turn it on.",
+                  ],
+                  statements: [
+                      "I understand this uses an unofficial client that violates WhatsApp's terms.",
+                      "I understand my WhatsApp account can be blocked or permanently banned, and that Operator cannot prevent or reverse it.",
+                      "I am turning this on for my own account and I accept that risk.",
+                  ],
+                  confirmLabel: "Turn on anyway")),
         .init(id: .google, title: "Google",
               readSummary: "Calendar events, Drive files you have used with Operator, Gmail messages and Tasks.",
               writeSummary: "Create a calendar event or a Drive text file, after you approve it.",

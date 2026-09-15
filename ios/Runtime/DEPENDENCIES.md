@@ -93,8 +93,10 @@ reaching into `ios/build/` — is worthwhile and is not done.
 
 - Both staging scripts refuse to overwrite an existing output directory, and so
   does `bootstrap.sh`. Delete an output deliberately to rebuild it.
-- The wacli archive is built for the **arm64 iOS Simulator**. Physical-device
-  packaging is not proven.
+- The wacli archive is built twice: `build/native-whatsapp` for the arm64
+  Simulator and `build/native-whatsapp-device` for arm64 devices. The project
+  links whichever matches the SDK; a tree missing one slice can be built for
+  that SDK by un-excluding `WacliBridgeUnavailable.c` for it in `project.yml`.
 - `bootstrap.sh` sets `GOTOOLCHAIN=go1.26.6` through the wacli script, so a
   different local Go is fetched rather than refused.
 - Do not copy another machine's `ios/build/` or its runtime/session state as a

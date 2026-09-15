@@ -32,6 +32,7 @@
 		4036FD59E9CB0DA5D132A387 /* NativeNodePolicySetupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25BDE90F997ECD07CE4399EE /* NativeNodePolicySetupTests.swift */; };
 		490CBF62A70354B3465B6877 /* PublicMediaHTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89EB2C82406EDE96BC896863 /* PublicMediaHTTPTransport.swift */; };
 		49892E375D6B50BFCC40736B /* ModelSetupFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE6353F222861E64E1856902 /* ModelSetupFlow.swift */; };
+		49AF45BACD7E0473CBAE247E /* WhatsAppSendGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 974E85326FDB36175F002B63 /* WhatsAppSendGuardTests.swift */; };
 		4D20E97A4EE43BAD970438E7 /* ForegroundRemindersService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A581AD98B385D8742659A2E8 /* ForegroundRemindersService.swift */; };
 		51CA3CEBD2D01EEDDDE59361 /* NativeNodePolicySetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC48EC3F7F6A86D929580925 /* NativeNodePolicySetup.swift */; };
 		5261B89CDC4B182A3DD354CD /* OperatorChatAppIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0BE63C783B303D5917456BF /* OperatorChatAppIntent.swift */; };
@@ -101,6 +102,7 @@
 		D0C18A9F479A13E26FE882E1 /* ForegroundWhatsAppReadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCBB7A0034CB9F86454E312 /* ForegroundWhatsAppReadService.swift */; };
 		D2AC8A1C88A2579BB183D1E3 /* ForegroundConnectionDiscoveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AF808F58E59888E570DC8A1 /* ForegroundConnectionDiscoveryService.swift */; };
 		D2DD599CBBEC5A2523EAB98C /* ForegroundPresentationHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251F85646597B5FF1146ED0C /* ForegroundPresentationHost.swift */; };
+		D5317949027D962F39317776 /* WhatsAppSendGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2AC238B49B32CBE9B26A294 /* WhatsAppSendGuard.swift */; };
 		D59BDDE6E77F1538CD4B9792 /* SystemAppHandoffOpener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B763984DB6928E71916C75E /* SystemAppHandoffOpener.swift */; };
 		D7CC92BF77C3CA75BEB7DBA8 /* ForegroundAppHandoffServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F6E49CBA4B4BE7F0B6EE437 /* ForegroundAppHandoffServiceTests.swift */; };
 		DD5C4F8956B9DA0A98E594B3 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6BACC7C7C5D24B5E133FCEC2 /* CoreLocation.framework */; };
@@ -259,6 +261,7 @@
 		8F6E49CBA4B4BE7F0B6EE437 /* ForegroundAppHandoffServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundAppHandoffServiceTests.swift; sourceTree = "<group>"; };
 		91030CDE6E5DB4DDD0114BCF /* PodcastMediaServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PodcastMediaServices.swift; sourceTree = "<group>"; };
 		94B5D658BC0E97C5F41DC347 /* ForegroundCalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundCalendarService.swift; sourceTree = "<group>"; };
+		974E85326FDB36175F002B63 /* WhatsAppSendGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsAppSendGuardTests.swift; sourceTree = "<group>"; };
 		996961BE0B62984DE5354052 /* ChatScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatScreen.swift; sourceTree = "<group>"; };
 		9C1F2FCE90E94275E45355B3 /* SystemPermissionStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemPermissionStatus.swift; sourceTree = "<group>"; };
 		A1AF3111A40D0B89366D2550 /* runtime */ = {isa = PBXFileReference; lastKnownFileType = folder; name = runtime; path = "build/native-node/runtime"; sourceTree = SOURCE_ROOT; };
@@ -269,6 +272,7 @@
 		AC01CB893AD10D7CA41775EF /* SystemAccountWriteConfirmationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAccountWriteConfirmationPresenter.swift; sourceTree = "<group>"; };
 		ACA417B76B5DE642B37CAF40 /* ForegroundMessageSendService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMessageSendService.swift; sourceTree = "<group>"; };
 		ACFF1BFA1B93A23124BC4821 /* OAuthTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthTypes.swift; sourceTree = "<group>"; };
+		B2AC238B49B32CBE9B26A294 /* WhatsAppSendGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsAppSendGuard.swift; sourceTree = "<group>"; };
 		B3ABBDCA8280EFA20982CA4B /* NativeWhatsAppReadClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWhatsAppReadClient.swift; sourceTree = "<group>"; };
 		B3EFCEC0ED2A7FEA62302B8D /* NativeAccountSetupCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAccountSetupCoordinatorTests.swift; sourceTree = "<group>"; };
 		B4EA716A42D67D854FB9616D /* ForegroundRemindersServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundRemindersServiceTests.swift; sourceTree = "<group>"; };
@@ -575,6 +579,14 @@
 			path = auth;
 			sourceTree = "<group>";
 		};
+		580A728770FAE0471AA4D926 /* send */ = {
+			isa = PBXGroup;
+			children = (
+				974E85326FDB36175F002B63 /* WhatsAppSendGuardTests.swift */,
+			);
+			path = send;
+			sourceTree = "<group>";
+		};
 		58BDCB2B5594784E278BE973 /* embedded */ = {
 			isa = PBXGroup;
 			children = (
@@ -599,6 +611,7 @@
 			isa = PBXGroup;
 			children = (
 				4DFCC407C0102600DEA20B3A /* link */,
+				580A728770FAE0471AA4D926 /* send */,
 			);
 			path = whatsapp;
 			sourceTree = "<group>";
@@ -918,6 +931,7 @@
 				024EB25ABFAFDEDC1DC27761 /* ForegroundWhatsAppComposeService.swift */,
 				C15E65E440A54A03C877EBE2 /* NativeWhatsAppSendClient.swift */,
 				EA855847FA0C15621EBE0F2F /* SystemWhatsAppComposePresenter.swift */,
+				B2AC238B49B32CBE9B26A294 /* WhatsAppSendGuard.swift */,
 			);
 			path = send;
 			sourceTree = "<group>";
@@ -1197,18 +1211,18 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_12C36752-7F03-4982-A315-F6F213DFD5F9" /* embedded */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = embedded;
-			sourceTree = "<group>";
-		};
-		"TEMP_31702C6F-1EF0-4DC3-820D-77D1A6F5E001" /* runtime */ = {
+		"TEMP_165A1AD1-B286-49F2-B0DE-5CF54822550F" /* runtime */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			path = runtime;
+			sourceTree = "<group>";
+		};
+		"TEMP_C57A4560-4054-4953-875D-936F79F5476F" /* embedded */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = embedded;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1396,6 +1410,7 @@
 				63EB0E9E3C22DE2DF6E0B512 /* PhoneOAuthClientTests.swift in Sources */,
 				24341752AAD7E050880843F2 /* SpotifyLoopbackSetupTests.swift in Sources */,
 				B300654E87D79A4B03A259F8 /* WhatsAppLinkFlowTests.swift in Sources */,
+				49AF45BACD7E0473CBAE247E /* WhatsAppSendGuardTests.swift in Sources */,
 				2294D2E94E9AFDEDA0E65B86 /* YouTubeAPIKeySetupTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1471,6 +1486,7 @@
 				1D8E07FBC8FFD812A393F611 /* WacliBridgeUnavailable.c in Sources */,
 				6A68EE8A2870354A95BB13DE /* WhatsAppLinkFlow.swift in Sources */,
 				A2ABE1233B9A8EE1EB379A53 /* WhatsAppLinkSheet.swift in Sources */,
+				D5317949027D962F39317776 /* WhatsAppSendGuard.swift in Sources */,
 				F784AD59C98B8D7D361377E9 /* YouTubeAPIKeySetup.swift in Sources */,
 				21E4D3E22789BCD7C5BA5D04 /* YouTubeMediaServices.swift in Sources */,
 			);
@@ -1693,6 +1709,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				CURRENT_PROJECT_VERSION = 1;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*]" = WacliBridgeUnavailable.c;
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]" = WacliBridgeUnavailable.c;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1704,11 +1721,19 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
+				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = (
+					"$(inherited)",
+					"$(SRCROOT)/build/native-whatsapp-device",
+				);
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = (
 					"$(inherited)",
 					"$(SRCROOT)/build/native-whatsapp",
 				);
 				MARKETING_VERSION = 1.0;
+				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
+					"$(inherited)",
+					"-lWacliBridge",
+				);
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = (
 					"$(inherited)",
 					"-lWacliBridge",
@@ -1754,6 +1779,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphonesimulator*]" = "-";
 				CURRENT_PROJECT_VERSION = 1;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*]" = WacliBridgeUnavailable.c;
 				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]" = WacliBridgeUnavailable.c;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1765,11 +1791,19 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
+				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = (
+					"$(inherited)",
+					"$(SRCROOT)/build/native-whatsapp-device",
+				);
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = (
 					"$(inherited)",
 					"$(SRCROOT)/build/native-whatsapp",
 				);
 				MARKETING_VERSION = 1.0;
+				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
+					"$(inherited)",
+					"-lWacliBridge",
+				);
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = (
 					"$(inherited)",
 					"-lWacliBridge",

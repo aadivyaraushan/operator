@@ -34,6 +34,7 @@ build_dir=$ios_dir/build
 node_output=$build_dir/native-node/NodeMobile.xcframework
 runtime_output=$build_dir/native-node/runtime
 whatsapp_output=$build_dir/native-whatsapp
+whatsapp_device_output=$build_dir/native-whatsapp-device
 
 # Recorded 2026-09-11 from nodejs-mobile-ios-24.18.0-0.zip, downloaded
 # directly from the GitHub release named in Runtime/DEPENDENCIES.md. Before
@@ -124,7 +125,7 @@ fi
 
 note ''
 note '== outputs =='
-for output in "$node_output" "$runtime_output" "$whatsapp_output"; do
+for output in "$node_output" "$runtime_output" "$whatsapp_output" "$whatsapp_device_output"; do
   if test -e "$output"; then
     if test "$check_only" = 'yes'; then
       note "present     $output"
@@ -218,6 +219,7 @@ node "$script_dir/native-node/package/run.mjs" "$openclaw" "$runtime_output"
 
 # ---- 3. wacli archive ----------------------------------------------------
 
-sh "$script_dir/native-whatsapp/archive/build.sh" "$wacli" "$whatsapp_output"
+sh "$script_dir/native-whatsapp/archive/build.sh" "$wacli" "$whatsapp_output" simulator
+sh "$script_dir/native-whatsapp/archive/build.sh" "$wacli" "$whatsapp_device_output" device
 
 printf '%s\n' 'BOOTSTRAP_PASS'

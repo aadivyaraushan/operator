@@ -115,6 +115,20 @@ final class ConnectorPermissionsTests: XCTestCase {
         XCTAssertNil(ConnectorCatalog.requirement(for: "notion.call", paramsJSON: #"{"arguments":{}}"#))
     }
 
+    func testOnlyWhatsAppWritesCarryAnAcknowledgementAndItIsComplete() {
+        for descriptor in ConnectorCatalog.all {
+            if descriptor.id == .whatsapp {
+                let ack = descriptor.writeAcknowledgement
+                XCTAssertNotNil(ack, "sending through an unofficial client must be acknowledged")
+                XCTAssertTrue(ack!.title.lowercased().contains("banned"))
+                XCTAssertGreaterThanOrEqual(ack!.statements.count, 3)
+                XCTAssertTrue(ack!.paragraphs.joined().contains("unofficial client"))
+            } else {
+                XCTAssertNil(descriptor.writeAcknowledgement, "\(descriptor.id) has no account at stake")
+            }
+        }
+    }
+
     func testGrantsSurviveEncoding() throws {
         var grants = ConnectorGrants(readOnly: true)
         grants.set(.contacts, .read, allowed: true)

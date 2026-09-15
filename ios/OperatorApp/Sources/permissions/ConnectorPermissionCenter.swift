@@ -66,6 +66,10 @@ final class ConnectorPermissionCenter: ObservableObject {
     @Published private(set) var hasCompletedOnboarding: Bool
     @Published private(set) var pendingRequest: ConnectorGrantRequest?
     @Published private(set) var activity: [ConnectorActivityRecord] = []
+    /// A write grant waiting on the owner to accept its warning. Set instead
+    /// of the grant whenever the connector carries a writeAcknowledgement; the
+    /// grant is written only by acceptAcknowledgement().
+    @Published private(set) var acknowledgementRequired: ConnectorID?
 
     /// Called after every change so the node can re-offer the model its tools.
     var grantsDidChange: (@MainActor () -> Void)?
@@ -95,6 +99,32 @@ final class ConnectorPermissionCenter: ObservableObject {
     // MARK: Editing
 
     func isGranted(_ id: ConnectorID, _ access: ConnectorAccess) -> Bool { self.grants.isGranted(id, access) }
+
+    /// The one entry point for turning a grant on or off from the UI. A write
+    /// that carries an acknowledgement is not written here; it becomes the
+    /// pending acknowledgement, and the grant lands only if the owner accepts.
+    func requestGrant(_ id: ConnectorID, _ access: ConnectorAccess, allowed: Bool) {
+        if allowed, access == .write, ConnectorCatalog.descriptor(id).writeAcknowledgement != nil {
+            self.acknowledgementRequired = id
+            self.logger.info("[permissions] acknowledgement required connector=\(id.rawValue, privacy: .public)")
+            return
+        }
+        self.set(id, access, allowed: allowed)
+    }
+
+    func acceptAcknowledgement() {
+        guard let id = self.acknowledgementRequired else { return }
+        self.acknowledgementRequired = nil
+        self.logger.info("[permissions] acknowledgement accepted connector=\(id.rawValue, privacy: .public)")
+        self.set(id, .write, allowed: true)
+    }
+
+    func declineAcknowledgement() {
+        if let id = self.acknowledgementRequired {
+            self.logger.info("[permissions] acknowledgement declined connector=\(id.rawValue, privacy: .public)")
+        }
+        self.acknowledgementRequired = nil
+    }
 
     func set(_ id: ConnectorID, _ access: ConnectorAccess, allowed: Bool) {
         var updated = self.grants
@@ -128,10 +158,15 @@ final class ConnectorPermissionCenter: ObservableObject {
 
     // MARK: In-context requests
 
-    func allowPendingRequest() {
-        guard let pending = self.pendingRequest else { return }
-        self.set(pending.connector, pending.access, allowed: true)
+    /// Returns false when the grant needs the owner to read a warning first;
+    /// the caller then shows the Permissions page, which presents it.
+    @discardableResult
+    func allowPendingRequest() -> Bool {
+        guard let pending = self.pendingRequest else { return true }
+        self.requestGrant(pending.connector, pending.access, allowed: true)
+        if self.acknowledgementRequired != nil { return false }
         self.pendingRequest = nil
+        return true
     }
 
     func dismissPendingRequest() { self.pendingRequest = nil }

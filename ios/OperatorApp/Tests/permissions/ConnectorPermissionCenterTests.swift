@@ -111,6 +111,51 @@ final class ConnectorPermissionCenterTests: XCTestCase {
         XCTAssertEqual(inner.commands, [])
     }
 
+    func testAWriteWithAWarningIsNotGrantedUntilTheWarningIsAccepted() async throws {
+        let store = MemoryStore()
+        let center = ConnectorPermissionCenter(store: store)
+        center.requestGrant(.whatsapp, .write, allowed: true)
+        XCTAssertEqual(center.acknowledgementRequired, .whatsapp)
+        XCTAssertFalse(center.isGranted(.whatsapp, .write), "the toggle alone must not grant")
+        XCTAssertNil(store.grants, "nothing persisted yet")
+        center.declineAcknowledgement()
+        XCTAssertNil(center.acknowledgementRequired)
+        XCTAssertFalse(center.isGranted(.whatsapp, .write))
+
+        center.requestGrant(.whatsapp, .write, allowed: true)
+        center.acceptAcknowledgement()
+        XCTAssertNil(center.acknowledgementRequired)
+        XCTAssertTrue(center.isGranted(.whatsapp, .write))
+        XCTAssertTrue(center.isGranted(.whatsapp, .read), "write implies read")
+
+        // Turning it off and on again asks again; nothing is remembered.
+        center.requestGrant(.whatsapp, .write, allowed: false)
+        XCTAssertFalse(center.isGranted(.whatsapp, .write))
+        center.requestGrant(.whatsapp, .write, allowed: true)
+        XCTAssertEqual(center.acknowledgementRequired, .whatsapp)
+        XCTAssertFalse(center.isGranted(.whatsapp, .write))
+
+        // Connectors without a warning grant directly, reads included.
+        center.requestGrant(.messages, .write, allowed: true)
+        XCTAssertTrue(center.isGranted(.messages, .write))
+        center.requestGrant(.whatsapp, .read, allowed: true)
+        XCTAssertTrue(center.isGranted(.whatsapp, .read))
+    }
+
+    func testTheInChatBannerCannotGrantAWarnedWriteDirectly() async throws {
+        let center = ConnectorPermissionCenter(store: MemoryStore())
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: RecordingHandler())
+        _ = await guarded.handleNodeCommand("whatsapp.compose", paramsJSON: #"{"recipientJID":"1@s.whatsapp.net","body":"hi"}"#, timeoutMilliseconds: nil)
+        XCTAssertEqual(center.pendingRequest?.connector, .whatsapp)
+        XCTAssertFalse(center.allowPendingRequest(), "the caller must show the warning instead")
+        XCTAssertEqual(center.acknowledgementRequired, .whatsapp)
+        XCTAssertFalse(center.isGranted(.whatsapp, .write))
+        XCTAssertNotNil(center.pendingRequest, "the request stays until the warning is resolved")
+        center.acceptAcknowledgement()
+        XCTAssertTrue(center.isGranted(.whatsapp, .write))
+        XCTAssertNil(center.pendingRequest, "granting clears the request it was for")
+    }
+
     func testOnboardingCompletionPersistsAndTheActivityLogIsBounded() async throws {
         let store = MemoryStore()
         let center = ConnectorPermissionCenter(store: store)

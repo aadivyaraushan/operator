@@ -66,6 +66,88 @@ struct ConnectorPermissionsScreen: View {
                 }
             }
             .interactiveDismissDisabled(self.mode == .onboarding)
+            .sheet(isPresented: Binding(
+                get: { self.center.acknowledgementRequired != nil },
+                set: { if !$0 { self.center.declineAcknowledgement() } }))
+            {
+                if let id = self.center.acknowledgementRequired,
+                   let acknowledgement = ConnectorCatalog.descriptor(id).writeAcknowledgement
+                {
+                    ConnectorRiskAcknowledgementSheet(
+                        acknowledgement: acknowledgement,
+                        onAccept: { self.center.acceptAcknowledgement() },
+                        onDecline: { self.center.declineAcknowledgement() })
+                }
+            }
+        }
+    }
+}
+
+/// The warning the owner has to read to the end and accept statement by
+/// statement. The confirm button sits below the last statement and is disabled
+/// until every one is on, so there is no way through without scrolling past
+/// the whole thing. Presented every time; nothing is remembered.
+struct ConnectorRiskAcknowledgementSheet: View {
+    let acknowledgement: ConnectorAcknowledgement
+    let onAccept: () -> Void
+    let onDecline: () -> Void
+    @State private var accepted: [Bool]
+
+    init(acknowledgement: ConnectorAcknowledgement, onAccept: @escaping () -> Void, onDecline: @escaping () -> Void) {
+        self.acknowledgement = acknowledgement
+        self.onAccept = onAccept
+        self.onDecline = onDecline
+        self._accepted = State(initialValue: Array(repeating: false, count: acknowledgement.statements.count))
+    }
+
+    private var allAccepted: Bool { self.accepted.allSatisfy { $0 } }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.largeTitle)
+                            .foregroundStyle(.red)
+                        Text(self.acknowledgement.title)
+                            .font(.title2.weight(.bold))
+                    }
+                    ForEach(Array(self.acknowledgement.paragraphs.enumerated()), id: \.offset) { _, paragraph in
+                        Text(paragraph)
+                            .font(.body)
+                    }
+                    Divider()
+                    Text("Before this turns on, confirm each of these:")
+                        .font(.headline)
+                    ForEach(Array(self.acknowledgement.statements.enumerated()), id: \.offset) { index, statement in
+                        Toggle(isOn: self.$accepted[index]) {
+                            Text(statement).font(.callout)
+                        }
+                        .toggleStyle(.switch)
+                        .accessibilityIdentifier("acknowledgement-statement-\(index)")
+                    }
+                    Button(role: .destructive, action: self.onAccept) {
+                        Text(self.acknowledgement.confirmLabel)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                    .disabled(!self.allAccepted)
+                    .accessibilityIdentifier("acknowledgement-confirm")
+                    .padding(.top, 8)
+                    Button("Leave it off", action: self.onDecline)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(20)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: self.onDecline)
+                }
+            }
+            .interactiveDismissDisabled()
         }
     }
 }
@@ -99,7 +181,7 @@ private struct ConnectorRow: View {
             if let writeSummary = self.descriptor.writeSummary {
                 Toggle(isOn: Binding(
                     get: { self.writeGranted && !self.center.grants.readOnly },
-                    set: { self.center.set(self.descriptor.id, .write, allowed: $0) }))
+                    set: { self.center.requestGrant(self.descriptor.id, .write, allowed: $0) }))
                 {
                     self.label(self.writeBlockedByReadOnly ? "Act - blocked by Read-only" : "Act", writeSummary)
                 }

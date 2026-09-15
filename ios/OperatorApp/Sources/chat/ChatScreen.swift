@@ -165,7 +165,11 @@ struct ChatScreen: View {
             if let request = self.permissions.pendingRequest {
                 PermissionRequestBanner(
                     request: request,
-                    onAllow: { self.permissions.allowPendingRequest() },
+                    onAllow: {
+                        // A write that carries a warning is not granted from a
+                        // banner; the Permissions page presents the warning.
+                        if !self.permissions.allowPendingRequest() { self.isPermissionsPresented = true }
+                    },
                     onDismiss: { self.permissions.dismissPendingRequest() })
                     .padding(.horizontal, 14)
                     .padding(.top, 8)

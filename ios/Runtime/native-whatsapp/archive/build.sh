@@ -2,17 +2,22 @@
 set -eu
 
 usage() {
-  printf '%s\n' 'usage: build.sh WACLI_SOURCE OUTPUT_DIRECTORY' >&2
+  printf '%s\n' 'usage: build.sh WACLI_SOURCE OUTPUT_DIRECTORY [simulator|device]' >&2
   exit 64
 }
 
-test "$#" -eq 2 || usage
+test "$#" -eq 2 -o "$#" -eq 3 || usage
 source_dir=$1
 output_dir=$2
+slice=${3:-simulator}
+case "$slice" in
+  simulator) sdk_name=iphonesimulator; target=arm64-apple-ios18.0-simulator; pass_line=NATIVE_WHATSAPP_SIMULATOR_ARCHIVE_PASS ;;
+  device) sdk_name=iphoneos; target=arm64-apple-ios18.0; pass_line=NATIVE_WHATSAPP_DEVICE_ARCHIVE_PASS ;;
+  *) usage ;;
+esac
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 bridge_dir=$(CDPATH= cd -- "$script_dir/../bridge" && pwd)
 read_dir=$(CDPATH= cd -- "$script_dir/../read" && pwd)
-send_dir=$(CDPATH= cd -- "$script_dir/../send" && pwd)
 send_dir=$(CDPATH= cd -- "$script_dir/../send" && pwd)
 
 expected_module=github.com/openclaw/wacli
@@ -40,21 +45,20 @@ cp -R "$source_dir/." "$staged_source/"
 cp "$bridge_dir/main.go" "$bridge_dir/main_test.go" "$staged_source/cmd/wacli-ios-bridge/"
 cp "$read_dir/read.go" "$read_dir/read_test.go" "$staged_source/cmd/wacli-ios-bridge/"
 cp "$send_dir/send.go" "$send_dir/send_test.go" "$staged_source/cmd/wacli-ios-bridge/"
-cp "$send_dir/send.go" "$send_dir/send_test.go" "$staged_source/cmd/wacli-ios-bridge/"
 
 (
   cd "$staged_source"
   GOTOOLCHAIN=go1.26.6 go test -tags wacli ./cmd/wacli-ios-bridge
 )
 
-sdk=$(xcrun --sdk iphonesimulator --show-sdk-path)
-clang=$(xcrun --sdk iphonesimulator --find clang)
+sdk=$(xcrun --sdk "$sdk_name" --show-sdk-path)
+clang=$(xcrun --sdk "$sdk_name" --find clang)
 mkdir -p "$work_dir/output"
 (
   cd "$staged_source"
   GOOS=ios GOARCH=arm64 CGO_ENABLED=1 GOTOOLCHAIN=go1.26.6 CC="$clang" \
-    CGO_CFLAGS="-isysroot $sdk -target arm64-apple-ios18.0-simulator -Wno-error=missing-braces" \
-    CGO_LDFLAGS="-isysroot $sdk -target arm64-apple-ios18.0-simulator" \
+    CGO_CFLAGS="-isysroot $sdk -target $target -Wno-error=missing-braces" \
+    CGO_LDFLAGS="-isysroot $sdk -target $target" \
     go build -tags sqlite_fts5,wacli -buildmode=c-archive \
       -trimpath -ldflags='-s -w -buildid=' \
       -o "$work_dir/output/libWacliBridge.a" ./cmd/wacli-ios-bridge
@@ -63,5 +67,5 @@ mkdir -p "$work_dir/output"
 mkdir "$output_dir"
 cp "$work_dir/output/libWacliBridge.a" "$work_dir/output/libWacliBridge.h" "$output_dir/"
 printf 'wacli_source_tree_sha256=%s\nwacli_go_mod_sha256=%s\ngo_version=%s\ntarget=%s\n' \
-  "$tree_sha" "$mod_sha" "$expected_go" 'arm64-apple-ios18.0-simulator' > "$output_dir/build-info.txt"
-printf '%s\n' 'NATIVE_WHATSAPP_SIMULATOR_ARCHIVE_PASS'
+  "$tree_sha" "$mod_sha" "$expected_go" "$target" > "$output_dir/build-info.txt"
+printf '%s\n' "$pass_line"

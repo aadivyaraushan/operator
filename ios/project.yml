@@ -70,11 +70,13 @@ targets:
         type: folder
         buildPhase: resources
     dependencies:
-      # The wacli WhatsApp archive is deliberately NOT listed here. It exists
-      # only as an arm64-simulator slice, so an unconditional dependency breaks
-      # every device build. It is linked for the simulator through
-      # OTHER_LDFLAGS[sdk=iphonesimulator*] below, and stubbed for device by
-      # capabilities/whatsapp/native/WacliBridgeUnavailable.c.
+      # The wacli WhatsApp archive is deliberately NOT listed here. It is built
+      # per SDK into build/native-whatsapp (simulator) and
+      # build/native-whatsapp-device (device) by Runtime/native-whatsapp/archive/
+      # build.sh, and linked through the per-SDK OTHER_LDFLAGS below. A tree
+      # without the device slice can still build for a device by removing the
+      # iphoneos exclusion of capabilities/whatsapp/native/WacliBridgeUnavailable.c,
+      # which supplies the same symbols and fails every WhatsApp call cleanly.
       - framework: build/native-node/NodeMobile.xcframework
         embed: true
       - package: OperatorCore
@@ -93,12 +95,14 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(OPERATOR_BUNDLE_ID_PREFIX).ios
         SWIFT_OBJC_BRIDGING_HEADER: OperatorApp/Sources/runtime/embedded/EmbeddedNodeBridge.h
-        LIBRARY_SEARCH_PATHS: ['$(inherited)', '$(SRCROOT)/build/native-whatsapp']
-        # Simulator links the real Go bridge; device compiles the C stub
-        # instead. Exactly one of the two supplies the Wacli* symbols, so they
-        # never collide.
+        "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]": ['$(inherited)', '$(SRCROOT)/build/native-whatsapp']
+        "LIBRARY_SEARCH_PATHS[sdk=iphoneos*]": ['$(inherited)', '$(SRCROOT)/build/native-whatsapp-device']
+        # Each SDK links its own slice of the real Go bridge, and the C stub is
+        # excluded so exactly one implementation supplies the Wacli* symbols.
         "OTHER_LDFLAGS[sdk=iphonesimulator*]": ['$(inherited)', '-lWacliBridge']
+        "OTHER_LDFLAGS[sdk=iphoneos*]": ['$(inherited)', '-lWacliBridge']
         "EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]": WacliBridgeUnavailable.c
+        "EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*]": WacliBridgeUnavailable.c
         # Ad-hoc signing on the simulator needs an explicit application
         # identifier for Keychain APIs to work. On device, real provisioning
         # supplies it, and no code uses a keychain access group, so no device
