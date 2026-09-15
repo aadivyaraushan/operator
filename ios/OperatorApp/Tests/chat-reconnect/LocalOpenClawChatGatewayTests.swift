@@ -151,33 +151,82 @@ final class LocalOpenClawChatGatewayTests: XCTestCase {
         XCTAssertEqual(methods, ["connect", "chat.history"])
     }
 
-    func testNativeRecoveryPendingKeepsRequestRetryableBeforeSendAndAfterEarlyFailure() async throws {
+    // The runtime restoring a run itself is waited out on the same connection.
+    // Before this, the request was thrown back to the outbox and retried a
+    // second later, forever, which is what flipped the chat header between
+    // "waiting" and "working" once a second on the phone (2026-09-15 log).
+    func testNativeRecoveryPendingIsWaitedOutOnTheSameConnectionUntilTheReplyLands() async throws {
         for beforeSend in [true, false] {
             let transport = TimingChatTransport(
                 includeStream: false, outcome: .failed,
-                historyAvailableBeforeSend: beforeSend, recoverySourceRunID: "run")
+                historyMessages: [
+                    #"{"role":"assistant","stopReason":"stop","content":[{"type":"text","text":"Restored reply"}],"__openclaw":{"runId":"run"}}"#,
+                ],
+                historyAvailableBeforeSend: beforeSend, recoverySourceRunID: "run", recoveryPendingHistoryReads: 3)
             let updates = TimingDeliveryUpdates()
             let gateway = LocalOpenClawChatGateway(connectionFactory: {
                 OpenClawGatewayConnection(
                     transport: transport, token: "test", identity: GatewayDeviceIdentity(),
                     metadata: .init(appVersion: "test", platform: "test", instanceID: "test"))
-            })
+            }, recoveryPollInterval: .milliseconds(5), recoveryDeadline: .seconds(5))
             let id = UUID()
-            do {
-                try await gateway.deliver(
-                    .init(id: id, messageID: id, text: "Read only", idempotencyKey: "run", state: .waiting)
-                ) { await updates.record($0) }
-                XCTFail("Pending native recovery must retain the request for retry")
-            } catch {
-                guard case ChatGatewayError.gateway("Operator is restoring this request.") = error else {
-                    return XCTFail("Expected a recoverable native-recovery status, got \(error)")
-                }
-            }
+            try await gateway.deliver(
+                .init(id: id, messageID: id, text: "Read only", idempotencyKey: "run", state: .waiting)
+            ) { await updates.record($0) }
             let values = await updates.values
+            XCTAssertEqual(values.last, .reply("Restored reply"), "beforeSend=\(beforeSend)")
             XCTAssertFalse(values.contains { if case .failed = $0 { return true }; return false })
             let sendCount = await transport.chatSendCount
             XCTAssertEqual(sendCount, beforeSend ? 0 : 1)
+            let historyReads = await transport.methods.filter { $0 == "chat.history" }.count
+            XCTAssertEqual(historyReads, 4, "three pending reads, then the one that carried the reply")
+            let connects = await transport.methods.filter { $0 == "connect" }.count
+            XCTAssertEqual(connects, 1, "waiting never reopens the connection")
         }
+    }
+
+    func testNativeRecoveryThatSettlesWithNoReplySendsTheRequestOnce() async throws {
+        let transport = TimingChatTransport(
+            includeStream: false, historyAvailableBeforeSend: true,
+            recoverySourceRunID: "run", recoveryPendingHistoryReads: 2)
+        let updates = TimingDeliveryUpdates()
+        let gateway = LocalOpenClawChatGateway(connectionFactory: {
+            OpenClawGatewayConnection(
+                transport: transport, token: "test", identity: GatewayDeviceIdentity(),
+                metadata: .init(appVersion: "test", platform: "test", instanceID: "test"))
+        }, recoveryPollInterval: .milliseconds(5), recoveryDeadline: .seconds(5))
+        let id = UUID()
+        try await gateway.deliver(
+            .init(id: id, messageID: id, text: "Read only", idempotencyKey: "run", state: .waiting)
+        ) { await updates.record($0) }
+        let values = await updates.values
+        XCTAssertEqual(values.last, .reply("Hello"))
+        let sendCount = await transport.chatSendCount
+        XCTAssertEqual(sendCount, 1)
+    }
+
+    func testNativeRecoveryThatNeverSettlesFailsTheRequestOnceInsteadOfLooping() async throws {
+        let transport = TimingChatTransport(
+            includeStream: false, historyAvailableBeforeSend: true, recoverySourceRunID: "run")
+        let updates = TimingDeliveryUpdates()
+        let timings = TimingEventRecorder()
+        let gateway = LocalOpenClawChatGateway(connectionFactory: {
+            OpenClawGatewayConnection(
+                transport: transport, token: "test", identity: GatewayDeviceIdentity(),
+                metadata: .init(appVersion: "test", platform: "test", instanceID: "test"))
+        }, timingSink: timings.record,
+        recoveryPollInterval: .milliseconds(5), recoveryDeadline: .milliseconds(60))
+        let id = UUID()
+        try await gateway.deliver(
+            .init(id: id, messageID: id, text: "Read only", idempotencyKey: "run", state: .waiting)
+        ) { await updates.record($0) }
+        let values = await updates.values
+        XCTAssertEqual(values, [.failed(LocalOpenClawChatGateway.recoveryStalledMessage)], "no throw: a thrown error would put it back in the outbox and start the loop again")
+        let sendCount = await transport.chatSendCount
+        XCTAssertEqual(sendCount, 0, "a run the runtime claims to own is never sent a second time")
+        let historyReads = await transport.methods.filter { $0 == "chat.history" }.count
+        XCTAssertGreaterThanOrEqual(historyReads, 2)
+        XCTAssertEqual(timings.events.filter { $0.phase == .terminal }.map(\.outcome), [.failed])
     }
 
     func testTerminalOKWithUnknownOrEmptyExactHistoryDoesNotUseUnrelatedReply() async throws {
@@ -490,8 +539,12 @@ private actor TimingChatTransport: GatewayTransport {
     private let historyMessages: [String]
     private let historyAvailableBeforeSend: Bool
     private let recoverySourceRunID: String?
+    /// How many chat.history reads report the recovery as still pending before
+    /// it settles. nil: pending on every read.
+    private let recoveryPendingHistoryReads: Int?
     private(set) var methods: [String] = []
     private(set) var chatSendCount = 0
+    private var historyReads = 0
 
     init(
         includeStream: Bool,
@@ -501,8 +554,10 @@ private actor TimingChatTransport: GatewayTransport {
         terminalStatus: String? = nil,
         historyMessages: [String] = [],
         historyAvailableBeforeSend: Bool = false,
-        recoverySourceRunID: String? = nil)
+        recoverySourceRunID: String? = nil,
+        recoveryPendingHistoryReads: Int? = nil)
     {
+        self.recoveryPendingHistoryReads = recoveryPendingHistoryReads
         self.includeStream = includeStream
         self.outcome = outcome
         self.omitResponseRunID = omitResponseRunID
@@ -553,9 +608,13 @@ private actor TimingChatTransport: GatewayTransport {
                 self.queue.append(Data(#"{"type":"event","event":"chat","payload":{"runId":"\#(runID)","sessionKey":"agent:main:main","seq":1,"state":"final","message":"Hello"}}"#.utf8))
             }
         case "chat.history":
-            let messages = (self.historyAvailableBeforeSend || self.chatSendCount > 0
-                ? self.historyMessages : []).joined(separator: ",")
-            let recovery = (self.historyAvailableBeforeSend || self.chatSendCount > 0)
+            self.historyReads += 1
+            let available = self.historyAvailableBeforeSend || self.chatSendCount > 0
+            let pending = available && self.recoverySourceRunID != nil
+                && (self.recoveryPendingHistoryReads.map { self.historyReads <= $0 } ?? true)
+            // While the restore is pending the reply is not in the transcript yet.
+            let messages = (available && !pending ? self.historyMessages : []).joined(separator: ",")
+            let recovery = pending
                 ? self.recoverySourceRunID.map { #","operatorRecovery":{"sourceRunId":"\#($0)","runId":"recovery"}"# } ?? ""
                 : ""
             self.queue.append(Data(#"{"type":"res","id":"\#(id)","ok":true,"payload":{"messages":[\#(messages)]\#(recovery)}}"#.utf8))

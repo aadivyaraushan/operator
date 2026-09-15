@@ -97,6 +97,8 @@ actor LocalOpenClawChatGateway: ChatGateway {
     init(url: URL, vault: GatewayInstallationVault, appVersion: String, platform: String) {
         self.monotonicMilliseconds = Self.defaultMonotonicMilliseconds
         self.timingSink = nil
+        self.recoveryPollInterval = .seconds(2)
+        self.recoveryDeadline = .seconds(90)
         self.connectionFactory = {
             let credentials = try await vault.loadOrCreate()
             return OpenClawGatewayConnection(
@@ -113,11 +115,53 @@ actor LocalOpenClawChatGateway: ChatGateway {
         monotonicMilliseconds: @escaping @Sendable () -> Double = {
             Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000
         },
-        timingSink: (@Sendable (LocalChatDeliveryTimingEvent) -> Void)? = nil)
+        timingSink: (@Sendable (LocalChatDeliveryTimingEvent) -> Void)? = nil,
+        recoveryPollInterval: Duration = .seconds(2),
+        recoveryDeadline: Duration = .seconds(90))
     {
         self.connectionFactory = connectionFactory
         self.monotonicMilliseconds = monotonicMilliseconds
         self.timingSink = timingSink
+        self.recoveryPollInterval = recoveryPollInterval
+        self.recoveryDeadline = recoveryDeadline
+    }
+
+    /// How often chat.history is re-read while the runtime restores a run
+    /// itself, and how long to keep doing so before the request is given up.
+    private let recoveryPollInterval: Duration
+    private let recoveryDeadline: Duration
+    static let recoveryStalledMessage = "Operator lost this request while restarting. Send it again."
+
+    private enum NativeRecovery {
+        case reply(String)
+        case absent
+        case stalled
+    }
+
+    /// Reads the exact saved reply for `runID`. When the runtime says it is
+    /// still restoring that run, waits here on the same connection instead of
+    /// surfacing an error: dropping the connection and retrying from the
+    /// outbox once a second bounced the chat between "waiting" and "working"
+    /// indefinitely whenever a restore never settled. A restore that has not
+    /// settled by the deadline is treated as lost so the outbox can move on.
+    private func recoverOrWait(_ connection: OpenClawGatewayConnection, runID: String) async throws -> NativeRecovery {
+        let clock = ContinuousClock()
+        let deadline = clock.now + self.recoveryDeadline
+        var polls = 0
+        while true {
+            do {
+                if let reply = try await connection.recoverReply(runID: runID) { return .reply(reply) }
+                return .absent
+            } catch OpenClawGatewayError.recoveryPending {
+                polls += 1
+                guard clock.now < deadline else {
+                    self.logger.error("[gateway] native recovery never settled runID=\(runID, privacy: .public) polls=\(polls)")
+                    return .stalled
+                }
+                if polls == 1 { self.logger.info("[gateway] waiting for native recovery runID=\(runID, privacy: .public)") }
+                try await Task.sleep(for: self.recoveryPollInterval)
+            }
+        }
     }
 
     func deliver(
@@ -132,7 +176,8 @@ actor LocalOpenClawChatGateway: ChatGateway {
         do {
             // A previous process may have finished after the UI disconnected.
             // Recover its exact saved reply before asking the agent to run again.
-            if let reply = try await connection.recoverReply(runID: entry.idempotencyKey) {
+            switch try await self.recoverOrWait(connection, runID: entry.idempotencyKey) {
+            case let .reply(reply):
                 let now = self.monotonicMilliseconds()
                 if let event = timing.accepted(at: now) { self.recordTiming(event) }
                 if let event = timing.firstText(in: reply, at: now) { self.recordTiming(event) }
@@ -141,6 +186,12 @@ actor LocalOpenClawChatGateway: ChatGateway {
                 await update(.accepted)
                 await update(.reply(reply))
                 return
+            case .stalled:
+                if let event = timing.terminal(outcome: .failed, at: self.monotonicMilliseconds()) { self.recordTiming(event) }
+                await update(.failed(Self.recoveryStalledMessage))
+                return
+            case .absent:
+                break
             }
             let requestID = try await connection.sendMessage(
                 entry.text,
@@ -244,13 +295,21 @@ actor LocalOpenClawChatGateway: ChatGateway {
                     case let .failed(runID, message):
                         // A restart can emit failure for the old run while native
                         // recovery owns its continuation. Reconcile before clearing it.
-                        if let reply = try await connection.recoverReply(runID: runID) {
+                        switch try await self.recoverOrWait(connection, runID: runID) {
+                        case let .reply(reply):
                             self.activeRunID = nil
                             let now = self.monotonicMilliseconds()
                             if let event = timing.firstText(in: reply, at: now) { self.recordTiming(event) }
                             if let event = timing.terminal(outcome: .reply, at: now) { self.recordTiming(event) }
                             await update(.reply(reply))
                             return
+                        case .stalled:
+                            self.activeRunID = nil
+                            if let event = timing.terminal(outcome: .failed, at: self.monotonicMilliseconds()) { self.recordTiming(event) }
+                            await update(.failed(Self.recoveryStalledMessage))
+                            return
+                        case .absent:
+                            break
                         }
                         self.activeRunID = nil
                         self.logger.error("[gateway] run failed id=\(runID, privacy: .public)")
@@ -279,10 +338,6 @@ actor LocalOpenClawChatGateway: ChatGateway {
             }
             await connection.disconnect()
             self.connection = nil
-            if error as? OpenClawGatewayError == .recoveryPending {
-                self.logger.info("[gateway] retaining request until native recovery settles")
-                throw ChatGatewayError.gateway("Operator is restoring this request.")
-            }
             if let gatewayError = error as? ChatGatewayError {
                 throw gatewayError
             }
