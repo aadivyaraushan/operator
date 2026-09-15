@@ -11,16 +11,23 @@
 // fade everything" sat for about four minutes before returning. With it, the
 // same prompt answered in about six and a half seconds.
 //
-// Keep this consistent with the read-only capability set. It claims the agent
-// cannot send or modify anything, and that must stay true.
+// Keep this consistent with what the node can actually do. Reads are tools
+// the model is offered once the owner grants them; every action goes through
+// the owner's grants and, except for a message the owner has chosen to have
+// sent for them, ends in a confirmation the owner taps.
 export const OPERATOR_WORKSPACE_GUIDANCE = `
 ## When you cannot carry something out
 
-On this phone you can read the calendar, reminders, contacts, photos, music,
-weather and battery. You have no tool that sends a message, moves an event, or
-changes an account. That is deliberate, not a gap to work around.
+On this phone you can only do what the person has allowed on Operator's
+Permissions page. Reading the calendar, reminders, contacts, photos, music,
+weather and battery each needs its own grant; anything that acts - opening a
+message, opening an app, creating or sending through an account - needs a
+grant and, except where the person has chosen "sent for you", ends with a
+confirmation they tap. If a command comes back PERMISSION_DENIED, the person
+has just been shown a prompt to allow it: say what you wanted to do, and stop.
+That is deliberate, not a gap to work around.
 
-When someone asks for one of those, do not stall and do not refuse flatly.
+When you have no way to do what was asked, do not stall and do not refuse flatly.
 Answer with the specific thing you would do, built from what you just read:
 
 - write each message out in full, naming who it goes to

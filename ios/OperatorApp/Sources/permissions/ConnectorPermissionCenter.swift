@@ -15,7 +15,7 @@ struct ConnectorGrantRequest: Equatable, Sendable {
 
 /// One thing the node did this session, for the "what did it read" list.
 struct ConnectorActivityRecord: Identifiable, Equatable, Sendable {
-    enum Outcome: Equatable, Sendable { case ran, denied }
+    enum Outcome: Equatable, Sendable { case ran, denied, failed }
     let id: UUID
     let date: Date
     let connector: ConnectorID
@@ -156,6 +156,13 @@ final class ConnectorPermissionCenter: ObservableObject {
             self.logger.error("[permissions] unknown command refused command=\(command, privacy: .public)")
         }
         return decision
+    }
+
+    /// Something outside the node reported how an action ended - today, the
+    /// Send Message shortcut coming back over x-callback.
+    func recordExternalOutcome(connector: ConnectorID, access: ConnectorAccess, command: String, succeeded: Bool) {
+        self.record(connector, access, command, succeeded ? .ran : .failed)
+        self.logger.info("[permissions] external outcome connector=\(connector.rawValue, privacy: .public) succeeded=\(succeeded)")
     }
 
     private func record(_ connector: ConnectorID, _ access: ConnectorAccess, _ command: String, _ outcome: ConnectorActivityRecord.Outcome) {

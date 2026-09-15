@@ -176,6 +176,9 @@ struct OperatorApp: App {
                 messages: ForegroundMessageComposeService(
                     presenter: SystemMessageComposer(),
                     isAppActive: { UIApplication.shared.applicationState == .active }),
+                messageSend: ForegroundMessageSendService(
+                    runner: SystemShortcutRunner(),
+                    isAppActive: { UIApplication.shared.applicationState == .active }),
                 maps: ForegroundMapsService(),
                 handoff: ForegroundAppHandoffService(),
                 whatsapp: ForegroundWhatsAppReadService(client: NativeWhatsAppReadClient(supportDirectory: supportDirectory)),
@@ -211,6 +214,16 @@ struct OperatorApp: App {
     var body: some Scene {
         WindowGroup {
             ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, permissions: self.permissions)
+                .onOpenURL { url in
+                    // Shortcuts returning from sms.send. The only thing known
+                    // is what Shortcuts reported; it goes in the session log.
+                    if let outcome = ForegroundMessageSendService.callbackOutcome(url) {
+                        self.permissions.recordExternalOutcome(
+                            connector: .messagesAutosend, access: .write,
+                            command: "\(GatewayNativeNodeSurface.messageSendCommand) shortcut \(outcome)",
+                            succeeded: outcome == "success")
+                    }
+                }
                 .onChange(of: self.scenePhase, initial: true) { _, phase in
                     // Permission alerts temporarily interrupt interaction; they do not leave the app.
                     if phase == .active {

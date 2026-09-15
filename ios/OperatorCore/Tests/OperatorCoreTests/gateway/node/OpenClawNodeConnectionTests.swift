@@ -45,7 +45,7 @@ final class OpenClawNodeConnectionTests: XCTestCase {
         XCTAssertEqual(params["role"] as? String, "node")
         XCTAssertEqual(params["scopes"] as? [String], [])
         XCTAssertEqual(params["caps"] as? [String], ["location", "calendar", "sms", "maps", "apps", "whatsapp", "accounts", "notion", "media", "reminders", "contacts", "photos", "music", "weather", "device"])
-        XCTAssertEqual(params["commands"] as? [String], ["location.get", "calendar.events", "reminders.list", "contacts.search", "photos.latest", "music.nowPlaying", "music.search", "weather.forecast", "device.status", "sms.compose", "maps.search", "maps.directions", "apps.open", "whatsapp.chats", "whatsapp.messages", "whatsapp.sync", "whatsapp.compose", "connections.read", "connections.write", "connections.describe", "notion.tools", "notion.call", "youtube.search", "youtube.open", "podcasts.search", "podcasts.open"])
+        XCTAssertEqual(params["commands"] as? [String], ["location.get", "calendar.events", "reminders.list", "contacts.search", "photos.latest", "music.nowPlaying", "music.search", "weather.forecast", "device.status", "sms.compose", "sms.send", "maps.search", "maps.directions", "apps.open", "whatsapp.chats", "whatsapp.messages", "whatsapp.sync", "whatsapp.compose", "connections.read", "connections.write", "connections.describe", "notion.tools", "notion.call", "youtube.search", "youtube.open", "podcasts.search", "podcasts.open"])
         XCTAssertEqual(client["id"] as? String, "node-host")
         XCTAssertEqual(client["mode"] as? String, "node")
 
@@ -134,8 +134,12 @@ final class OpenClawNodeConnectionTests: XCTestCase {
         XCTAssertEqual(params["payloadJSON"] as? String, #"{"events":[]}"#)
     }
 
-    func testMessageComposerIsForwardedButDirectSendIsRejected() async throws {
-        for command in ["sms.compose", "sms.send"] {
+    // sms.send is a registered command since the owner can grant "Messages,
+    // sent for you"; whether it may run is decided by the app's permission
+    // gate, not here. A command the node never registered is still refused
+    // before any handler sees it.
+    func testRegisteredMessageCommandsAreForwardedAndUnregisteredOnesRejected() async throws {
+        for command in ["sms.compose", "sms.delete"] {
             let identity = GatewayDeviceIdentity()
             let body = #"{"recipients":["+15555550100"],"body":"Test draft"}"#
             let event = try JSONSerialization.data(withJSONObject: [

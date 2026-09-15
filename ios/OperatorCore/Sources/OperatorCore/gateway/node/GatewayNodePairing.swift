@@ -16,10 +16,13 @@ import OSLog
 // reached at all.
 public enum GatewayNativeNodeSurface {
     public static let messageComposeCommand = "sms.compose"
+    /// Sends without a confirmation tap, through a shortcut the owner builds
+    /// once. Gated by its own connector grant; see ConnectorCatalog.
+    public static let messageSendCommand = "sms.send"
     public static let capabilities = ["location", "calendar", "sms", "maps", "apps", "whatsapp", "accounts", "notion", "media", "reminders", "contacts", "photos", "music", "weather", "device"]
     public static let commands = ["location.get", "calendar.events", "reminders.list", "contacts.search", "photos.latest", "music.nowPlaying", "music.search",
-                                  "weather.forecast", "device.status", Self.messageComposeCommand, "maps.search", "maps.directions", "apps.open", "whatsapp.chats", "whatsapp.messages", "whatsapp.sync", "whatsapp.compose", "connections.read", "connections.write", "connections.describe", "notion.tools", "notion.call", "youtube.search", "youtube.open", "podcasts.search", "podcasts.open"]
-    public static let commandPolicyAllow = ["weather.forecast", "device.status", "music.nowPlaying", "music.search", Self.messageComposeCommand, "maps.search", "maps.directions", "apps.open", "whatsapp.chats", "whatsapp.messages", "whatsapp.sync", "whatsapp.compose", "connections.read", "connections.write", "connections.describe", "notion.tools", "notion.call", "youtube.search", "youtube.open", "podcasts.search", "podcasts.open"]
+                                  "weather.forecast", "device.status", Self.messageComposeCommand, Self.messageSendCommand, "maps.search", "maps.directions", "apps.open", "whatsapp.chats", "whatsapp.messages", "whatsapp.sync", "whatsapp.compose", "connections.read", "connections.write", "connections.describe", "notion.tools", "notion.call", "youtube.search", "youtube.open", "podcasts.search", "podcasts.open"]
+    public static let commandPolicyAllow = ["weather.forecast", "device.status", "music.nowPlaying", "music.search", Self.messageComposeCommand, Self.messageSendCommand, "maps.search", "maps.directions", "apps.open", "whatsapp.chats", "whatsapp.messages", "whatsapp.sync", "whatsapp.compose", "connections.read", "connections.write", "connections.describe", "notion.tools", "notion.call", "youtube.search", "youtube.open", "podcasts.search", "podcasts.open"]
 
     static func matches(_ surface: GatewayNodePairingSurface) -> Bool {
         Self.matches(

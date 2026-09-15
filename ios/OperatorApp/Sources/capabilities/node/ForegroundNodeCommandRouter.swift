@@ -11,6 +11,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
     private let weather: (any GatewayNodeCommandHandler)?
     private let device: (any GatewayNodeCommandHandler)?
     private let messages: any GatewayNodeCommandHandler
+    private let messageSend: (any GatewayNodeCommandHandler)?
     private let maps: any GatewayNodeCommandHandler
     private let handoff: any GatewayNodeCommandHandler
     private let whatsapp: any GatewayNodeCommandHandler
@@ -31,6 +32,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         weather: (any GatewayNodeCommandHandler)? = nil,
         device: (any GatewayNodeCommandHandler)? = nil,
         messages: any GatewayNodeCommandHandler,
+        messageSend: (any GatewayNodeCommandHandler)? = nil,
         maps: any GatewayNodeCommandHandler,
         handoff: any GatewayNodeCommandHandler,
         whatsapp: any GatewayNodeCommandHandler,
@@ -50,6 +52,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         self.weather = weather
         self.device = device
         self.messages = messages
+        self.messageSend = messageSend
         self.maps = maps
         self.handoff = handoff
         self.whatsapp = whatsapp
@@ -105,6 +108,12 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
             }
         case "sms.compose":
             await self.messages.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
+        case "sms.send":
+            if let messageSend {
+                await messageSend.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
+            } else {
+                .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)")
+            }
         case "maps.search", "maps.directions":
             await self.maps.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
         case "apps.open":

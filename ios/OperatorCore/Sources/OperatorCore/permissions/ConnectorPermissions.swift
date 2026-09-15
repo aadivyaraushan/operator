@@ -11,7 +11,7 @@ public enum ConnectorAccess: String, Codable, CaseIterable, Sendable, Hashable {
 /// person would recognise, not under the framework that implements them.
 public enum ConnectorID: String, Codable, CaseIterable, Sendable, Hashable {
     case reminders, calendar, contacts, photos, music, location, weather, device
-    case messages, maps, apps
+    case messages, messagesAutosend, maps, apps
     case whatsapp
     case google, microsoft, slack, spotify
     case notion
@@ -37,6 +37,24 @@ public struct ConnectorDescriptor: Sendable, Identifiable, Equatable {
     public let systemPermission: SystemPermission?
     /// True for connectors that also need a signed-in account before a grant means anything.
     public let requiresAccount: Bool
+    /// One-time setup the owner must do outside Operator before the grant does anything.
+    public let setupInstructions: String?
+
+    public init(
+        id: ConnectorID, title: String, readSummary: String?, writeSummary: String?,
+        readCommands: [String], writeCommands: [String], systemPermission: SystemPermission?,
+        requiresAccount: Bool, setupInstructions: String? = nil)
+    {
+        self.id = id
+        self.title = title
+        self.readSummary = readSummary
+        self.writeSummary = writeSummary
+        self.readCommands = readCommands
+        self.writeCommands = writeCommands
+        self.systemPermission = systemPermission
+        self.requiresAccount = requiresAccount
+        self.setupInstructions = setupInstructions
+    }
 
     public var hasReads: Bool { !self.readCommands.isEmpty }
     public var hasWrites: Bool { !self.writeCommands.isEmpty }
@@ -96,6 +114,19 @@ public enum ConnectorCatalog {
               writeSummary: "Open a text with the recipient and message filled in. You tap Send.",
               readCommands: [], writeCommands: ["sms.compose"],
               systemPermission: nil, requiresAccount: false),
+        .init(id: .messagesAutosend, title: "Messages, sent for you",
+              readSummary: nil,
+              writeSummary: "Send a text or iMessage with no confirmation tap, through a shortcut you build once. Operator cannot see whether it was delivered. A message the agent was tricked into writing goes out the same way.",
+              readCommands: [], writeCommands: ["sms.send"],
+              systemPermission: nil, requiresAccount: false,
+              setupInstructions: """
+              In the Shortcuts app, create a shortcut named exactly "Operator Send Message" with these actions: \
+              1. Get Dictionary from Input (Shortcut Input). \
+              2. Get Dictionary Value for key "body". \
+              3. Get Dictionary Value for key "to". \
+              4. Send Message: the body from step 2, to the recipient from step 3, with "Show When Run" turned off. \
+              Operator opens that shortcut with the message; nothing is sent unless it exists.
+              """),
         .init(id: .maps, title: "Maps",
               readSummary: nil,
               writeSummary: "Open a place or directions in Apple Maps.",

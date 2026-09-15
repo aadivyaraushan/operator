@@ -108,6 +108,16 @@ private struct ConnectorRow: View {
                 .disabled(self.center.grants.readOnly)
                 .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-write")
             }
+            if let setup = self.descriptor.setupInstructions {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(setup)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let url = URL(string: "shortcuts://") {
+                        Link("Open Shortcuts", destination: url).font(.caption)
+                    }
+                }
+            }
             if let systemState {
                 HStack(spacing: 8) {
                     Image(systemName: systemState == .denied ? "exclamationmark.triangle" : "iphone")
@@ -136,6 +146,14 @@ private struct ConnectorRow: View {
 private struct ActivityRow: View {
     let record: ConnectorActivityRecord
 
+    private var outcomeLabel: String {
+        switch self.record.outcome {
+        case .ran: "Ran"
+        case .denied: "Refused"
+        case .failed: "Failed"
+        }
+    }
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
@@ -144,7 +162,7 @@ private struct ActivityRow: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
-                Text(self.record.outcome == .ran ? "Ran" : "Refused")
+                Text(self.outcomeLabel)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(self.record.outcome == .ran ? Color.primary : Color.orange)
                 Text(self.record.date, style: .time).font(.caption2).foregroundStyle(.secondary)
