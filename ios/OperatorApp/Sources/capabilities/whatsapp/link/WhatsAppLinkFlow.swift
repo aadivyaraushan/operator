@@ -2,6 +2,9 @@ import Combine
 import Foundation
 import OperatorCore
 import OSLog
+#if canImport(UIKit)
+import UIKit
+#endif
 
 protocol WhatsAppLinkFlowGateway: Sendable {
     func start(phone: String) async throws -> WhatsAppLinkOperation
@@ -60,10 +63,65 @@ final class WhatsAppLinkFlowModel: ObservableObject {
     private var cancelAfterStartID: Int?
     private var isForeground = true
     private var pollingTask: Task<Void, Never>?
+    private var lifecycleObservers: [Any] = []
+    #if canImport(UIKit)
+    private var backgroundHold: UIBackgroundTaskIdentifier = .invalid
+    #endif
 
     init(gateway: any WhatsAppLinkFlowGateway, pollInterval: Duration = .seconds(2)) {
         self.gateway = gateway
         self.pollInterval = pollInterval
+        self.observeLifecycle()
+    }
+
+    // Linking with a phone number on the same phone means leaving Operator
+    // to type the code into WhatsApp. WhatsApp's servers then complete the
+    // handshake with the linking device - this bridge - which iOS has just
+    // suspended, so WhatsApp sits on "Logging in..." until it gives up. While
+    // a link is in flight, ask iOS for the background time it allows (about
+    // thirty seconds) and keep polling, so the bridge is awake when the code
+    // is entered.
+    private func observeLifecycle() {
+        #if canImport(UIKit)
+        let center = NotificationCenter.default
+        self.lifecycleObservers = [
+            center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.holdBackgroundWhileLinking() }
+            },
+            center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.releaseBackgroundHold(reason: "foreground")
+                    Task { await self?.refresh() }
+                }
+            },
+        ]
+        #endif
+    }
+
+    private var isLinkInFlight: Bool {
+        self.operationID != nil && !self.isClosed && !self.state.isTerminal
+    }
+
+    private func holdBackgroundWhileLinking() {
+        #if canImport(UIKit)
+        guard self.isLinkInFlight, self.backgroundHold == .invalid else { return }
+        self.backgroundHold = UIApplication.shared.beginBackgroundTask(withName: "whatsapp-link") { [weak self] in
+            MainActor.assumeIsolated { self?.releaseBackgroundHold(reason: "expired") }
+        }
+        // backgroundTimeRemaining is Double.greatestFiniteMagnitude until iOS
+        // starts the clock; converting that to Int traps, and did, once.
+        let remaining = min(UIApplication.shared.backgroundTimeRemaining, 3_600)
+        Self.logger.info("[whatsapp-link] holding background time for the link remaining=\(Int(remaining.rounded()))s")
+        #endif
+    }
+
+    private func releaseBackgroundHold(reason: String) {
+        #if canImport(UIKit)
+        guard self.backgroundHold != .invalid else { return }
+        Self.logger.info("[whatsapp-link] released background hold reason=\(reason, privacy: .public)")
+        UIApplication.shared.endBackgroundTask(self.backgroundHold)
+        self.backgroundHold = .invalid
+        #endif
     }
 
     func present() {
@@ -115,6 +173,7 @@ final class WhatsAppLinkFlowModel: ObservableObject {
             self.schedulePollIfNeeded()
         } catch {
             guard !self.isClosed, generation == self.responseGeneration else { return }
+            Self.logger.error("[whatsapp-link] start failed errorType=\(String(reflecting: type(of: error)), privacy: .public)")
             self.pairCode = nil
             self.state = .failed
         }
@@ -215,6 +274,9 @@ final class WhatsAppLinkFlowModel: ObservableObject {
     }
 
     private func apply(phase: WhatsAppLinkPhase, pairCode: String?) {
+        // Phase only, never the code: this is what a device log needs to say
+        // where a link stalled, and the code is the owner's.
+        Self.logger.info("[whatsapp-link] phase=\(String(describing: phase), privacy: .public) hasCode=\(pairCode != nil)")
         switch phase {
         case .waitingForCode:
             self.pairCode = nil
@@ -235,6 +297,7 @@ final class WhatsAppLinkFlowModel: ObservableObject {
     }
 
     private func finish(_ state: WhatsAppLinkFlowState) {
+        self.releaseBackgroundHold(reason: "finished")
         self.stopPolling()
         self.pairCode = nil
         self.operationID = nil

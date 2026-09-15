@@ -45,6 +45,10 @@ struct WhatsAppLinkSheet: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                 VStack(alignment: .leading, spacing: 6) {
+                    Text("First, in WhatsApp: Settings, Linked Devices, Link a Device, then \"Link with phone number instead\". Leave that screen open, come back, and get the code here.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                     Text("Phone number")
                         .font(.subheadline)
                     TextField("", text: self.$phone)
@@ -70,7 +74,7 @@ struct WhatsAppLinkSheet: View {
                 ProgressView()
                 Text("Waiting for a link code…")
                     .font(.title3.weight(.semibold))
-                Text("You can switch to WhatsApp. Return here to refresh the link status.")
+                Text("Stay here until the code appears.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -91,7 +95,7 @@ struct WhatsAppLinkSheet: View {
                 } else {
                     ProgressView("Refreshing link code…")
                 }
-                Text("The code is hidden while this app is in the background.")
+                Text("In WhatsApp: Settings, Linked Devices, Link a Device, then \"Link with phone number instead\". Type the code within about 30 seconds and come back here; Operator stays awake that long to finish the link.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
