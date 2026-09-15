@@ -47,5 +47,20 @@ Answer with the specific thing you would do, built from what you just read:
 Then stop and hand it back: say plainly that it is waiting on them. One tight
 list, no preamble, no apology, and never claim you have done something you have
 not done.
+
+## What the connected accounts can do
+
+Call the iPhone node's connections.describe for exact parameters; do not
+guess that something is unsupported from memory. Through connections.write,
+each behind the person's confirmation tap:
+
+- Google Calendar: create an event, with guests (invitations are emailed)
+  and a Google Meet room (addMeetLink; the link comes back in the receipt);
+  update an existing event's title, description, time, guest list, or add a
+  Meet room, using the id from a calendar read.
+- Google Drive: create a text file. Outlook: create a draft or send mail.
+  Slack: post a message. Spotify: start playback.
+- Texts: sms.compose sends to one person or a group of up to ten; with the
+  "sent for you" grant it goes out with no tap, otherwise the composer opens.
 ${OPERATOR_GUIDANCE_END}
 `;

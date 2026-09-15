@@ -139,8 +139,12 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
             parameters = schema(required: ["operation"], optional: ["query", "channel", "timeMin", "timeMax", "limit", "cursor"])
             note = "Reads from a connected account; choose operation from accountOperations.read."
         case "connections.write":
-            parameters = schema(required: ["operation"], optional: ["summary", "description", "startRFC3339", "endRFC3339", "name", "content", "subject", "body", "to", "channelID", "text", "trackURI", "deviceID"])
-            note = "Every write shows a native immutable preview and requires owner confirmation."
+            // The union of every operation's parameters, so this list cannot
+            // fall behind writeParameters and make the model believe a field
+            // does not exist (it once decided Meet links were impossible that way).
+            let union = Self.writeOperationParameters.values.flatMap { $0 }.map { $0.hasSuffix("?") ? String($0.dropLast()) : $0 }
+            parameters = schema(required: ["operation"], optional: Array(Set(union)).sorted())
+            note = "Every write shows a native immutable preview and requires owner confirmation. Parameters per operation are in accountOperations.writeParameters (? marks optional). Google Calendar: googleCalendarCreateEvent takes attendees (invitations are emailed) and addMeetLink (a Google Meet room; its URL comes back as meetLink); googleCalendarUpdateEvent changes an existing event's summary, description, time, guest list, or adds a Meet room, by eventID from a read."
         case "connections.describe":
             parameters = schema(required: [], optional: [])
             note = "Describes the current native commands, account setup states, and supported app handoffs without network access."

@@ -45,6 +45,17 @@ final class ConnectionDiscoveryServiceTests: XCTestCase {
         XCTAssertTrue(["maps.search", "maps.directions", "apps.open", "whatsapp.messages",
                        "whatsapp.compose", "connections.read", "connections.write",
                        "notion.tools", "notion.call"].allSatisfy(names.contains))
+        // The command's own parameter list must cover every operation's
+        // parameters: the model reads this list and treats an absent name as
+        // an unsupported feature.
+        let write = try XCTUnwrap(details.first { $0["name"] as? String == "connections.write" })
+        let optional = Set(try XCTUnwrap((write["parameters"] as? [String: Any])?["optional"] as? [String]))
+        let writeParameters = try XCTUnwrap((object["accountOperations"] as? [String: Any])?["writeParameters"] as? [String: [String]])
+        for name in writeParameters.values.flatMap({ $0 }).map({ $0.hasSuffix("?") ? String($0.dropLast()) : $0 }) {
+            XCTAssertTrue(optional.contains(name), name)
+        }
+        XCTAssertTrue(optional.isSuperset(of: ["eventID", "attendees", "addMeetLink"]))
+        XCTAssertTrue((write["note"] as? String ?? "").contains("addMeetLink"))
         XCTAssertLessThan(try JSONSerialization.data(withJSONObject: object).count, 48_000)
     }
 
