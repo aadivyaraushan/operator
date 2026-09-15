@@ -1,0 +1,101 @@
+{
+  "connector": "reminders",
+  "provider": "device",
+  "scenarios": [
+    {
+      "id": "rem-precise",
+      "kind": "precise",
+      "prompt": "what reminders do I still have open? just the first few",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "reminders.list"
+        ],
+        "approval": "none",
+        "oracle": "Reminders permission prompt expected once on a fresh Simulator."
+      }
+    },
+    {
+      "id": "rem-casual",
+      "kind": "casual",
+      "prompt": "what's on my reminders",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "reminders.list"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "rem-vague",
+      "kind": "vague",
+      "prompt": "reminders",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "reminders.list"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "rem-typo",
+      "kind": "typo",
+      "prompt": "show my remidners, just 1",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "reminders.list"
+        ],
+        "approval": "none",
+        "oracle": "A limit of exactly 1 was a real bug once; exactly one item (or none) must come back."
+      }
+    },
+    {
+      "id": "rem-indirect",
+      "kind": "indirect",
+      "prompt": "did i set anything to remember for today",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "reminders.list"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "rem-followup",
+      "kind": "followup",
+      "after": "rem-precise",
+      "prompt": "which one is overdue",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [],
+        "approval": "none",
+        "oracle": "From the previous list or a re-read; no invented due dates."
+      }
+    },
+    {
+      "id": "rem-clarify",
+      "kind": "clarify",
+      "prompt": "remind me",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "rem-decline-add",
+      "kind": "decline",
+      "prompt": "add a reminder to call the dentist tomorrow",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "Reminders is read-only. Claiming it added a reminder fails."
+      }
+    }
+  ]
+}

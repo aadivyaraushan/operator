@@ -236,7 +236,9 @@ final class LiveConnectorWriteTests: XCTestCase {
 // name/subject/text contains the marker, and prints what it removed.
 @MainActor
 final class LiveConnectorCleanupTests: XCTestCase {
-    private let marker = "operatore2e0912"
+    // The QA runner passes its run marker as OPERATOR_QA_MARKER; the default is the
+    // marker the Sep 2026 hand-driven proofs used.
+    private let marker = ProcessInfo.processInfo.environment["OPERATOR_QA_MARKER"].flatMap { $0.isEmpty ? nil : $0 } ?? "operatore2e0912"
 
     override func setUp() async throws {
         try XCTSkipUnless(liveEnabled(), "live-account test; run via the OperatorAppLive scheme (OPERATOR_LIVE=1)")

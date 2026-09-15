@@ -48,6 +48,20 @@ schemes:
         - OperatorAppUITests
       environmentVariables:
         OPERATOR_E2E: "1"
+  # Connector QA driver only. Sets OPERATOR_QA=1 so ScenarioDriverUITests runs
+  # the batch named by OPERATOR_QA_BATCH (passed as TEST_RUNNER_OPERATOR_QA_BATCH).
+  # Every step is a real model turn on the owner's ChatGPT account. Run only
+  # through ios/qa/connector-qa/run.mjs.
+  OperatorAppQA:
+    build:
+      targets:
+        OperatorApp: all
+        OperatorAppUITests: [test]
+    test:
+      targets:
+        - OperatorAppUITests
+      environmentVariables:
+        OPERATOR_QA: "1"
 targets:
   OperatorApp:
     type: application

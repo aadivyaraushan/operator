@@ -556,6 +556,50 @@ Isolated codex/ios-connectors-setup adds secure YouTube key entry in Connections
 - Not installed. Main iPhone 14 Pro Simulator still waits for owner Reminders consent. Visual UI checks, real Keychain storage, actual YouTube search and reopening remain unverified. In-memory tests do not prove these.
 
 Provider setup observations are retained in the prior ios-connectors worktree's evidence file: Google Tasks enabled; YouTube-only key exists; Google Data Access empty; Apple login needed; Microsoft callback/personal account support confirmed; Spotify callback correct but no test users listed. No further external settings changed during this implementation.
+## Spotify registration check — September 11, 2026
+
+Developer dashboard loaded existing app 2c348c954be24bf68d3680f206625ccd. Development mode and redirect http://127.0.0.1:43827/spotify/callback match the app setup. User Management shows 0/5 added. No users added or secrets revealed. The exact Spotify email to allow is not yet verified; account menu offers no identity. Real sign-in/read remains pending. Official quota documentation states app owner Premium and user allowlisting are prerequisites: https://developer.spotify.com/documentation/web-api/concepts/quota-modes . No subscription was purchased or changed.
+
+## Microsoft registration check — September 11, 2026
+
+Used the previously selected personal Microsoft account's existing browser session. Entra opened the existing Operator registration ed4e4e74-ad37-4ddf-a4ca-59d3731be5e6. Authentication lists iOS/macOS return address msauth.app.operator.ios://auth and Supported accounts shows Personal accounts only. API permissions lists only delegated User.Read. No settings or grants changed. OAuthTypes.swift requests User.Read, Mail.ReadWrite, Mail.Send and Calendars.Read alongside openid/offline_access; actual sign-in consent and resulting token permissions remain untested. The configured list alone does not prove that dynamic user consent will fail.
+
+XcodeBuildMCP simulator-list capability passed on this continuation (exit 0), confirming the named iPhone 14 Pro Simulator is booted on iOS 18.6. Secure YouTube setup implementation remains in progress in the isolated setup worktree; no new build result is claimed yet.
+
+## Continued setup — September 11, 2026
+
+- Credential listing retry succeeded. Existing key named Operator YouTube Data API active 2026-08-04 is available and restricted to YouTube Data API v3. No key value was revealed/copied; no duplicate created.
+- Google Auth Platform Data Access page for operator-504223 showed zero rows in all three scope tables. Requested owner confirmation to register only the permissions already in OAuthTypes.swift (calendar.events, drive.file, gmail.readonly, tasks.readonly, plus identity scopes as applicable). No scope changes performed yet.
+- Apple Developer identifiers page requires sign-in. Owner asked to sign in in browser. Local security find-identity reported 0 valid code-signing identities. Weather setup remains unverified, not a proven account limitation.
+- Reminders permission prompt remains present in Simulator. No action, install or draft edit performed.
+- Created isolated codex/ios-connectors-setup worktree at ../ios-connectors-setup, based on d106bd3. Plan written before implementation. Helper is implementing secure YouTube key entry with failing tests first; not complete or verified yet. Build dependencies copied as filesystem clones from existing combined worktree; copy exited 0. No credentials copied.
+- Weather source currently returns only a static attribution string. Apple WeatherAttribution docs provide legalPageURL and light/dark marks; visible attribution remains an implementation requirement. Source: https://developer.apple.com/documentation/weatherkit/weatherattribution .
+
+## Setup started — September 11, 2026, 11:53 AM Central
+
+New active goal includes both setup and real end-to-end testing. Browser checked project `operator-504223`: Gmail, Calendar, Drive and YouTube were already enabled. Google Tasks was absent, and its product page offered Enable. Enabled `tasks.googleapis.com`; the resulting service details explicitly showed Status: Enabled. No account data was read or written, no OAuth permission granted, no billing change made. This is developer configuration proof, not a successful Tasks read.
+
+Credentials page loaded the existing Operator iPhone OAuth client, but displayed “Failed to load API keys.” Key availability is therefore unknown, not absent. Simulator remains at Reminders permission prompt; owner consent requested. Latest merged build remains uninstalled while that flow is pending.
+
+Reproduce: Google Cloud console → Operator project → APIs & Services → Google Tasks API → check Enabled. Then connect Google in Operator and perform a bounded Tasks read; this latter check has not run yet.
+
+## Remaining connector work at d106bd3 — September 11, 2026
+
+Current source wiring checked in OperatorApp.swift and ForegroundNodeCommandRouter.swift. Most agreed connector implementations exist; this is not evidence that all accounts work. No new live checks were performed for this status answer.
+
+| Group | Remaining |
+| --- | --- |
+| Google Calendar, Drive, Gmail, Tasks | Reconnect with current permissions; prove each real read and saved sign-in/refresh |
+| Outlook mail/calendar, Slack, Spotify, Notion | Complete sign-in/authorization and verify real reads plus reopening |
+| WhatsApp | Link the account, prove sync/read and interruption recovery; same-phone linking still unverified |
+| YouTube search | Secure API-key provisioning and real search; app currently has no key-entry UI |
+| Weather | WeatherKit entitlement/setup and attribution presentation; prove live response |
+| Reminders, Contacts, Photos, Music, device Calendar | Real permission/read checks; latest recorded Reminders check stopped at permission prompt |
+| Internet, Maps/location, app opening, podcasts | Existing recorded basic successes, but search/browser parity and individual app destinations are not comprehensively verified |
+
+Device status succeeded in the Simulator before the latest merge. Confirmed-write routes exist but successful external writes/playback have not been tested. Messages means owner-controlled composition, not inbox access. Beeper/Instagram/personal Discord/unrestricted iMessage remain excluded; Todoist/Teams were Android placeholders, not completed integrations promised here.
+
+Most remaining work is setup, proof and any fixes revealed by real checks, not creating new connector modules. Latest merged build was compiled but not installed into the running Simulator. Other saved sections below include historical failures and claims; use the most recent dated evidence when determining status.
 
 ## Combined collaborator updates — September 11, 2026
 

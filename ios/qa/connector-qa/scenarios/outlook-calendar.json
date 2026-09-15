@@ -1,0 +1,140 @@
+{
+  "connector": "outlook-calendar",
+  "provider": "microsoft",
+  "scenarios": [
+    {
+      "id": "ocal-precise",
+      "kind": "precise",
+      "prompt": "what's on my outlook calendar over the next week?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "outlookCalendarEvents"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "ocal-casual",
+      "kind": "casual",
+      "prompt": "anything on my outlook calendar this week",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "outlookCalendarEvents"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "ocal-vague",
+      "kind": "vague",
+      "prompt": "work calendar?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read",
+          "calendar.events"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Any calendar read, or a question about which calendar, passes."
+      }
+    },
+    {
+      "id": "ocal-typo",
+      "kind": "typo",
+      "prompt": "outlok calender tomorow",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "outlookCalendarEvents"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "ocal-indirect",
+      "kind": "indirect",
+      "prompt": "do i have any meetings from work coming up? outlook",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "outlookCalendarEvents"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "ocal-followup",
+      "kind": "followup",
+      "after": "ocal-precise",
+      "prompt": "and the week after?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "outlookCalendarEvents"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Must read the following week's window."
+      }
+    },
+    {
+      "id": "ocal-clarify",
+      "kind": "clarify",
+      "prompt": "put it on my outlook calendar",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "ocal-decline-create",
+      "kind": "decline",
+      "prompt": "create an outlook calendar event called 'QA {marker}' tomorrow at noon",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Outlook calendar is read-only here; Google Calendar create exists. Saying it cannot create Outlook events, or offering Google Calendar, passes. Claiming an Outlook event was created fails."
+      }
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "connector": "location",
+  "provider": "device",
+  "scenarios": [
+    {
+      "id": "loc-precise",
+      "kind": "precise",
+      "prompt": "What is my current location? Give the coordinates.",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "location.get"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "loc-casual",
+      "kind": "casual",
+      "prompt": "where am i",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "location.get"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "loc-vague",
+      "kind": "vague",
+      "prompt": "location",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "location.get"
+        ],
+        "approval": "none",
+        "oracle": "Reporting location or asking what about it both pass."
+      }
+    },
+    {
+      "id": "loc-typo",
+      "kind": "typo",
+      "prompt": "wher am i rigth now",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "location.get"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "loc-indirect",
+      "kind": "indirect",
+      "prompt": "what city is this",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "location.get",
+          "maps.search"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "loc-followup",
+      "kind": "followup",
+      "after": "loc-casual",
+      "prompt": "what's the weather like here",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "weather.forecast"
+        ],
+        "approval": "none",
+        "oracle": "WeatherKit may be blocked by the missing entitlement; an honest 'weather unavailable' is blocked, not fail."
+      }
+    },
+    {
+      "id": "loc-clarify",
+      "kind": "clarify",
+      "prompt": "share my location",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "sms.compose",
+          "whatsapp.compose",
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "loc-decline",
+      "kind": "decline",
+      "prompt": "track where my phone has been today",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "Only current location exists; no history. Inventing a trail fails."
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "steps": [
+    {
+      "stepKey": "dev-casual#1",
+      "prompt": "battery?",
+      "launch": "relaunch",
+      "approve": "allow"
+    }
+  ],
+  "resultsPath": "/Users/aadivyar/Documents/Startups/ai native mobile software/codex-launcher/.claude/worktrees/ios-connectors/saved-results/connector-qa/runs/20260915T050359-smoke/batch-0.results.jsonl",
+  "launchTimeoutSeconds": 150,
+  "replyTimeoutSeconds": 240
+}

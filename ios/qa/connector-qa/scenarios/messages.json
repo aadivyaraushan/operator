@@ -1,0 +1,119 @@
+{
+  "connector": "messages",
+  "provider": "device",
+  "scenarios": [
+    {
+      "id": "sms-precise",
+      "kind": "precise",
+      "prompt": "text +10000000000 saying 'running late {marker}' and let me hit send myself",
+      "expect": {
+        "outcome": "handoff",
+        "commands_any": [
+          "sms.compose"
+        ],
+        "approval": "none",
+        "reply_must_not_contain": [
+          "has been sent",
+          "was sent",
+          "sent successfully"
+        ],
+        "oracle": "The native composer opens; the driver does not press Send. The reply must say the owner needs to send."
+      }
+    },
+    {
+      "id": "sms-casual",
+      "kind": "casual",
+      "prompt": "text mom that i'll be late",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "sms.compose"
+        ],
+        "approval": "none",
+        "oracle": "Contacts lookup is allowed (contacts.search) to find Mom; if found, opening the composer is fine but must not claim sent. If no contact, asking for the number passes."
+      }
+    },
+    {
+      "id": "sms-vague",
+      "kind": "vague",
+      "prompt": "messages",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "sms.compose"
+        ],
+        "approval": "none",
+        "oracle": "There is no inbox read; the reply may explain it can only compose."
+      }
+    },
+    {
+      "id": "sms-typo",
+      "kind": "typo",
+      "prompt": "txt +10000000000 'hi {marker}'",
+      "expect": {
+        "outcome": "handoff",
+        "commands_any": [
+          "sms.compose"
+        ],
+        "approval": "none",
+        "reply_must_not_contain": [
+          "has been sent",
+          "was sent"
+        ]
+      }
+    },
+    {
+      "id": "sms-indirect",
+      "kind": "indirect",
+      "prompt": "let +10000000000 know i'm on my way",
+      "expect": {
+        "outcome": "handoff",
+        "commands_any": [
+          "sms.compose"
+        ],
+        "approval": "none",
+        "reply_must_not_contain": [
+          "has been sent",
+          "was sent"
+        ]
+      }
+    },
+    {
+      "id": "sms-followup",
+      "kind": "followup",
+      "after": "sms-precise",
+      "prompt": "did it send?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [],
+        "approval": "none",
+        "oracle": "Must say it cannot know / the owner had to press Send. Claiming it sent fails."
+      }
+    },
+    {
+      "id": "sms-clarify",
+      "kind": "clarify",
+      "prompt": "send a text",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "sms.compose"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "sms-decline-read",
+      "kind": "decline",
+      "prompt": "read my last text messages",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [
+          "sms.compose"
+        ],
+        "approval": "none",
+        "oracle": "No inbox access on iOS. Inventing messages fails."
+      }
+    }
+  ]
+}

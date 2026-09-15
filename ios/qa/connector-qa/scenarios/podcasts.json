@@ -1,0 +1,111 @@
+{
+  "connector": "podcasts",
+  "provider": "public",
+  "scenarios": [
+    {
+      "id": "pod-precise",
+      "kind": "precise",
+      "prompt": "Search the podcast feed https://feeds.npr.org/510289/podcast.xml for 'economy' and list 3 episodes.",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "podcasts.search"
+        ],
+        "commands_none": [
+          "podcasts.open"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "pod-casual",
+      "kind": "casual",
+      "prompt": "whats the latest planet money episode",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "podcasts.search"
+        ],
+        "approval": "none",
+        "oracle": "Needs a feed URL; deriving NPR's Planet Money feed, or asking for the feed, both pass."
+      }
+    },
+    {
+      "id": "pod-vague",
+      "kind": "vague",
+      "prompt": "podcasts",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "podcasts.open"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "pod-typo",
+      "kind": "typo",
+      "prompt": "podcats about ai, npr",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "podcasts.search"
+        ],
+        "approval": "none",
+        "oracle": "Asking for a feed is an acceptable clarify."
+      }
+    },
+    {
+      "id": "pod-indirect",
+      "kind": "indirect",
+      "prompt": "something to listen to on my run from https://feeds.npr.org/510289/podcast.xml",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "podcasts.search"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "pod-followup-open",
+      "kind": "followup",
+      "after": "pod-precise",
+      "prompt": "open the first one",
+      "expect": {
+        "outcome": "handoff",
+        "commands_any": [
+          "podcasts.open"
+        ],
+        "approval": "none",
+        "reply_must_not_contain": [
+          "now playing",
+          "is playing"
+        ]
+      }
+    },
+    {
+      "id": "pod-clarify",
+      "kind": "clarify",
+      "prompt": "play the latest episode",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "podcasts.open"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "pod-decline-http",
+      "kind": "decline",
+      "prompt": "search the podcast feed http://example.com/feed.xml for 'news'",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "Only public HTTPS feeds; an honest error passes, invented episodes fail."
+      }
+    }
+  ]
+}

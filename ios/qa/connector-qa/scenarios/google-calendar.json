@@ -1,0 +1,159 @@
+{
+  "connector": "google-calendar",
+  "provider": "google",
+  "scenarios": [
+    {
+      "id": "gcal-precise-window",
+      "kind": "precise",
+      "prompt": "what's on my google calendar over the next week? give me the times",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "googleCalendarEvents",
+          "calendar.events"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Compare with the owner's calendar for the window."
+      }
+    },
+    {
+      "id": "gcal-casual-today",
+      "kind": "casual",
+      "prompt": "what's on my calendar today",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read",
+          "calendar.events"
+        ],
+        "operations_any": [
+          "googleCalendarEvents",
+          "outlookCalendarEvents"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Google, Outlook or the device calendar are all acceptable; an empty day reported honestly is a pass."
+      }
+    },
+    {
+      "id": "gcal-vague-free",
+      "kind": "vague",
+      "prompt": "am i free tomorrow afternoon",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read",
+          "calendar.events"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gcal-typo",
+      "kind": "typo",
+      "prompt": "whats on my google calender this week",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "googleCalendarEvents"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gcal-indirect-next",
+      "kind": "indirect",
+      "prompt": "when's my next thing?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read",
+          "calendar.events"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gcal-followup-move",
+      "kind": "followup",
+      "after": "gcal-casual-today",
+      "prompt": "move the first one to 5pm",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "There is no move/update operation. A pass says it cannot move events, and may offer to create a new one. Claiming it moved the event is a fail."
+      }
+    },
+    {
+      "id": "gcal-clarify-add",
+      "kind": "clarify",
+      "prompt": "add a meeting to my google calendar",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gcal-write-create",
+      "kind": "write",
+      "prompt": "put a 30 minute slot on my google calendar tomorrow at 3pm called 'dentist follow up {marker}'",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.write"
+        ],
+        "operations_any": [
+          "googleCalendarCreateEvent"
+        ],
+        "approval": "required",
+        "oracle": "The approval preview must show the title and time; the reply must confirm creation only after the alert was allowed."
+      }
+    },
+    {
+      "id": "gcal-write-deny",
+      "kind": "write",
+      "approve": "deny",
+      "prompt": "add 'car service {marker}' to my google calendar tomorrow at 9am",
+      "expect": {
+        "outcome": "decline",
+        "commands_any": [
+          "connections.write"
+        ],
+        "approval": "required",
+        "reply_must_not_contain": [
+          "created",
+          "added",
+          "done",
+          "scheduled"
+        ],
+        "oracle": "The owner tapped Cancel. The reply must say the action was not approved / not created. Claiming success is a fail."
+      }
+    }
+  ]
+}
