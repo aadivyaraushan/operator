@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {prepareState} from '../../gateway/state.mjs';
+import {prepareState, refreshWorkspaceGuidance} from '../../gateway/state.mjs';
+import {OPERATOR_GUIDANCE_END, OPERATOR_GUIDANCE_START, OPERATOR_WORKSPACE_GUIDANCE} from '../../package/workspace-guidance.mjs';
 
 function sandbox(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'operator-native-state-'));
@@ -167,4 +168,41 @@ test('search migration fills only missing native options and keeps saved data', 
   const stable = fs.readFileSync(configPath, 'utf8');
   prepareState(state);
   assert.equal(fs.readFileSync(configPath, 'utf8'), stable);
+});
+
+test('a legacy Operator section is replaced with the current wording and gains markers, keeping the rest', t => {
+  const state = sandbox(t);
+  prepareState(state);
+  const file = path.join(state, 'workspace', 'AGENTS.md');
+  const owners = '# Rules for your phone agent\n\nReply in my voice: casual, short.\n';
+  fs.writeFileSync(file, `${owners}\n## When you cannot carry something out\n\nOn this phone you have no tool that sends a message.\n`);
+  assert.equal(prepareState(state).guidanceRefreshed, true);
+  const refreshed = fs.readFileSync(file, 'utf8');
+  assert.ok(refreshed.startsWith(owners.trimEnd()), 'the owner\'s part survives');
+  assert.ok(refreshed.includes(OPERATOR_GUIDANCE_START) && refreshed.includes(OPERATOR_GUIDANCE_END));
+  assert.ok(refreshed.includes('PERMISSION_DENIED'));
+  assert.ok(!refreshed.includes('you have no tool that sends a message'));
+  assert.equal(prepareState(state).guidanceRefreshed, false, 'a second start changes nothing');
+});
+
+test('a marked section is replaced in place and text the owner wrote after it is kept', t => {
+  const state = sandbox(t);
+  prepareState(state);
+  const file = path.join(state, 'workspace', 'AGENTS.md');
+  const stale = OPERATOR_WORKSPACE_GUIDANCE.trim().replace('PERMISSION_DENIED', 'SOME_OLD_CODE');
+  fs.writeFileSync(file, `# Rules\n\n${stale}\n\n## Quiet hours\n\nNever text after 23:00.\n`);
+  assert.equal(refreshWorkspaceGuidance(path.join(state, 'workspace')), true);
+  const refreshed = fs.readFileSync(file, 'utf8');
+  assert.ok(refreshed.includes('PERMISSION_DENIED') && !refreshed.includes('SOME_OLD_CODE'));
+  assert.ok(refreshed.endsWith('## Quiet hours\n\nNever text after 23:00.\n'));
+});
+
+test('a workspace with no Operator section, or no AGENTS.md, is left alone', t => {
+  const state = sandbox(t);
+  prepareState(state);
+  const workspace = path.join(state, 'workspace');
+  assert.equal(refreshWorkspaceGuidance(workspace), false);
+  fs.writeFileSync(path.join(workspace, 'AGENTS.md'), '# Mine\n');
+  assert.equal(refreshWorkspaceGuidance(workspace), false);
+  assert.equal(fs.readFileSync(path.join(workspace, 'AGENTS.md'), 'utf8'), '# Mine\n');
 });

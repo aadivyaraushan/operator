@@ -1,6 +1,34 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {randomBytes} from 'node:crypto';
+import {OPERATOR_GUIDANCE_END, OPERATOR_GUIDANCE_HEADING, OPERATOR_GUIDANCE_START, OPERATOR_WORKSPACE_GUIDANCE} from '../package/workspace-guidance.mjs';
+
+/// Bring the Operator section of the workspace AGENTS.md up to the current
+/// wording. Three shapes are handled: a marked section is replaced in place;
+/// a section from before the markers (heading to end of file, which is where
+/// staging appended it) is replaced once and gains the markers; a file with
+/// neither is left for OpenClaw, which seeds it from the template. Anything
+/// outside the section is the owner's and is preserved byte for byte.
+export function refreshWorkspaceGuidance(workspace) {
+  const file = path.join(workspace, 'AGENTS.md');
+  let current;
+  try { current = fs.readFileSync(file, 'utf8'); }
+  catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+  const section = OPERATOR_WORKSPACE_GUIDANCE.trim();
+  let next;
+  const start = current.indexOf(OPERATOR_GUIDANCE_START);
+  const end = current.indexOf(OPERATOR_GUIDANCE_END);
+  if (start >= 0 && end > start) {
+    next = current.slice(0, start) + section + current.slice(end + OPERATOR_GUIDANCE_END.length);
+  } else {
+    const legacy = current.indexOf(`\n${OPERATOR_GUIDANCE_HEADING}`);
+    if (legacy < 0) return false;
+    next = `${current.slice(0, legacy).trimEnd()}\n${section}\n`;
+  }
+  if (next === current) return false;
+  fs.writeFileSync(file, next, {mode: 0o600});
+  return true;
+}
 
 function hasWorkspaceData(directory) {
   try { return fs.statSync(directory).isDirectory() && fs.readdirSync(directory).length > 0; }
@@ -96,7 +124,7 @@ export function prepareState(state) {
     addAutomaticFastModeDefault(configPath);
     addNativeSearchDefaults(configPath);
     fs.mkdirSync(workspace, {recursive: true, mode: 0o700});
-    return {configPath, created: false};
+    return {configPath, created: false, guidanceRefreshed: refreshWorkspaceGuidance(workspace)};
   }
 }
 

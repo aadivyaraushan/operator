@@ -15,7 +15,17 @@
 // the model is offered once the owner grants them; every action goes through
 // the owner's grants and, except for a message the owner has chosen to have
 // sent for them, ends in a confirmation the owner taps.
+export const OPERATOR_GUIDANCE_START = '<!-- operator-guidance:start -->';
+export const OPERATOR_GUIDANCE_END = '<!-- operator-guidance:end -->';
+export const OPERATOR_GUIDANCE_HEADING = '## When you cannot carry something out';
+
+// The markers let refreshWorkspaceGuidance replace exactly this section on
+// every start and nothing else: the file is the owner's to edit, and OpenClaw
+// only writes it when it is missing, so without a refresh the phone keeps the
+// wording from its very first launch while the template moves on. That is how
+// the agent kept saying it could not send a message after it could.
 export const OPERATOR_WORKSPACE_GUIDANCE = `
+${OPERATOR_GUIDANCE_START}
 ## When you cannot carry something out
 
 On this phone you can only do what the person has allowed on Operator's
@@ -37,4 +47,5 @@ Answer with the specific thing you would do, built from what you just read:
 Then stop and hand it back: say plainly that it is waiting on them. One tight
 list, no preamble, no apology, and never claim you have done something you have
 not done.
+${OPERATOR_GUIDANCE_END}
 `;
