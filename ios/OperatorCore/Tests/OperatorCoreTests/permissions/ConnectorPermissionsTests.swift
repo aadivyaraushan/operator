@@ -115,16 +115,29 @@ final class ConnectorPermissionsTests: XCTestCase {
         XCTAssertNil(ConnectorCatalog.requirement(for: "notion.call", paramsJSON: #"{"arguments":{}}"#))
     }
 
-    func testOnlyWhatsAppWritesCarryAnAcknowledgementAndItIsComplete() {
+    func testOnlyTheUnofficialClientsCarryAnAcknowledgementAndEachIsComplete() {
         for descriptor in ConnectorCatalog.all {
-            if descriptor.id == .whatsapp {
+            switch descriptor.id {
+            case .whatsapp:
                 let ack = descriptor.writeAcknowledgement
                 XCTAssertNotNil(ack, "sending through an unofficial client must be acknowledged")
                 XCTAssertTrue(ack!.title.lowercased().contains("banned"))
                 XCTAssertGreaterThanOrEqual(ack!.statements.count, 3)
                 XCTAssertTrue(ack!.paragraphs.joined().contains("unofficial client"))
-            } else {
+                XCTAssertNil(descriptor.readAcknowledgement, "WhatsApp reads were judged lower risk")
+            case .discord:
+                let ack = descriptor.readAcknowledgement
+                XCTAssertNotNil(ack, "reading with the owner's login is a self-bot in Discord's terms")
+                XCTAssertTrue(ack!.title.lowercased().contains("banned"))
+                XCTAssertGreaterThanOrEqual(ack!.statements.count, 3)
+                XCTAssertTrue(ack!.paragraphs.joined().contains("second account"))
+                XCTAssertNil(descriptor.writeAcknowledgement)
+                XCTAssertFalse(descriptor.hasWrites, "Discord is read-only by design")
+                XCTAssertEqual(descriptor.acknowledgement(for: .read), ack)
+                XCTAssertNil(descriptor.acknowledgement(for: .write))
+            default:
                 XCTAssertNil(descriptor.writeAcknowledgement, "\(descriptor.id) has no account at stake")
+                XCTAssertNil(descriptor.readAcknowledgement, "\(descriptor.id) has no account at stake")
             }
         }
     }

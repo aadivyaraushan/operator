@@ -123,6 +123,21 @@ public enum GatewayNodeAgentTools {
             is online. Carries no name, model or identifier of any kind.
             """,
             parameters: .init()),
+        .init(
+            name: "discord_announcements",
+            command: "discord.announcements",
+            description: """
+            Read the newest messages in the Discord announcement channels the person chose in \
+            Operator, through their own account. Use for "what did I miss", "any announcements", \
+            or to find dated items to put on their calendar. Reads are rationed to a few passes \
+            a day to protect the account; if the result says the ration is used up, say so and \
+            do not retry. Read-only: it cannot post, react, or mark anything read, and it cannot \
+            read a channel the person has not listed.
+            """,
+            parameters: .init(properties: [
+                "sinceRFC3339": .string("Only messages after this time. Omit to get the newest messages in each channel."),
+                "limit": .integer("Newest messages per channel, 1 to 50. Defaults to 25."),
+            ])),
     ]
 
     /// Every published command must be one this node actually registered, or

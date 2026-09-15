@@ -115,7 +115,7 @@ final class ConnectorPermissionCenterTests: XCTestCase {
         let store = MemoryStore()
         let center = ConnectorPermissionCenter(store: store)
         center.requestGrant(.whatsapp, .write, allowed: true)
-        XCTAssertEqual(center.acknowledgementRequired, .whatsapp)
+        XCTAssertEqual(center.acknowledgementRequired, .init(connector: .whatsapp, access: .write))
         XCTAssertFalse(center.isGranted(.whatsapp, .write), "the toggle alone must not grant")
         XCTAssertNil(store.grants, "nothing persisted yet")
         center.declineAcknowledgement()
@@ -132,7 +132,7 @@ final class ConnectorPermissionCenterTests: XCTestCase {
         center.requestGrant(.whatsapp, .write, allowed: false)
         XCTAssertFalse(center.isGranted(.whatsapp, .write))
         center.requestGrant(.whatsapp, .write, allowed: true)
-        XCTAssertEqual(center.acknowledgementRequired, .whatsapp)
+        XCTAssertEqual(center.acknowledgementRequired, .init(connector: .whatsapp, access: .write))
         XCTAssertFalse(center.isGranted(.whatsapp, .write))
 
         // Connectors without a warning grant directly, reads included.
@@ -142,13 +142,37 @@ final class ConnectorPermissionCenterTests: XCTestCase {
         XCTAssertTrue(center.isGranted(.whatsapp, .read))
     }
 
+    func testADiscordReadIsNotGrantedUntilItsWarningIsAccepted() async throws {
+        let store = MemoryStore()
+        let center = ConnectorPermissionCenter(store: store)
+        center.requestGrant(.discord, .read, allowed: true)
+        XCTAssertEqual(center.acknowledgementRequired, .init(connector: .discord, access: .read))
+        XCTAssertEqual(center.acknowledgementRequired?.acknowledgement?.title, "This can get the Discord account banned")
+        XCTAssertFalse(center.isGranted(.discord, .read), "the read toggle alone must not grant")
+        XCTAssertNil(store.grants)
+        center.acceptAcknowledgement()
+        XCTAssertTrue(center.isGranted(.discord, .read))
+        XCTAssertEqual(center.publishedTools.map(\.command), ["discord.announcements"])
+        center.requestGrant(.discord, .read, allowed: false)
+        center.requestGrant(.discord, .read, allowed: true)
+        XCTAssertNotNil(center.acknowledgementRequired, "asked again every time")
+
+        // The in-chat banner cannot grant it either; the page shows the warning.
+        center.declineAcknowledgement()
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: RecordingHandler())
+        _ = await guarded.handleNodeCommand("discord.announcements", paramsJSON: "{}", timeoutMilliseconds: nil)
+        XCTAssertEqual(center.pendingRequest?.connector, .discord)
+        XCTAssertFalse(center.allowPendingRequest())
+        XCTAssertEqual(center.acknowledgementRequired, .init(connector: .discord, access: .read))
+    }
+
     func testTheInChatBannerCannotGrantAWarnedWriteDirectly() async throws {
         let center = ConnectorPermissionCenter(store: MemoryStore())
         let guarded = PermissionGuardedNodeCommandHandler(center: center, next: RecordingHandler())
         _ = await guarded.handleNodeCommand("whatsapp.compose", paramsJSON: #"{"recipientJID":"1@s.whatsapp.net","body":"hi"}"#, timeoutMilliseconds: nil)
         XCTAssertEqual(center.pendingRequest?.connector, .whatsapp)
         XCTAssertFalse(center.allowPendingRequest(), "the caller must show the warning instead")
-        XCTAssertEqual(center.acknowledgementRequired, .whatsapp)
+        XCTAssertEqual(center.acknowledgementRequired, .init(connector: .whatsapp, access: .write))
         XCTAssertFalse(center.isGranted(.whatsapp, .write))
         XCTAssertNotNil(center.pendingRequest, "the request stays until the warning is resolved")
         center.acceptAcknowledgement()

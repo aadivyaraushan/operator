@@ -70,9 +70,7 @@ struct ConnectorPermissionsScreen: View {
                 get: { self.center.acknowledgementRequired != nil },
                 set: { if !$0 { self.center.declineAcknowledgement() } }))
             {
-                if let id = self.center.acknowledgementRequired,
-                   let acknowledgement = ConnectorCatalog.descriptor(id).writeAcknowledgement
-                {
+                if let acknowledgement = self.center.acknowledgementRequired?.acknowledgement {
                     ConnectorRiskAcknowledgementSheet(
                         acknowledgement: acknowledgement,
                         onAccept: { self.center.acceptAcknowledgement() },
@@ -170,9 +168,11 @@ private struct ConnectorRow: View {
                 if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
             }
             if let readSummary = self.descriptor.readSummary {
+                // Through requestGrant, not set: a read that carries a warning
+                // (Discord) must show it first, like a warned write.
                 Toggle(isOn: Binding(
                     get: { self.readGranted },
-                    set: { self.center.set(self.descriptor.id, .read, allowed: $0) }))
+                    set: { self.center.requestGrant(self.descriptor.id, .read, allowed: $0) }))
                 {
                     self.label("Read", readSummary)
                 }

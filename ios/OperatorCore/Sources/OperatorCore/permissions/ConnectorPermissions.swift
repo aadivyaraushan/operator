@@ -13,6 +13,7 @@ public enum ConnectorID: String, Codable, CaseIterable, Sendable, Hashable {
     case reminders, calendar, contacts, photos, music, location, weather, device
     case messages, messagesAutosend, maps, apps
     case whatsapp
+    case discord
     case google, microsoft, slack, spotify
     case notion
     case media
@@ -26,9 +27,9 @@ public enum SystemPermission: String, Sendable, Hashable {
 }
 
 /// A warning the owner must read and accept, statement by statement, before a
-/// write grant is written at all. Shown every time the grant is turned on,
-/// never remembered. Exists for the one connector whose writes can cost the
-/// owner an account.
+/// grant is written at all. Shown every time the grant is turned on, never
+/// remembered. Exists for the connectors that go through an unofficial client
+/// and can cost the owner an account: WhatsApp sends, Discord reads.
 public struct ConnectorAcknowledgement: Equatable, Sendable {
     public let title: String
     public let paragraphs: [String]
@@ -61,13 +62,19 @@ public struct ConnectorDescriptor: Sendable, Identifiable, Equatable {
     /// Required before the write grant can be turned on. Nil for every connector
     /// whose writes cannot cost the owner more than the action itself.
     public let writeAcknowledgement: ConnectorAcknowledgement?
+    /// Required before the read grant can be turned on. Only for a connector
+    /// whose reads already go through the owner's account in a way the
+    /// provider forbids.
+    public let readAcknowledgement: ConnectorAcknowledgement?
 
     public init(
         id: ConnectorID, title: String, readSummary: String?, writeSummary: String?,
         readCommands: [String], writeCommands: [String], systemPermission: SystemPermission?,
-        requiresAccount: Bool, setupInstructions: String? = nil, writeAcknowledgement: ConnectorAcknowledgement? = nil)
+        requiresAccount: Bool, setupInstructions: String? = nil, writeAcknowledgement: ConnectorAcknowledgement? = nil,
+        readAcknowledgement: ConnectorAcknowledgement? = nil)
     {
         self.writeAcknowledgement = writeAcknowledgement
+        self.readAcknowledgement = readAcknowledgement
         self.id = id
         self.title = title
         self.readSummary = readSummary
@@ -81,6 +88,10 @@ public struct ConnectorDescriptor: Sendable, Identifiable, Equatable {
 
     public var hasReads: Bool { !self.readCommands.isEmpty }
     public var hasWrites: Bool { !self.writeCommands.isEmpty }
+
+    public func acknowledgement(for access: ConnectorAccess) -> ConnectorAcknowledgement? {
+        access == .write ? self.writeAcknowledgement : self.readAcknowledgement
+    }
 }
 
 /// What a command needs before the node may run it.
@@ -175,6 +186,25 @@ public enum ConnectorCatalog {
                       "I understand this uses an unofficial client that violates WhatsApp's terms.",
                       "I understand my WhatsApp account can be blocked or permanently banned, and that Operator cannot prevent or reverse it.",
                       "I am turning this on for my own account and I accept that risk.",
+                  ],
+                  confirmLabel: "Turn on anyway")),
+        .init(id: .discord, title: "Discord (your account)",
+              readSummary: "Announcements from channels you choose, read through your own Discord account at most a few times a day. Unofficial: Discord can ban the account; you will be asked to accept that every time you turn this on.",
+              writeSummary: nil,
+              readCommands: ["discord.announcements"], writeCommands: [],
+              systemPermission: nil, requiresAccount: true,
+              setupInstructions: "Paste the account's token and the links of the announcement channels to read under Connect accounts > Discord. Use a second account that is a member of those servers, not your main one.",
+              readAcknowledgement: .init(
+                  title: "This can get the Discord account banned",
+                  paragraphs: [
+                      "Operator reads these channels the way a script with your login would, not through Discord's bot API. Discord's terms forbid automating a user account, and the sanction they name is closing the account: every server, every DM, the name.",
+                      "What Operator does to stay quiet, enforced in code rather than promised: it only reads, never posts, reacts or marks anything read; it reads only the channels you list here; it makes at most four passes in any 24 hours and never two within two hours; it never holds an open connection; and it stops for the day the moment Discord asks it to slow down.",
+                      "Reported enforcement targets spam, mass joins, command bots and always-on sessions, none of which this does, but Discord does not publish its rules and Operator cannot see or predict them. Use a second account that is a member of the same servers, so the worst case is losing that one.",
+                  ],
+                  statements: [
+                      "I understand this reads Discord with my login in a way Discord's terms forbid.",
+                      "I understand the account can be blocked or permanently banned, and that Operator cannot prevent or reverse it.",
+                      "I am using an account I can afford to lose, and I accept that risk.",
                   ],
                   confirmLabel: "Turn on anyway")),
         .init(id: .google, title: "Google",
