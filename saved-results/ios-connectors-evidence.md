@@ -1663,3 +1663,25 @@ joined the servers, copy its token; in Operator, Connect accounts > Discord
 Add channel; Permissions > Discord > Read (accept the warning); then ask
 "what did I miss on Discord?". The device log's `discord-read` and
 `discord-pace` categories show the pass and the ration.
+
+## 2026-09-15, 17:58: rebuilt on the phone after the Discord setup
+
+Installed on Surya's iPhone (iPhone 17, `B4EB45C4-…`) from `12b100a`, via
+`xcodebuild build -destination 'platform=iOS,id=…' -allowProvisioningUpdates`
+then `devicectl device install app` and `process launch`. Upgrade install:
+Keychain token, channel list and conversation kept.
+
+**The first build was stale in a way the binary check does not show.**
+`ios/build/native-node/runtime` is a staged copy of the OpenClaw package,
+not a build output: `xcodebuild` bundles whatever is there. The Swift side
+had today's Discord changes, but the bundled `package/workspace-guidance.mjs`
+was the 13:25 staging, before the cache and cooldown guidance. Re-staged
+with `node ios/Runtime/native-node/package/run.mjs ~/Downloads/openclaw-2026.9.1
+ios/build/native-node/runtime.new`, swapped in (the script refuses to
+overwrite; the old folder is kept beside it as `runtime.prev-20260915-1325`),
+rebuilt, reinstalled. Any edit under `ios/Runtime/native-node/` needs this
+before a device or Simulator build carries it.
+
+Owner had by then saved the second account's token and added channels on
+the previous build; the first live `discord.announcements` read is still
+to be watched.
