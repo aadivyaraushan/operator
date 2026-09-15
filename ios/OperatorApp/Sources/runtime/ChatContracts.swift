@@ -15,6 +15,8 @@ protocol ChatPersistence: Sendable {
 enum ChatDeliveryUpdate: Equatable, Sendable {
     case accepted
     case working
+    /// A tool the agent started or finished while working on this message.
+    case activity(GatewayRunActivity)
     case stream(String)
     case reply(String)
     case failed(String)

@@ -142,6 +142,46 @@ final class ChatSessionModelTests: XCTestCase {
         XCTAssertEqual(model.messages.last?.text, "Finished once")
     }
 
+    func testLiveActivityShowsEachStepFromAcceptanceAndStaysWithTheReply() async throws {
+        let gateway = ActivityGateway()
+        let model = self.readyModel(store: RecordingPersistence(), gateway: gateway)
+        model.restore()
+        await waitUntil { model.connectionState == .ready }
+        model.draft = "what did I miss on discord?"
+        model.send()
+
+        await gateway.waitForStage(1)
+        XCTAssertEqual(model.liveActivity, ChatLiveActivity(), "accepted: thinking, no steps yet")
+        XCTAssertEqual(model.liveActivity?.statusLine, "Thinking…")
+
+        await gateway.proceed()
+        await gateway.waitForStage(2)
+        let running = try XCTUnwrap(model.liveActivity)
+        XCTAssertEqual(running.steps.map(\.title), ["Reading Discord announcements"])
+        XCTAssertEqual(running.steps.first?.state, .running)
+        XCTAssertNil(running.statusLine, "a running step is the status")
+
+        await gateway.proceed()
+        await gateway.waitForStage(3)
+        let afterTools = try XCTUnwrap(model.liveActivity)
+        XCTAssertEqual(afterTools.steps.map(\.title), ["Read Discord announcements", "Read Gmail"])
+        XCTAssertEqual(afterTools.steps.map(\.state), [.done, .failed])
+        XCTAssertEqual(afterTools.statusLine, "Thinking…", "between tools the agent is thinking again")
+
+        await gateway.proceed()
+        await gateway.waitForStage(4)
+        XCTAssertEqual(model.liveActivity?.phase, .writing)
+        XCTAssertNil(model.liveActivity?.statusLine)
+        XCTAssertEqual(model.streamingReply, "Here")
+
+        await gateway.proceed()
+        await waitUntil { model.liveActivity == nil && model.messages.last?.role == .assistant }
+        let reply = try XCTUnwrap(model.messages.last)
+        XCTAssertEqual(reply.text, "Here is the digest")
+        XCTAssertEqual(model.stepsByReply[reply.id]?.map(\.title), ["Read Discord announcements", "Read Gmail"], "the steps stay under the reply they produced")
+        XCTAssertNil(model.streamingReply)
+    }
+
     func testRestoreDoesNotClaimReadyWhenGatewayConnectionFails() async {
         let model = self.readyModel(store: RecordingPersistence(), gateway: OfflineGateway())
 
@@ -570,6 +610,47 @@ private struct OfflineGateway: ChatGateway {
         update: @escaping @Sendable (ChatDeliveryUpdate) async -> Void) async throws
     {
         throw ChatGatewayError.offline
+    }
+}
+
+/// Delivers in stages the test releases one at a time, so each intermediate
+/// state of the model can be checked while the delivery is still open.
+private actor ActivityGateway: ChatGateway {
+    private var stage = 0
+    private var gate: CheckedContinuation<Void, Never>?
+    private var stageWaiters: [(Int, CheckedContinuation<Void, Never>)] = []
+
+    func deliver(_ entry: OutboxEntry, update: @escaping @Sendable (ChatDeliveryUpdate) async -> Void) async throws {
+        await update(.accepted)
+        await self.reach(1)
+        await update(.activity(.toolStarted(tool: "discord_announcements", callID: "c1", command: nil, operation: nil)))
+        await self.reach(2)
+        await update(.activity(.toolFinished(tool: "discord_announcements", callID: "c1", isError: false)))
+        await update(.activity(.toolStarted(tool: "nodes", callID: "c2", command: "connections.read", operation: "gmailMessages")))
+        await update(.activity(.toolFinished(tool: "nodes", callID: "c2", isError: true)))
+        await self.reach(3)
+        await update(.stream("Here"))
+        await self.reach(4)
+        await update(.reply("Here is the digest"))
+    }
+
+    private func reach(_ stage: Int) async {
+        self.stage = stage
+        for (wanted, waiter) in self.stageWaiters where wanted <= stage { waiter.resume() }
+        self.stageWaiters.removeAll { $0.0 <= stage }
+        await withCheckedContinuation { self.gate = $0 }
+    }
+
+    func waitForStage(_ wanted: Int) async {
+        if self.stage >= wanted { return }
+        await withCheckedContinuation { self.stageWaiters.append((wanted, $0)) }
+        // Let the model apply the update that preceded the stage marker.
+        await Task.yield()
+    }
+
+    func proceed() {
+        self.gate?.resume()
+        self.gate = nil
     }
 }
 

@@ -206,7 +206,9 @@ public enum GatewayRequestFactory {
                     instanceId: instanceID),
                 role: "operator",
                 scopes: scopes,
-                caps: [],
+                // tool-events: the gateway then sends this connection the
+                // agent's tool starts and results for its own chat runs.
+                caps: ["tool-events"],
                 auth: .init(token: token),
                 device: proof.device))
     }

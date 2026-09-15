@@ -116,15 +116,16 @@ final class OpenClawGatewayConnectionTests: XCTestCase {
         XCTAssertEqual(params["idempotencyKey"] as? String, "message-1")
     }
 
-    func testLifecycleAgentEventsAreIgnoredWithoutBreakingChat() async throws {
+    func testOnlyToolAgentEventsReachTheAppAndLifecycleOnesStayIgnored() async throws {
         let challenge = #"{"type":"event","event":"connect.challenge","payload":{"nonce":"nonce-1","ts":1725000000123}}"#
         let accepted = #"{"type":"res","id":"connect-1","ok":true,"payload":{"status":"connected"}}"#
         let valid = #"{"type":"event","event":"agent","payload":{"runId":"run-1","sessionKey":"agent:main:main","stream":"codex_app_server.lifecycle","data":{"phase":"thread_ready","threadId":"sensitive","model":"sensitive"},"seq":2,"ts":3}}"#
         let unknown = #"{"type":"event","event":"agent","payload":{"runId":"run-1","sessionKey":"agent:main:main","stream":"codex_app_server.lifecycle","data":{"phase":"future_phase"}}}"#
         let malformed = #"{"type":"event","event":"agent","payload":{"runId":7,"sessionKey":"agent:main:main","stream":"codex_app_server.lifecycle","data":{"phase":"startup"}}}"#
         let foreign = #"{"type":"event","event":"agent","payload":{"runId":"run-1","sessionKey":"agent:other:main","stream":"codex_app_server.lifecycle","data":{"phase":"startup"}}}"#
+        let tool = #"{"type":"event","event":"agent","payload":{"runId":"run-1","sessionKey":"agent:main:main","stream":"tool","seq":5,"data":{"phase":"start","name":"discord_announcements","toolCallId":"call-9","args":{"limit":25}}}}"#
         let chat = #"{"type":"event","event":"chat","payload":{"runId":"run-1","sessionKey":"agent:main:main","seq":1,"state":"final","message":"Hello"}}"#
-        let transport = RecordingGatewayTransport(incoming: [challenge, accepted, valid, unknown, malformed, foreign, chat])
+        let transport = RecordingGatewayTransport(incoming: [challenge, accepted, valid, unknown, malformed, foreign, tool, chat])
         let connection = OpenClawGatewayConnection(
             transport: transport, token: "local-token", identity: GatewayDeviceIdentity(),
             metadata: .init(appVersion: "1.0", platform: "iOS", instanceID: "install-1"),
@@ -135,12 +136,20 @@ final class OpenClawGatewayConnectionTests: XCTestCase {
         let ignoredUnknown = try await connection.receive()
         let ignoredMalformed = try await connection.receive()
         let ignoredForeign = try await connection.receive()
+        let activity = try await connection.receive()
         let conversation = try await connection.receive()
         XCTAssertEqual(decoded, .ignored(event: "agent"))
         XCTAssertEqual(ignoredUnknown, .ignored(event: "agent"))
         XCTAssertEqual(ignoredMalformed, .ignored(event: "agent"))
         XCTAssertEqual(ignoredForeign, .ignored(event: "agent"))
-        XCTAssertEqual(conversation, .conversation([.working(runID: "run-1"), .reply(runID: "run-1", text: "Hello")]))
+        XCTAssertEqual(activity, .conversation([
+            .working(runID: "run-1"),
+            .activity(runID: "run-1", .toolStarted(tool: "discord_announcements", callID: "call-9", command: nil, operation: nil)),
+        ]), "a tool start for this session is the one agent event that reaches the app")
+        XCTAssertEqual(conversation, .conversation([.reply(runID: "run-1", text: "Hello")]), "working was already announced by the tool start")
+        let sent = await transport.sentMessages()
+        let connect = try XCTUnwrap(JSONSerialization.jsonObject(with: sent[0]) as? [String: Any])
+        XCTAssertEqual((connect["params"] as? [String: Any])?["caps"] as? [String], ["tool-events"], "without the cap the gateway sends no tool events")
     }
 
     func testTypedRequestUsesCurrentGatewayRPCEnvelope() async throws {

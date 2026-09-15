@@ -123,15 +123,17 @@ struct ChatScreen: View {
                             SetupStatus(setup: self.setup)
                         }
                         ForEach(self.model.messages) { message in
-                            MessageBubble(message: message)
+                            MessageBubble(message: message, steps: self.model.stepsByReply[message.id] ?? [])
                                 .id(message.id)
                         }
                         ForEach(self.model.approvals) { approval in
                             ApprovalCard(approval: approval, model: self.model)
                                 .id("approval-\(approval.id)")
                         }
-                        if let streamingReply = self.model.streamingReply {
-                            StreamingBubble(text: streamingReply)
+                        if self.model.liveActivity != nil || self.model.streamingReply != nil {
+                            ActivityBubble(
+                                activity: self.model.liveActivity ?? ChatLiveActivity(phase: .writing),
+                                text: self.model.streamingReply)
                                 .id("streaming-reply")
                         }
                         if let lastError = self.model.lastError {
@@ -152,6 +154,11 @@ struct ChatScreen: View {
                 .onChange(of: self.model.streamingReply) {
                     if self.model.streamingReply != nil {
                         proxy.scrollTo("streaming-reply", anchor: .bottom)
+                    }
+                }
+                .onChange(of: self.model.liveActivity) {
+                    if self.model.liveActivity != nil {
+                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("streaming-reply", anchor: .bottom) }
                     }
                 }
                 .onChange(of: self.model.approvals.map(\.id)) {
@@ -310,9 +317,19 @@ private struct SetupBanner: View {
 
 private struct MessageBubble: View {
     let message: ChatMessage
+    /// What the agent did to produce this reply, this launch. Empty for
+    /// anything restored from disk.
+    var steps: [ChatActivityStep] = []
 
     var body: some View {
         VStack(alignment: self.message.role == .user ? .trailing : .leading, spacing: 4) {
+            if !self.steps.isEmpty {
+                Text(self.steps.map(\.title).joined(separator: " · "))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 4)
+                    .accessibilityLabel("Operator " + self.steps.map(\.title).joined(separator: ", "))
+            }
             if case let .weather(card) = self.message.attachment {
                 WeatherResultCard(card: card)
             } else {
@@ -353,22 +370,58 @@ private struct WeatherResultCard: View {
     }
 }
 
-private struct StreamingBubble: View {
-    let text: String
+/// The reply in progress: each tool the agent has used so far with its
+/// state, the line for what is happening between tools, and the text as it
+/// streams. Present from acceptance to reply, so the person always sees
+/// what Operator is doing rather than a bubble that says nothing.
+private struct ActivityBubble: View {
+    let activity: ChatLiveActivity
+    let text: String?
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            Text(ChatMessageText.assistantText(self.text))
-                .textSelection(.enabled)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    Color(uiColor: .secondarySystemBackground),
-                    in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            ProgressView()
-                .controlSize(.small)
-                .accessibilityLabel("Operator is working")
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(self.activity.steps) { step in
+                HStack(spacing: 6) {
+                    switch step.state {
+                    case .running:
+                        ProgressView().controlSize(.mini)
+                    case .done:
+                        Image(systemName: "checkmark").foregroundStyle(.secondary)
+                    case .failed:
+                        Image(systemName: "exclamationmark.circle").foregroundStyle(.orange)
+                    }
+                    Text(step.title)
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(step.state == .failed ? "\(step.title), failed" : step.title)
+            }
+            if let status = self.activity.statusLine, self.text == nil {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.mini)
+                    Text(status)
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Operator is thinking")
+            }
+            if let text {
+                HStack(alignment: .bottom, spacing: 8) {
+                    Text(ChatMessageText.assistantText(text))
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            Color(uiColor: .secondarySystemBackground),
+                            in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel("Operator is writing")
+                }
+            }
         }
+        .padding(.horizontal, self.text == nil ? 4 : 0)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

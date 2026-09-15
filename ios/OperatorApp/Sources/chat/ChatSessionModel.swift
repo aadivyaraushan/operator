@@ -34,6 +34,11 @@ final class ChatSessionModel: ObservableObject {
     @Published private(set) var messages: [ChatMessage] = []
     @Published private(set) var outbox: [OutboxEntry] = []
     @Published private(set) var streamingReply: String?
+    /// What the agent is doing for the message in flight; nil when idle.
+    @Published private(set) var liveActivity: ChatLiveActivity?
+    /// The steps behind each reply of this launch, keyed by the reply's id.
+    /// Not persisted: it is a record of what was done, not of what was said.
+    @Published private(set) var stepsByReply: [UUID: [ChatActivityStep]] = [:]
     @Published private(set) var approvals: [GatewayApprovalSnapshot] = []
     @Published private(set) var connectionState: ConnectionState = .starting
     @Published private(set) var lastError: String?
@@ -174,6 +179,7 @@ final class ChatSessionModel: ObservableObject {
             idempotencyKey: id.uuidString.lowercased(),
             state: .waiting))
         self.streamingReply = nil
+        self.liveActivity = nil
         self.lastError = nil
         self.connectionState = self.isGatewayReady ? .working : .offline
         self.logger.info("[chat] staged input id=\(id.uuidString, privacy: .public) characters=\(trimmed.count)")
@@ -268,6 +274,7 @@ final class ChatSessionModel: ObservableObject {
                 self.connectionState = .offline
                 self.lastError = Self.userMessage(for: error)
                 self.streamingReply = nil
+                self.liveActivity = nil
                 self.logger.error("[chat] delivery paused id=\(entry.id.uuidString, privacy: .public)")
                 shouldReconnectAfterFlush = true
                 break
@@ -335,28 +342,46 @@ final class ChatSessionModel: ObservableObject {
         do {
             switch update {
             case .accepted, .working:
+                if self.liveActivity == nil { self.liveActivity = ChatLiveActivity() }
+                self.connectionState = .working
+            case let .activity(activity):
+                var live = self.liveActivity ?? ChatLiveActivity()
+                live.apply(activity)
+                self.liveActivity = live
                 self.connectionState = .working
             case let .stream(text):
                 self.streamingReply = text
+                var live = self.liveActivity ?? ChatLiveActivity()
+                live.phase = .writing
+                self.liveActivity = live
                 self.connectionState = .working
             case let .reply(text):
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.apply(try await self.store.appendAssistant(text))
+                if let steps = self.liveActivity?.steps, !steps.isEmpty,
+                   let reply = self.messages.last, reply.role == .assistant
+                {
+                    self.stepsByReply[reply.id] = steps
+                }
                 self.streamingReply = nil
+                self.liveActivity = nil
                 self.connectionState = .ready
                 self.logger.info("[chat] reply persisted for id=\(entryID.uuidString, privacy: .public)")
             case let .failed(message):
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.streamingReply = nil
+                self.liveActivity = nil
                 self.lastError = message
                 self.connectionState = .ready
             case .stopped:
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.streamingReply = nil
+                self.liveActivity = nil
                 self.connectionState = .ready
             }
         } catch {
             self.connectionState = .offline
+            self.liveActivity = nil
             self.lastError = "Operator replied, but the result could not be saved."
             self.logger.error("[chat] delivery update persistence failed")
         }

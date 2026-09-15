@@ -89,8 +89,108 @@ private struct MessageProjection: Decodable {
     }
 }
 
+/// One `agent` event as the gateway broadcasts it to a client that connected
+/// with the `tool-events` capability. Only the fields the app shows are
+/// decoded; tool arguments stay on the runtime except the node command and
+/// operation names, which are what turn "nodes" into "Reading Gmail".
+public struct GatewayAgentEvent: Decodable, Equatable, Sendable {
+    public let runID: String
+    public let sessionKey: String?
+    public let sequence: Int?
+    public let stream: String
+    public let phase: String?
+    public let toolName: String?
+    public let toolCallID: String?
+    public let isError: Bool
+    public let commandName: String?
+    public let operationName: String?
+
+    public init(
+        runID: String, sessionKey: String? = nil, sequence: Int? = nil, stream: String,
+        phase: String? = nil, toolName: String? = nil, toolCallID: String? = nil, isError: Bool = false,
+        commandName: String? = nil, operationName: String? = nil)
+    {
+        self.runID = runID
+        self.sessionKey = sessionKey
+        self.sequence = sequence
+        self.stream = stream
+        self.phase = phase
+        self.toolName = toolName
+        self.toolCallID = toolCallID
+        self.isError = isError
+        self.commandName = commandName
+        self.operationName = operationName
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case runID = "runId"
+        case sessionKey
+        case sequence = "seq"
+        case stream
+        case data
+    }
+
+    private enum DataKeys: String, CodingKey {
+        case phase, name, toolCallId, isError, args
+    }
+
+    private enum ArgsKeys: String, CodingKey {
+        case command, params
+    }
+
+    private enum ParamsKeys: String, CodingKey {
+        case operation
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.runID = try container.decode(String.self, forKey: .runID)
+        self.sessionKey = try container.decodeIfPresent(String.self, forKey: .sessionKey)
+        self.sequence = try container.decodeIfPresent(Int.self, forKey: .sequence)
+        self.stream = try container.decode(String.self, forKey: .stream)
+        guard let data = try? container.nestedContainer(keyedBy: DataKeys.self, forKey: .data) else {
+            self.phase = nil; self.toolName = nil; self.toolCallID = nil; self.isError = false
+            self.commandName = nil; self.operationName = nil
+            return
+        }
+        self.phase = try? data.decodeIfPresent(String.self, forKey: .phase)
+        self.toolName = try? data.decodeIfPresent(String.self, forKey: .name)
+        self.toolCallID = try? data.decodeIfPresent(String.self, forKey: .toolCallId)
+        self.isError = (try? data.decodeIfPresent(Bool.self, forKey: .isError)) ?? false
+        if let args = try? data.nestedContainer(keyedBy: ArgsKeys.self, forKey: .args) {
+            self.commandName = try? args.decodeIfPresent(String.self, forKey: .command)
+            self.operationName = (try? args.nestedContainer(keyedBy: ParamsKeys.self, forKey: .params))
+                .flatMap { try? $0.decodeIfPresent(String.self, forKey: .operation) }
+        } else {
+            self.commandName = nil
+            self.operationName = nil
+        }
+    }
+}
+
+/// What the agent is doing inside a run, as far as the app shows it: a tool
+/// starting and a tool finishing. `tool` is the agent-facing tool name;
+/// `command` and `operation` are set when the tool was the runtime's node
+/// bridge, so the app can name the actual capability instead of "nodes".
+public enum GatewayRunActivity: Equatable, Sendable {
+    case toolStarted(tool: String, callID: String, command: String?, operation: String?)
+    case toolFinished(tool: String, callID: String, isError: Bool)
+
+    /// Nil for every stream and phase the app does not show.
+    public init?(_ event: GatewayAgentEvent) {
+        guard event.stream == "tool", let tool = event.toolName, !tool.isEmpty else { return nil }
+        let callID = event.toolCallID ?? tool
+        switch event.phase {
+        case "start": self = .toolStarted(tool: tool, callID: callID, command: event.commandName, operation: event.operationName)
+        case "result": self = .toolFinished(tool: tool, callID: callID, isError: event.isError)
+        default: return nil
+        }
+    }
+}
+
 public enum GatewayConversationEvent: Equatable, Sendable {
     case working(runID: String)
+    case activity(runID: String, GatewayRunActivity)
     case stream(runID: String, text: String)
     case reply(runID: String, text: String)
     case failed(runID: String, message: String)
@@ -164,6 +264,26 @@ public struct GatewayEventReducer: Sendable {
             output.append(.stopped(runID: event.runID))
             self.finish(event.runID)
         }
+        return output
+    }
+
+    /// Activity for a run the reducer has not finished. Agent events carry
+    /// their own sequence, separate from chat events, so only the session and
+    /// the finished set are checked; a first activity announces the run as
+    /// working like a first chat event would.
+    public mutating func apply(_ event: GatewayAgentEvent) -> [GatewayConversationEvent] {
+        guard event.sessionKey == nil || event.sessionKey == self.sessionKey,
+              !self.finished.contains(event.runID),
+              let activity = GatewayRunActivity(event)
+        else { return [] }
+        var run = self.runs[event.runID] ?? Run()
+        var output: [GatewayConversationEvent] = []
+        if !run.announcedWorking {
+            run.announcedWorking = true
+            output.append(.working(runID: event.runID))
+        }
+        self.runs[event.runID] = run
+        output.append(.activity(runID: event.runID, activity))
         return output
     }
 

@@ -75,7 +75,7 @@ private struct LocalChatDeliveryTimer {
 private extension GatewayConversationEvent {
     var runID: String {
         switch self {
-        case let .working(runID), let .stream(runID, _), let .reply(runID, _),
+        case let .working(runID), let .activity(runID, _), let .stream(runID, _), let .reply(runID, _),
              let .failed(runID, _), let .stopped(runID):
             return runID
         }
@@ -275,6 +275,9 @@ actor LocalOpenClawChatGateway: ChatGateway {
                     case let .working(runID):
                         self.activeRunID = runID
                         await update(.working)
+                    case let .activity(runID, activity):
+                        self.activeRunID = runID
+                        await update(.activity(activity))
                     case let .stream(runID, text):
                         self.activeRunID = runID
                         if let event = timing.firstText(in: text, at: self.monotonicMilliseconds()) {

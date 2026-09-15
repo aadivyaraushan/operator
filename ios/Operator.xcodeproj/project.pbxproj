@@ -100,6 +100,7 @@
 		BFE86801FE1F2D4954F0C351 /* ForegroundNodeCommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D5A293BE7C8252D848B61DE /* ForegroundNodeCommandRouter.swift */; };
 		C016266ACFDCD5A85D125BD3 /* ForegroundLocationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201F5539139E8F77225201B4 /* ForegroundLocationServiceTests.swift */; };
 		C3512DBBB74F4E7B8460FC83 /* LocalModelSetupGatewayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86ECCDBC4B74E8E94BD31A7B /* LocalModelSetupGatewayTests.swift */; };
+		C4FDFB65B65F048157366310 /* ChatActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D77EFF62D4E8D94BF0C1BF91 /* ChatActivity.swift */; };
 		C769F0BD6B3A535DF4FBF71B /* ConnectionDiscoveryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A2457FCFD27BD44CF915A1 /* ConnectionDiscoveryServiceTests.swift */; };
 		CBD80759C8879BA1902DE495 /* ChatEndToEndUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8494D608BFF220294347A7F /* ChatEndToEndUITests.swift */; };
 		CED0DD2CBF76656CC237E954 /* OperatorChatAppIntentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EB2EEF88717787396DCE133 /* OperatorChatAppIntentTests.swift */; };
@@ -307,6 +308,7 @@
 		D490F4DB23A72D1FB9731241 /* NativeNotionSetupCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNotionSetupCoordinator.swift; sourceTree = "<group>"; };
 		D5BBE65B3C8115DF59F3CA4E /* OperatorWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorWidget.swift; sourceTree = "<group>"; };
 		D6BECAAB613F39B7900BC7D5 /* ForegroundMessageDispatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMessageDispatchService.swift; sourceTree = "<group>"; };
+		D77EFF62D4E8D94BF0C1BF91 /* ChatActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatActivity.swift; sourceTree = "<group>"; };
 		D95163B738996C27B0B31D3E /* EmbeddedNodeBridge.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = EmbeddedNodeBridge.mm; sourceTree = "<group>"; };
 		DC6FA1D906E8FD16F6275EB4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DDB2224A771339FACE9D92A1 /* ConnectorPermissionsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorPermissionsScreen.swift; sourceTree = "<group>"; };
@@ -1224,6 +1226,7 @@
 		F9B65EEEE49D12C4CC113B90 /* chat */ = {
 			isa = PBXGroup;
 			children = (
+				D77EFF62D4E8D94BF0C1BF91 /* ChatActivity.swift */,
 				996961BE0B62984DE5354052 /* ChatScreen.swift */,
 				3F9676D6F9E8AD88AAAC40E2 /* ChatSessionModel.swift */,
 			);
@@ -1248,18 +1251,18 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_8796D7D3-2889-4282-8743-E201265E9B66" /* runtime */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = runtime;
-			sourceTree = "<group>";
-		};
-		"TEMP_A7E1C0E2-9398-41F4-8F29-A2AB92E720CF" /* embedded */ = {
+		"TEMP_8E95E15B-AB31-4AEC-9E6F-30EF66959919" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			path = embedded;
+			sourceTree = "<group>";
+		};
+		"TEMP_B5B4C3CC-31AD-43DA-8641-50DB6B2393E1" /* runtime */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = runtime;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1458,6 +1461,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C4FDFB65B65F048157366310 /* ChatActivity.swift in Sources */,
 				FD66FBAF132FD1B8830F9CF4 /* ChatContracts.swift in Sources */,
 				8DAA325B2CE2A7D6BB1A96AC /* ChatScreen.swift in Sources */,
 				13411FA22DB973F4F833DD9E /* ChatSessionModel.swift in Sources */,

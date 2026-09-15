@@ -278,6 +278,15 @@ public actor OpenClawGatewayConnection {
         case "event" where header.event == "chat":
             let frame = try JSONDecoder().decode(GatewayEventFrame<GatewayChatEvent>.self, from: data)
             return .conversation(self.reducer.apply(frame.payload))
+        case "event" where header.event == "agent":
+            // Tool starts and results for this session, sent because the
+            // connect frame asked for tool-events. Every other stream, and
+            // anything that does not decode, is ignored as before.
+            guard let frame = try? JSONDecoder().decode(GatewayEventFrame<GatewayAgentEvent>.self, from: data) else {
+                return .ignored(event: "agent")
+            }
+            let events = self.reducer.apply(frame.payload)
+            return events.isEmpty ? .ignored(event: "agent") : .conversation(events)
         case "event" where header.event == "session.approval":
             let frame = try JSONDecoder().decode(GatewayEventFrame<GatewaySessionApprovalEvent>.self, from: data)
             guard frame.payload.sessionKey == self.sessionKey else {

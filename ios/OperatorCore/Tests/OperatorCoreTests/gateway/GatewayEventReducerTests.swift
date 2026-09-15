@@ -100,6 +100,52 @@ final class GatewayEventReducerTests: XCTestCase {
             [])
     }
 
+    func testAgentToolEventsDecodeTheCapabilityBehindTheNodeBridgeAndNothingElse() throws {
+        let data = Data(#"{"type":"event","event":"agent","payload":{"runId":"run-1","sessionKey":"agent:main:main","seq":4,"stream":"tool","ts":3,"data":{"phase":"start","name":"nodes","toolCallId":"call-1","args":{"action":"invoke","node":"iphone","command":"connections.read","params":{"operation":"gmailMessages","limit":5,"query":"private"}}}}}"#.utf8)
+        let frame = try JSONDecoder().decode(GatewayEventFrame<GatewayAgentEvent>.self, from: data)
+        XCTAssertEqual(frame.payload.stream, "tool")
+        XCTAssertEqual(frame.payload.phase, "start")
+        XCTAssertEqual(frame.payload.toolName, "nodes")
+        XCTAssertEqual(frame.payload.toolCallID, "call-1")
+        XCTAssertEqual(frame.payload.commandName, "connections.read")
+        XCTAssertEqual(frame.payload.operationName, "gmailMessages")
+        XCTAssertEqual(
+            GatewayRunActivity(frame.payload),
+            .toolStarted(tool: "nodes", callID: "call-1", command: "connections.read", operation: "gmailMessages"))
+
+        let result = try JSONDecoder().decode(GatewayEventFrame<GatewayAgentEvent>.self, from: Data(#"{"type":"event","event":"agent","payload":{"runId":"run-1","stream":"tool","data":{"phase":"result","name":"nodes","toolCallId":"call-1","isError":true,"result":{"content":"private"}}}}"#.utf8))
+        XCTAssertEqual(GatewayRunActivity(result.payload), .toolFinished(tool: "nodes", callID: "call-1", isError: true))
+
+        let update = try JSONDecoder().decode(GatewayEventFrame<GatewayAgentEvent>.self, from: Data(#"{"type":"event","event":"agent","payload":{"runId":"run-1","stream":"tool","data":{"phase":"update","name":"nodes","toolCallId":"call-1"}}}"#.utf8))
+        XCTAssertNil(GatewayRunActivity(update.payload), "partial results are not shown")
+        let assistant = try JSONDecoder().decode(GatewayEventFrame<GatewayAgentEvent>.self, from: Data(#"{"type":"event","event":"agent","payload":{"runId":"run-1","stream":"assistant","data":{"text":"private","delta":"p"}}}"#.utf8))
+        XCTAssertNil(GatewayRunActivity(assistant.payload), "assistant text arrives through chat events")
+        let lifecycle = try JSONDecoder().decode(GatewayEventFrame<GatewayAgentEvent>.self, from: Data(#"{"type":"event","event":"agent","payload":{"runId":"run-1","stream":"lifecycle","data":{"phase":"start"}}}"#.utf8))
+        XCTAssertNil(GatewayRunActivity(lifecycle.payload))
+    }
+
+    func testAgentActivityAnnouncesWorkingOnceAndStopsAtTheFinishedRunOrAnotherSession() {
+        var reducer = GatewayEventReducer(sessionKey: "agent:main:main")
+        let start = GatewayAgentEvent(runID: "run-1", sessionKey: "agent:main:main", stream: "tool", phase: "start", toolName: "discord_announcements", toolCallID: "c1")
+        XCTAssertEqual(reducer.apply(start), [
+            .working(runID: "run-1"),
+            .activity(runID: "run-1", .toolStarted(tool: "discord_announcements", callID: "c1", command: nil, operation: nil)),
+        ])
+        let finish = GatewayAgentEvent(runID: "run-1", sessionKey: nil, stream: "tool", phase: "result", toolName: "discord_announcements", toolCallID: "c1")
+        XCTAssertEqual(reducer.apply(finish), [
+            .activity(runID: "run-1", .toolFinished(tool: "discord_announcements", callID: "c1", isError: false)),
+        ], "working is announced once; a missing session key is the gateway's own run")
+        XCTAssertEqual(
+            reducer.apply(.init(runID: "run-1", sessionKey: "agent:main:main", sequence: 1, state: .delta, deltaText: "Hi")),
+            [.stream(runID: "run-1", text: "Hi")], "chat events for the same run do not re-announce")
+        XCTAssertEqual(
+            reducer.apply(.init(runID: "run-1", sessionKey: "agent:main:main", sequence: 2, state: .final)),
+            [.reply(runID: "run-1", text: "Hi")])
+        XCTAssertEqual(reducer.apply(start), [], "a finished run takes no more activity")
+        let foreign = GatewayAgentEvent(runID: "run-2", sessionKey: "agent:other:main", stream: "tool", phase: "start", toolName: "exec", toolCallID: "c2")
+        XCTAssertEqual(reducer.apply(foreign), [])
+    }
+
     func testFinalWithoutReadableTextReportsUnverifiedFailure() {
         var emptyReducer = GatewayEventReducer(sessionKey: "main")
         XCTAssertEqual(
