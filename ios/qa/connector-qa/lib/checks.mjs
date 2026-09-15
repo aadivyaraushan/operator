@@ -18,8 +18,15 @@ const BLOCKED_LOG = [
 ];
 
 /// Commands that change something outside the phone. Clarify and decline
-/// scenarios forbid these unless the bank says otherwise.
-export const WRITE_COMMANDS = ["connections.write", "whatsapp.compose", "sms.compose"];
+/// scenarios forbid these unless the bank says otherwise. `sms.send` is the
+/// no-tap text: it goes out through the owner's shortcut with no composer.
+export const WRITE_COMMANDS = ["connections.write", "whatsapp.compose", "sms.compose", "sms.send"];
+
+/// The app's own permission layer refused a command because the owner has not
+/// granted that connector. The model is told to stop, so the turn cannot show
+/// what the connector does; the driver grants from the banner and the step
+/// is scored blocked, like a missing sign-in.
+const DENIED = /\[permissions\] denied connector=(\S+) access=(\S+)/;
 
 const NEGATIONS = /(?:\b(?:not|never|no|nothing|without|didn't|did not|wasn't|was not|haven't|have not|hasn't|has not|won't|will not|isn't|is not|couldn't|could not|can't|cannot|unable to|rather than|instead of)\b[^.!?\n]{0,40})$/i;
 
@@ -48,9 +55,11 @@ export function summarizeLog(lines) {
   const responses = [];
   const rejected = [];
   const blockedHits = [];
+  const denied = [];
   for (const { message } of lines) {
     let m;
     if ((m = message.match(/handling command=(\S+)/))) commands.push(m[1]);
+    if ((m = message.match(DENIED))) denied.push(`${m[1]}:${m[2]}`);
     if ((m = message.match(/\[account-(read|write)\] request .*?operation=(\w+)/))) operations.push(m[2]);
     if ((m = message.match(/\[account-(read|write)\] response .*?operation=(\w+).*?status=(\d+)/))) {
       responses.push({ operation: m[2], status: Number(m[3]) });
@@ -58,7 +67,7 @@ export function summarizeLog(lines) {
     if (/rejected/.test(message)) rejected.push(message);
     for (const re of BLOCKED_LOG) if (re.test(message)) { blockedHits.push(message); break; }
   }
-  return { commands, operations, responses, rejected, blockedHits };
+  return { commands, operations, responses, rejected, blockedHits, denied };
 }
 
 /// `scenario` is the bank entry (with expect); `step` is the driver line;
@@ -81,6 +90,12 @@ export function evaluate(scenario, step, reply, lines) {
   const blockedReply = BLOCKED_REPLY.some((re) => re.test(reply ?? ""));
   if (log.blockedHits.length || blockedReply) {
     add("blocked", false, log.blockedHits[0] ?? "reply mentions a rate or usage limit");
+    return { checks, mechanical: "blocked", log };
+  }
+  // A decline scenario is the one place a refusal by the permission layer is
+  // a valid outcome: the app said no, which is what the scenario wants to see.
+  if (log.denied.length && e.outcome !== "decline") {
+    add("grant-missing", false, `owner has not granted ${log.denied.join(",")}; the driver allowed it from the banner, rerun this scenario`);
     return { checks, mechanical: "blocked", log };
   }
 

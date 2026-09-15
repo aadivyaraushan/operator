@@ -44,7 +44,10 @@ are the whole contract.
 - `cleanup`: set to `none` on a write whose effect leaves nothing behind (starting
   playback); such prompts may omit `{marker}`.
 - `approve`: what the driver does with approval alerts: `allow` (default),
-  `deny`, `none`.
+  `deny`, `none`. Operator's own grant banner ("Operator wants to read X") is
+  allowed under both `allow` and `deny` - the deny is for the per-action
+  approval that follows - and left alone under `none`. Those taps are recorded
+  with source `permission` and never count as approval alerts.
 
 ## `expect`
 

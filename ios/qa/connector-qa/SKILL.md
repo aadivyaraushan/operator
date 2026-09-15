@@ -26,6 +26,14 @@ approved by the owner on 2026-09-14 for this workflow, no cap). Full pass at
 - Simulator `49A153C3-BA69-468F-BD21-D827A84E6F07` ("Operator iPhone 14 Pro")
   has the app installed with ChatGPT signed in and the connectors connected.
   Never erase the Simulator or uninstall the app; that loses the Keychain.
+- Every connector under test is **granted on Operator's Permissions page**
+  (menu → Permissions; reads and, for write banks, acts). Grants default to
+  none, and a connector without a read grant is not even offered to the model,
+  so an ungranted bank scores `commands-any` fails that look like the model
+  refusing. When the model does reach an ungranted command, the driver taps
+  Allow on the in-chat banner, the step is scored `blocked` (`grant-missing`),
+  and the next repeat runs with the grant. The driver never accepts a write
+  acknowledgement (WhatsApp send stays off) and never turns Read-only on or off.
 - Xcode 16.4, `xcodebuild` on PATH. Never pass `CODE_SIGNING_ALLOWED=NO`.
 - No other test is driving that Simulator.
 
@@ -77,6 +85,12 @@ the banks.
 Each turn in `report.md` shows the prompt, the reply, the commands and
 operations the app ran, statuses and alerts. `results.jsonl` adds the raw log
 lines for that window. A `commands-any` fail with a confident reply means the
-model answered without the connector (fabrication). A `status-2xx` fail is
-the provider or token. A `reply-present` fail with `sawWorking` true is a
-runtime hang; check `batch-N.xcodebuild.log` and the screenshot in the xcresult.
+model answered without the connector (fabrication), or the connector was
+never granted so the model was never offered it: check the Permissions page
+before blaming the model. A `grant-missing` block means the model reached a
+command the owner had not allowed. A `status-2xx` fail is the provider or
+token. A `reply-present` fail with `sawWorking` true is a runtime hang; check
+`batch-N.xcodebuild.log` and the screenshot in the xcresult. An `app-alive`
+fail is a crash: the report is in `~/Library/Logs/DiagnosticReports`, and
+the Sep 15 runs' `Intl.Segmenter` crashes are fixed by
+`Runtime/native-node/compat/intl/segmenter.mjs`.

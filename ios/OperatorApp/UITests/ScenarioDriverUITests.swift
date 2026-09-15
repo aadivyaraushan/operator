@@ -10,6 +10,14 @@ import XCTest
 // resultsPath). It never judges a reply: the runner reads the persisted
 // conversation and the app log for that.
 //
+// Operator's own permission layer (ConnectorPermissionCenter) is handled like
+// the environment it is: the first-launch Permissions cover is dismissed, an
+// in-chat "Operator wants to read X" banner is granted during a step (the
+// runner scores that step `blocked`, since the model was told to stop), and a
+// write acknowledgement is always declined - the driver never turns on a grant
+// the owner must read a warning for. Those show up as alerts with source
+// "permission", which the checks keep apart from the app's approval alerts.
+//
 // Every step spends one real model turn on the owner's ChatGPT account. Gated so
 // the default scheme never runs it.
 
@@ -94,8 +102,10 @@ final class ScenarioDriverUITests: XCTestCase {
                     result.launched = true
                 }
                 // A leftover alert from the previous step (approve: none, or a
-                // permission sheet) would block the composer. Cancel is the safe answer.
-                handleAlerts(app: app, springboard: springboard, approve: "deny", into: &result)
+                // permission sheet) would block the composer. Cancel is the safe
+                // answer, and a leftover grant banner is dismissed rather than
+                // granted so no step changes the grants outside its own window.
+                handleAlerts(app: app, springboard: springboard, approve: "deny", grant: false, into: &result)
                 try waitForReady(app, timeout: batch.launchTimeoutSeconds)
                 result.readyAt = now()
                 result.repliesBefore = assistantReplies(in: app).count
@@ -121,7 +131,7 @@ final class ScenarioDriverUITests: XCTestCase {
                     // Queries against a dead app are slow and fail the test; stop
                     // polling the moment it is gone.
                     if app.state == .notRunning { throw DriverError.appCrashed }
-                    handleAlerts(app: app, springboard: springboard, approve: step.approve, into: &result)
+                    handleAlerts(app: app, springboard: springboard, approve: step.approve, grant: step.approve != "none", into: &result)
                     let busy = app.buttons["Stop Operator"].exists || app.staticTexts["Operator, Working locally"].exists
                     if busy { result.sawWorking = true; idlePolls = 0 }
                     let ready = app.staticTexts["Operator, Ready on this iPhone"].exists
@@ -161,6 +171,10 @@ final class ScenarioDriverUITests: XCTestCase {
     private func waitForReady(_ app: XCUIApplication, timeout: Double) throws {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
+            // First launch after install: the Permissions page covers the chat
+            // until the owner taps Continue. Nothing is granted by that tap.
+            let cover = app.buttons["permissions-done"]
+            if cover.exists, cover.isHittable { cover.tap() }
             if app.buttons["Connect ChatGPT"].exists { throw DriverError.blocked("model-not-signed-in") }
             if app.staticTexts["Operator, Ready on this iPhone"].exists { return }
             Thread.sleep(forTimeInterval: 1)
@@ -170,7 +184,7 @@ final class ScenarioDriverUITests: XCTestCase {
 
     // MARK: alerts
 
-    private func handleAlerts(app: XCUIApplication, springboard: XCUIApplication, approve: String,
+    private func handleAlerts(app: XCUIApplication, springboard: XCUIApplication, approve: String, grant: Bool,
                               into result: inout StepResult) {
         let alert = app.alerts.firstMatch
         if alert.exists {
@@ -191,6 +205,45 @@ final class ScenarioDriverUITests: XCTestCase {
                              allow: ["Allow Full Access", "Allow While Using App", "Allow Once", "Allow", "OK"],
                              deny: ["Don't Allow", "Cancel"])
             result.alerts.append(.init(source: "springboard", title: title, message: "", action: action, at: now()))
+            return
+        }
+        // A write grant that carries a warning (WhatsApp send) opens the
+        // acknowledgement sheet. The driver never accepts it: that grant is the
+        // owner's to make after reading the warning, and the QA banks hold no
+        // scenario that needs it.
+        let acknowledgement = app.buttons["acknowledgement-confirm"]
+        if acknowledgement.exists {
+            let leave = app.buttons["Leave it off"]
+            let action = leave.exists ? "Leave it off" : "no-button"
+            if leave.exists { leave.tap() }
+            result.alerts.append(.init(source: "permission", title: "acknowledgement", message: "", action: action, at: now()))
+            return
+        }
+        // The Permissions page, opened by a banner Allow that needed the
+        // warning above, or the first-launch cover. Done/Continue closes it
+        // without changing any grant.
+        let page = app.buttons["permissions-done"]
+        if page.exists, page.isHittable {
+            page.tap()
+            result.alerts.append(.init(source: "permission", title: "permissions-page", message: "", action: "Done", at: now()))
+            return
+        }
+        // "Operator wants to read X": the model asked for something not yet
+        // granted and was told to stop. Granting here lets the next repeat run;
+        // the runner scores this step blocked from the log, not from this record.
+        let allow = app.buttons["permission-banner-allow"]
+        if allow.exists {
+            let ask = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Operator wants to")).firstMatch
+            let title = ask.exists ? ask.label : "grant request"
+            var action = "left"
+            if grant {
+                allow.tap()
+                action = "Allow"
+            } else if app.buttons["Not now"].exists {
+                app.buttons["Not now"].tap()
+                action = "Not now"
+            }
+            result.alerts.append(.init(source: "permission", title: title, message: "", action: action, at: now()))
             return
         }
         let card = app.otherElements.matching(NSPredicate(format: "label BEGINSWITH %@", "Action needs your approval")).firstMatch

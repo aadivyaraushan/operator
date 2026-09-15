@@ -1,0 +1,13 @@
+{
+  "steps": [
+    {
+      "stepKey": "dev-precise#1",
+      "prompt": "What is my battery level and is it charging?",
+      "launch": "relaunch",
+      "approve": "allow"
+    }
+  ],
+  "resultsPath": "/Users/surya/operator/saved-results/connector-qa/runs/20260915T160858-driver-check/batch-0.results.jsonl",
+  "launchTimeoutSeconds": 150,
+  "replyTimeoutSeconds": 240
+}

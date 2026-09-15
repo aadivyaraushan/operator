@@ -1,0 +1,12 @@
+{
+  "runId": "20260915T160858-driver-check",
+  "marker": "qa202609151608ee66",
+  "udid": "3F8D8E10-50BB-481C-A224-5FAC9014C7BA",
+  "simName": "iPhone 16 Plus",
+  "startedAt": "2026-09-15T16:08:59.227Z",
+  "repeats": 1,
+  "scenarioIds": [
+    "dev-precise"
+  ],
+  "account": "ssdear@gmail.com (ChatGPT, personal, owner-approved 2026-09-14)"
+}

@@ -10,7 +10,7 @@
 //
 // Every step in `run` is one real model turn on the owner's ChatGPT account.
 
-import { mkdirSync, writeFileSync, existsSync, readFileSync, copyFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadBanks, select, expand, allScenarios, newMarker } from "./lib/scenarios.mjs";
@@ -66,8 +66,8 @@ async function runCommand() {
   const udid = args.sim ?? process.env.OPERATOR_QA_SIM ?? DEFAULT_SIM;
   const simName = ensureBooted(udid);
   if (!appInstalled(udid)) throw new Error(`Operator is not installed on ${udid}; install the live build first`);
-  const convPath = conversationPath(udid);
-  copyFileSync(convPath, join(dir, "conversation-before.json"));
+  // A fresh install has no store yet; readConversation treats that as empty.
+  writeFileSync(join(dir, "conversation-before.json"), JSON.stringify(readConversation(conversationPath(udid))));
 
   let testrun = args["skip-build"] ? xctestrun() : null;
   if (!testrun) {
@@ -143,7 +143,7 @@ function assemble(step, driver, scenariosById, logLines, conversation) {
     launch: step.launch, approve: step.approve, prompt: step.prompt, reply: reply.text, replyMessageIds: reply.ids,
     sentAt, doneAt: driver.doneAt ?? null, elapsedSeconds: driver.doneAt && sentAt ? Math.round(driver.doneAt - sentAt) : null,
     alerts: driver.alerts ?? [], error: driver.error ?? null, sawWorking: driver.sawWorking ?? false,
-    log: { commands: log.commands, operations: log.operations, responses: log.responses, rejected: log.rejected, blockedHits: log.blockedHits },
+    log: { commands: log.commands, operations: log.operations, responses: log.responses, rejected: log.rejected, blockedHits: log.blockedHits, denied: log.denied },
     logLines: lines.map((l) => `${l.category}: ${l.message}`),
     checks, mechanical,
   };
