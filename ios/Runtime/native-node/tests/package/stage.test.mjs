@@ -40,6 +40,7 @@ test('packages the real entry contract and patches only the copied public packag
   assert.equal(fs.readFileSync(path.join(source, searchModule), 'utf8'), searchSource);
   assert.ok(fs.existsSync(path.join(output, 'entry.mjs')));
   assert.ok(fs.existsSync(path.join(output, 'host/start.mjs')));
+  assert.ok(fs.existsSync(path.join(output, 'compat/intl/segmenter.mjs')), 'entry.mjs imports the Segmenter fallback, so staging must carry it');
   assert.ok(!fs.existsSync(path.join(output, 'openclaw/private-account.json')));
   assert.match(fs.readFileSync(path.join(output, 'openclaw/dist/openclaw-state-db-Bh3Bq87y.js'), 'utf8'), /Operator native ownership admission/);
   assert.equal(fs.readFileSync(path.join(source, 'dist/openclaw-state-db-Bh3Bq87y.js'), 'utf8'), original);

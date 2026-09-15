@@ -63,7 +63,7 @@ export function stageRuntime(packageRoot, output) {
   const seeded = fs.readFileSync(agentsTemplate, 'utf8');
   if (seeded.includes('## When you cannot carry something out')) throw new Error('Upstream AGENTS.md template already carries the Operator guidance');
   fs.writeFileSync(agentsTemplate, `${seeded.trimEnd()}\n${OPERATOR_WORKSPACE_GUIDANCE}`);
-  for (const name of ['entry.mjs', 'host/start.mjs', 'gateway/state.mjs', 'package/workspace-guidance.mjs']) {
+  for (const name of ['entry.mjs', 'host/start.mjs', 'gateway/state.mjs', 'package/workspace-guidance.mjs', 'compat/intl/segmenter.mjs']) {
     copy(path.join(sourceRoot, name), path.join(output, name));
   }
   fs.writeFileSync(path.join(output, 'openclaw', ownershipModule), patched);
