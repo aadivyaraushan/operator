@@ -295,7 +295,7 @@ actor DirectAccountReader {
         switch operation {
         // attendees is returned so an update that changes the guest list can
         // carry the existing guests; the PATCH replaces the whole list.
-        case .googleCalendarEvents: keys = ["id", "summary", "description", "start", "end", "htmlLink", "attendees"]
+        case .googleCalendarEvents: keys = ["id", "summary", "description", "start", "end", "htmlLink", "attendees", "hangoutLink"]
         case .googleDriveFiles: keys = ["id", "name", "mimeType"]
         case .googleTasks: keys = ["id", "title", "notes", "due", "status", "updated", "webViewLink"]
         // Unreachable for the same reason; Gmail rows are constructed field

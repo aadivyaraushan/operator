@@ -74,8 +74,8 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         let required: Set<String>
         let optional: Set<String>
         switch operation {
-        case .googleCalendarCreateEvent: required = ["operation", "summary", "description", "startRFC3339", "endRFC3339"]; optional = ["attendees"]
-        case .googleCalendarUpdateEvent: required = ["operation", "eventID"]; optional = ["summary", "description", "startRFC3339", "endRFC3339", "attendees"]
+        case .googleCalendarCreateEvent: required = ["operation", "summary", "description", "startRFC3339", "endRFC3339"]; optional = ["attendees", "addMeetLink"]
+        case .googleCalendarUpdateEvent: required = ["operation", "eventID"]; optional = ["summary", "description", "startRFC3339", "endRFC3339", "attendees", "addMeetLink"]
         case .googleDriveCreateTextFile: required = ["operation", "name", "content"]; optional = []
         case .outlookCreateDraft: required = ["operation", "subject", "body"]; optional = []
         case .outlookSendMail: required = ["operation", "to", "subject", "body"]; optional = []
@@ -97,15 +97,21 @@ extension DirectAccountWriter: AccountWriteExecuting {}
             guard let list = value as? [String] else { return nil }
             return .some(list)
         }
+        func optionalFlag(_ key: String) -> Bool? {
+            guard let value = object[key], !(value is NSNull) else { return false }
+            // JSONSerialization hands booleans back as NSNumber; a 0/1 would pass too, which is fine.
+            guard let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() else { return nil }
+            return number.boolValue
+        }
         let request: AccountWriteRequest
         switch operation {
         case .googleCalendarCreateEvent:
-            guard let a=string("summary"),let b=string("description"),let c=string("startRFC3339"),let d=string("endRFC3339"), let attendees=optionalStrings("attendees") else{return nil}
-            request = .googleCalendarCreateEvent(.init(summary:a,description:b,startRFC3339:c,endRFC3339:d,attendees:attendees ?? []))
+            guard let a=string("summary"),let b=string("description"),let c=string("startRFC3339"),let d=string("endRFC3339"), let attendees=optionalStrings("attendees"), let meet=optionalFlag("addMeetLink") else{return nil}
+            request = .googleCalendarCreateEvent(.init(summary:a,description:b,startRFC3339:c,endRFC3339:d,attendees:attendees ?? [],addMeetLink:meet))
         case .googleCalendarUpdateEvent:
             guard let id=string("eventID"), let summary=optionalString("summary"), let description=optionalString("description"),
-                  let start=optionalString("startRFC3339"), let end=optionalString("endRFC3339"), let attendees=optionalStrings("attendees") else{return nil}
-            request = .googleCalendarUpdateEvent(.init(eventID:id,summary:summary,description:description,startRFC3339:start,endRFC3339:end,attendees:attendees))
+                  let start=optionalString("startRFC3339"), let end=optionalString("endRFC3339"), let attendees=optionalStrings("attendees"), let meet=optionalFlag("addMeetLink") else{return nil}
+            request = .googleCalendarUpdateEvent(.init(eventID:id,summary:summary,description:description,startRFC3339:start,endRFC3339:end,attendees:attendees,addMeetLink:meet))
         case .googleDriveCreateTextFile: guard let a=string("name"),let b=string("content") else{return nil}; request = .googleDriveCreateTextFile(.init(name:a,content:b))
         case .outlookCreateDraft: guard let a=string("subject"),let b=string("body") else{return nil}; request = .outlookCreateDraft(.init(subject:a,body:b))
         case .outlookSendMail: guard let a=string("to"),let b=string("subject"),let c=string("body") else{return nil}; request = .outlookSendMail(.init(to:a,subject:b,body:c))
@@ -119,7 +125,7 @@ extension DirectAccountWriter: AccountWriteExecuting {}
     private static func fingerprint(_ request: AccountWriteRequest) -> String { String(describing: request.operation) + "|" + preview(request) }
     private static func preview(_ request: AccountWriteRequest) -> String {
         switch request {
-        case let .googleCalendarCreateEvent(v): "Calendar event\nSummary: \(v.summary)\nStarts: \(v.startRFC3339)\nEnds: \(v.endRFC3339)\nDescription: \(v.description)" + (v.attendees.isEmpty ? "" : "\nInvites sent to: \(v.attendees.joined(separator: ", "))")
+        case let .googleCalendarCreateEvent(v): "Calendar event\nSummary: \(v.summary)\nStarts: \(v.startRFC3339)\nEnds: \(v.endRFC3339)\nDescription: \(v.description)" + (v.attendees.isEmpty ? "" : "\nInvites sent to: \(v.attendees.joined(separator: ", "))") + (v.addMeetLink ? "\nGoogle Meet link: added" : "")
         case let .googleCalendarUpdateEvent(v): Self.updatePreview(v)
         case let .googleDriveCreateTextFile(v): "Drive file \(v.name)\nContent: \(v.content)"
         case let .outlookCreateDraft(v): "Outlook draft\nSubject: \(v.subject)\nBody: \(v.body)"
@@ -138,12 +144,13 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         if let end = v.endRFC3339 { lines.append("Ends: \(end)") }
         if let description = v.description { lines.append("Description: \(description)") }
         if let attendees = v.attendees { lines.append("Guest list becomes: \(attendees.isEmpty ? "nobody" : attendees.joined(separator: ", "))") }
+        if v.addMeetLink { lines.append("Google Meet link: added") }
         return lines.joined(separator: "\n")
     }
 
     private static func receiptJSON(_ receipt: AccountWriteReceipt, operation: AccountWriteOperation) -> String {
         let detail: String = switch receipt {
-        case let .googleCalendarEvent(id): "\"kind\":\"googleCalendarEvent\",\"id\":\"\(id)\""
+        case let .googleCalendarEvent(id, meetLink): "\"kind\":\"googleCalendarEvent\",\"id\":\"\(id)\"" + (meetLink.map { ",\"meetLink\":\"\($0)\"" } ?? "")
         case let .googleDriveFile(id): "\"kind\":\"googleDriveFile\",\"id\":\"\(id)\""
         case let .outlookDraft(id): "\"kind\":\"outlookDraft\",\"id\":\"\(id)\""
         case .outlookMailAccepted: "\"kind\":\"outlookMailAccepted\""

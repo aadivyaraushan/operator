@@ -33,9 +33,9 @@ final class ForegroundMessageDispatchService: GatewayNodeCommandHandler {
         guard command == GatewayNativeNodeSurface.messageComposeCommand else {
             return .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)")
         }
-        // Only a single recipient can be sent for the owner; the shortcut takes
-        // one. A group text still goes through the composer.
-        guard self.autosendAllowed(), let sendParams = Self.singleRecipientSendParams(from: paramsJSON) else {
+        // One person or a group of up to ten; more than that, or an odd shape,
+        // still goes through the composer.
+        guard self.autosendAllowed(), let sendParams = Self.sendParams(from: paramsJSON) else {
             return await self.compose.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
         }
         self.logger.info("[message-dispatch] compose routed to send-for-you")
@@ -45,17 +45,23 @@ final class ForegroundMessageDispatchService: GatewayNodeCommandHandler {
         return await self.send.handleNodeCommand(GatewayNativeNodeSurface.messageSendCommand, paramsJSON: sendParams, timeoutMilliseconds: timeoutMilliseconds)
     }
 
-    /// `{"recipients":[one],"body":...}` becomes `{"recipient":one,"body":...}`;
-    /// anything else is nil and falls through to the composer, whose own
-    /// validation then applies.
-    static func singleRecipientSendParams(from paramsJSON: String?) -> String? {
+    static let groupLimit = 10
+
+    /// `{"recipients":[one],"body":...}` becomes `{"recipient":one,"body":...}`
+    /// and `{"recipients":[several],"body":...}` is passed through as is, up
+    /// to `groupLimit` people. Anything else is nil and falls through to the
+    /// composer, whose own validation then applies.
+    static func sendParams(from paramsJSON: String?) -> String? {
         guard let paramsJSON,
               let object = try? JSONSerialization.jsonObject(with: Data(paramsJSON.utf8)) as? [String: Any],
               Set(object.keys) == ["recipients", "body"],
-              let recipients = object["recipients"] as? [String], recipients.count == 1,
-              let body = object["body"] as? String,
-              let data = try? JSONSerialization.data(withJSONObject: ["recipient": recipients[0], "body": body], options: [.sortedKeys])
+              let recipients = object["recipients"] as? [String], (1...Self.groupLimit).contains(recipients.count),
+              let body = object["body"] as? String
         else { return nil }
+        let params: [String: Any] = recipients.count == 1
+            ? ["recipient": recipients[0], "body": body]
+            : ["recipients": recipients, "body": body]
+        guard let data = try? JSONSerialization.data(withJSONObject: params, options: [.sortedKeys]) else { return nil }
         return String(decoding: data, as: UTF8.self)
     }
 }

@@ -156,7 +156,7 @@ final class LiveConnectorWriteTests: XCTestCase {
                                              description: "Operator live connector test.",
                                              startRFC3339: "2035-01-01T10:00:00Z",
                                              endRFC3339: "2035-01-01T11:00:00Z")))
-        guard case let .googleCalendarEvent(id) = receipt else { return XCTFail("unexpected receipt \(receipt)") }
+        guard case let .googleCalendarEvent(id, _) = receipt else { return XCTFail("unexpected receipt \(receipt)") }
         XCTAssertFalse(id.isEmpty)
         let page = try await reader(coordinator).read(.init(operation: .googleCalendarEvents, query: mark,
                                                             channel: nil, timeMin: "2034-12-31T00:00:00Z",
@@ -181,15 +181,16 @@ final class LiveConnectorWriteTests: XCTestCase {
                                              description: "Operator live connector test.",
                                              startRFC3339: "2035-01-02T10:00:00Z",
                                              endRFC3339: "2035-01-02T11:00:00Z",
-                                             attendees: [email])))
-        guard case let .googleCalendarEvent(id) = created else { return XCTFail("unexpected receipt \(created)") }
+                                             attendees: [email], addMeetLink: true)))
+        guard case let .googleCalendarEvent(id, meetLink) = created else { return XCTFail("unexpected receipt \(created)") }
+        XCTAssertNotNil(meetLink, "a Meet room should have been attached on create")
         let eventURL = URL(string: "https://www.googleapis.com/calendar/v3/calendars/primary/events/\(id)")!
         var verified = false
         do {
             let updated = try await writer(coordinator).writeAfterOwnerConfirmation(
                 .googleCalendarUpdateEvent(.init(eventID: id, summary: "\(mark) moved (Operator live test, safe to delete)", description: nil,
                                                  startRFC3339: "2035-01-02T12:00:00Z", endRFC3339: "2035-01-02T12:30:00Z", attendees: nil)))
-            XCTAssertEqual(updated, .googleCalendarEvent(id: id))
+            XCTAssertEqual(updated, .googleCalendarEvent(id: id, meetLink: meetLink), "the Meet link survives a PATCH that does not touch it")
             let (status, object) = await authed("GET", eventURL, token: accessToken)
             XCTAssertEqual(status, 200)
             XCTAssertEqual(object?["summary"] as? String, "\(mark) moved (Operator live test, safe to delete)")
@@ -200,7 +201,7 @@ final class LiveConnectorWriteTests: XCTestCase {
             XCTFail("update failed: \(error)")
         }
         _ = await authed("DELETE", eventURL, token: accessToken)
-        print("LIVE-WRITE googleCalendarUpdateEvent id=\(id) verified=\(verified) cleaned=true")
+        print("LIVE-WRITE googleCalendarUpdateEvent id=\(id) verified=\(verified) meet=\(meetLink != nil) cleaned=true")
     }
 
     private func reader(_ coordinator: NativeAccountSetupCoordinator) -> DirectAccountReader {

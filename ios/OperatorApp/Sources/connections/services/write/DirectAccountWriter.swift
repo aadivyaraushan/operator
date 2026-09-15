@@ -35,13 +35,16 @@ struct GoogleCalendarCreateEventWrite: Sendable {
     /// Email addresses to invite. Google sends each an invitation when the
     /// event is created (sendUpdates=all), so the owner sees them on the card.
     let attendees: [String]
+    /// Ask Google to attach a Meet conference. The link comes back in the receipt.
+    let addMeetLink: Bool
 
-    init(summary: String, description: String, startRFC3339: String, endRFC3339: String, attendees: [String] = []) {
+    init(summary: String, description: String, startRFC3339: String, endRFC3339: String, attendees: [String] = [], addMeetLink: Bool = false) {
         self.summary = summary
         self.description = description
         self.startRFC3339 = startRFC3339
         self.endRFC3339 = endRFC3339
         self.attendees = attendees
+        self.addMeetLink = addMeetLink
     }
 }
 
@@ -56,9 +59,22 @@ struct GoogleCalendarUpdateEventWrite: Sendable {
     let startRFC3339: String?
     let endRFC3339: String?
     let attendees: [String]?
+    /// True adds a Meet conference to an event that has none. There is no
+    /// "remove": false is the same as absent.
+    let addMeetLink: Bool
+
+    init(eventID: String, summary: String?, description: String?, startRFC3339: String?, endRFC3339: String?, attendees: [String]?, addMeetLink: Bool = false) {
+        self.eventID = eventID
+        self.summary = summary
+        self.description = description
+        self.startRFC3339 = startRFC3339
+        self.endRFC3339 = endRFC3339
+        self.attendees = attendees
+        self.addMeetLink = addMeetLink
+    }
 
     var isEmpty: Bool {
-        self.summary == nil && self.description == nil && self.startRFC3339 == nil && self.endRFC3339 == nil && self.attendees == nil
+        self.summary == nil && self.description == nil && self.startRFC3339 == nil && self.endRFC3339 == nil && self.attendees == nil && !self.addMeetLink
     }
 }
 
@@ -111,7 +127,8 @@ enum AccountWriteRequest: Sendable {
 }
 
 enum AccountWriteReceipt: Equatable, Sendable {
-    case googleCalendarEvent(id: String)
+    /// meetLink is the event's Google Meet URL when the event has one.
+    case googleCalendarEvent(id: String, meetLink: String? = nil)
     case googleDriveFile(id: String)
     case outlookDraft(id: String)
     case outlookMailAccepted
@@ -361,11 +378,17 @@ actor DirectAccountWriter {
                 "start": ["dateTime": value.startRFC3339],
                 "end": ["dateTime": value.endRFC3339],
             ]
+            var query: [URLQueryItem] = []
             if !value.attendees.isEmpty {
                 event["attendees"] = value.attendees.map { ["email": $0] }
                 // Without this Google records the guests but emails nobody.
-                components.queryItems = [URLQueryItem(name: "sendUpdates", value: "all")]
+                query.append(URLQueryItem(name: "sendUpdates", value: "all"))
             }
+            if value.addMeetLink {
+                event["conferenceData"] = self.meetConferenceRequest()
+                query.append(URLQueryItem(name: "conferenceDataVersion", value: "1"))
+            }
+            components.queryItems = query.isEmpty ? nil : query
             guard let calendarURL = components.url else { throw AccountWriteError.invalidRequest }
             url = calendarURL
             method = "POST"
@@ -380,7 +403,12 @@ actor DirectAccountWriter {
             if let end = value.endRFC3339 { patch["end"] = ["dateTime": end] }
             if let attendees = value.attendees { patch["attendees"] = attendees.map { ["email": $0] } }
             // Guests already on the event are told about every change.
-            components.queryItems = [URLQueryItem(name: "sendUpdates", value: "all")]
+            var query = [URLQueryItem(name: "sendUpdates", value: "all")]
+            if value.addMeetLink {
+                patch["conferenceData"] = self.meetConferenceRequest()
+                query.append(URLQueryItem(name: "conferenceDataVersion", value: "1"))
+            }
+            components.queryItems = query
             guard let calendarURL = components.url else { throw AccountWriteError.invalidRequest }
             url = calendarURL
             method = "PATCH"
@@ -443,6 +471,12 @@ actor DirectAccountWriter {
         return request
     }
 
+    /// Google creates the Meet room itself; the request id only makes the
+    /// creation idempotent on retry, and this writer never retries.
+    private static func meetConferenceRequest() -> [String: Any] {
+        ["createRequest": ["requestId": UUID().uuidString.lowercased(), "conferenceSolutionKey": ["type": "hangoutsMeet"]]]
+    }
+
     private static func jsonData(_ object: Any) throws -> Data {
         do {
             return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
@@ -495,7 +529,9 @@ actor DirectAccountWriter {
             guard let id = object["id"] as? String, self.validRemoteID(id, maxBytes: 1_024) else {
                 throw AccountWriteError.invalidResponse
             }
-            return .googleCalendarEvent(id: id)
+            // Only a Meet URL is passed on; anything else in hangoutLink is dropped.
+            let link = (object["hangoutLink"] as? String).flatMap { self.matches($0, pattern: #"^https://meet\.google\.com/[A-Za-z0-9-]{1,64}$"#) ? $0 : nil }
+            return .googleCalendarEvent(id: id, meetLink: link)
         case .googleDriveCreateTextFile:
             let object = try self.responseObject(data)
             guard let id = object["id"] as? String, self.validRemoteID(id, maxBytes: 2_048) else {

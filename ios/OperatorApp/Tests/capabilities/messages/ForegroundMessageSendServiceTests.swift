@@ -39,13 +39,32 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
         XCTAssertEqual(input, ["to": "+1 217 555 0100", "body": "running late, 10 min"], "recipient trimmed, body verbatim")
     }
 
+    func testAGroupIsHandedToTheShortcutAsAListOfRecipients() async throws {
+        let runner = FakeRunner()
+        let service = ForegroundMessageSendService(runner: runner, isAppActive: { true })
+        let result = await service.handleNodeCommand("sms.send", paramsJSON: #"{"recipients":[" +12175550100 ","ann@example.com"],"body":"dinner at 7?"}"#, timeoutMilliseconds: nil)
+        guard case .success = result else { return XCTFail("expected success, got \(result)") }
+        let url = try XCTUnwrap(runner.opens.first)
+        let components = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false))
+        let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+        let input = try XCTUnwrap(JSONSerialization.jsonObject(with: Data((query["text"] ?? "").utf8)) as? [String: Any])
+        XCTAssertEqual(input["to"] as? [String], ["+12175550100", "ann@example.com"], "a list, trimmed, in the order given")
+        XCTAssertEqual(input["body"] as? String, "dinner at 7?")
+        XCTAssertEqual(query["name"], "OperatorSendMessage")
+    }
+
     func testRefusesBadShapesBeforeTouchingShortcuts() async throws {
         let runner = FakeRunner()
         let service = ForegroundMessageSendService(runner: runner, isAppActive: { true })
+        let eleven = (1...11).map { "\"+1217555010\($0)\"" }.joined(separator: ",")
         for params in [
             nil, "", "not json", "[]",
             #"{"recipient":"+1","body":"hi","extra":1}"#,
             #"{"recipients":["+1"],"body":"hi"}"#,
+            #"{"recipients":[\#(eleven)],"body":"hi"}"#,
+            #"{"recipients":["+1","+1"],"body":"hi"}"#,
+            #"{"recipients":["+1",""],"body":"hi"}"#,
+            #"{"recipients":["+1",2],"body":"hi"}"#,
             #"{"recipient":"","body":"hi"}"#,
             #"{"recipient":"+1","body":"   "}"#,
             #"{"recipient":"+1"}"#,

@@ -63,6 +63,8 @@ import XCTest
             #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1","summary":"Moved"}"#,
             #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1","summary":null,"attendees":["a@example.com"]}"#,
             #"{"operation":"googleCalendarCreateEvent","summary":"Plan","description":"","startRFC3339":"2026-01-01T10:00:00Z","endRFC3339":"2026-01-01T11:00:00Z","attendees":["a@example.com"]}"#,
+            #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1","addMeetLink":true}"#,
+            #"{"operation":"googleCalendarCreateEvent","summary":"Plan","description":"","startRFC3339":"2026-01-01T10:00:00Z","endRFC3339":"2026-01-01T11:00:00Z","addMeetLink":true}"#,
         ]
         for value in accepted {
             let result = await service.handleNodeCommand("connections.write", paramsJSON: value, timeoutMilliseconds: 1000)
@@ -72,11 +74,15 @@ import XCTest
             "Update calendar event ev1\nSummary: Moved",
             "Update calendar event ev1\nGuest list becomes: a@example.com",
             "Calendar event\nSummary: Plan\nStarts: 2026-01-01T10:00:00Z\nEnds: 2026-01-01T11:00:00Z\nDescription: \nInvites sent to: a@example.com",
+            "Update calendar event ev1\nGoogle Meet link: added",
+            "Calendar event\nSummary: Plan\nStarts: 2026-01-01T10:00:00Z\nEnds: 2026-01-01T11:00:00Z\nDescription: \nGoogle Meet link: added",
         ])
         let rejected = [
             #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1","summary":7}"#,
             #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1","attendees":"a@example.com"}"#,
             #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1"}"#,
+            #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1","addMeetLink":false}"#,
+            #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1","addMeetLink":"yes"}"#,
             #"{"operation":"googleCalendarUpdateEvent","summary":"Moved"}"#,
             #"{"operation":"googleCalendarCreateEvent","summary":"Plan","description":"","startRFC3339":"2026-01-01T10:00:00Z","endRFC3339":"2026-01-01T11:00:00Z","attendees":[1]}"#,
         ]

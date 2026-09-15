@@ -28,6 +28,11 @@ final class SystemShortcutRunner: ShortcutRunner {
 /// x-callback-url and comes back when it finishes. So this service can say
 /// the shortcut was started; it can never say the message arrived, and its
 /// payload is written so the model cannot claim otherwise.
+///
+/// A group text is the same call with `recipients` instead of `recipient`:
+/// `to` is then a list, which Send Message fans out to, and iMessage delivers
+/// it into the thread that has exactly those people. There is no way to name
+/// a group chat from outside Messages.
 @MainActor
 final class ForegroundMessageSendService: GatewayNodeCommandHandler {
     static let shortcutName = "OperatorSendMessage"
@@ -44,8 +49,10 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
     /// checked in under Resources/shortcuts; sharing it again renews the link.
     static let installURL = URL(string: "https://www.icloud.com/shortcuts/cfc6a751e7f44cdc8f93a0da747e46f8")!
 
+    static let groupLimit = ForegroundMessageDispatchService.groupLimit
+
     private struct Parameters {
-        let recipient: String
+        let recipients: [String]
         let body: String
     }
 
@@ -64,13 +71,13 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
         }
         guard let parameters = Self.parameters(from: paramsJSON) else {
             self.logger.info("[message-send] rejected invalid request shape")
-            return .failure(code: "INVALID_REQUEST", message: "sms.send requires exactly one nonempty recipient and a nonempty body")
+            return .failure(code: "INVALID_REQUEST", message: "sms.send requires a nonempty recipient (or 2 to \(Self.groupLimit) recipients) and a nonempty body")
         }
         guard self.isAppActive() else {
             self.logger.info("[message-send] rejected while app inactive")
             return .failure(code: "APP_NOT_ACTIVE", message: "Open Operator to send a message")
         }
-        guard let url = Self.shortcutURL(recipient: parameters.recipient, body: parameters.body) else {
+        guard let url = Self.shortcutURL(recipients: parameters.recipients, body: parameters.body) else {
             return .failure(code: "INVALID_REQUEST", message: "The message could not be encoded for the shortcut")
         }
         guard await self.runner.run(url) else {
@@ -79,16 +86,19 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
                 code: "SHORTCUT_UNAVAILABLE",
                 message: "The \"\(Self.shortcutName)\" shortcut could not be opened. The person has to create it once in the Shortcuts app; the steps are on Operator's Permissions page under \"\(ConnectorCatalog.descriptor(.messagesAutosend).title)\". Nothing was sent.")
         }
-        self.logger.info("[message-send] handed to shortcut body_bytes=\(parameters.body.utf8.count)")
+        self.logger.info("[message-send] handed to shortcut recipients=\(parameters.recipients.count) body_bytes=\(parameters.body.utf8.count)")
         return .success(payloadJSON: """
         {"handedToShortcut":true,"sent":false,"deliveryVerified":false,"nextStep":"The message was handed to the person's \\"\(Self.shortcutName)\\" shortcut, which sends it without asking them. Say it was handed off for sending; do not say it was delivered, because that is not known."}
         """)
     }
 
     /// shortcuts://x-callback-url/run-shortcut, with the message as a JSON
-    /// text input and Operator's own scheme as the return address.
-    static func shortcutURL(recipient: String, body: String) -> URL? {
-        guard let input = try? JSONSerialization.data(withJSONObject: ["to": recipient, "body": body], options: [.sortedKeys]),
+    /// text input and Operator's own scheme as the return address. One
+    /// recipient is sent as a string, exactly as the shortcut was first proven
+    /// with; a group is sent as a list.
+    static func shortcutURL(recipients: [String], body: String) -> URL? {
+        let to: Any = recipients.count == 1 ? recipients[0] : recipients
+        guard let input = try? JSONSerialization.data(withJSONObject: ["to": to, "body": body], options: [.sortedKeys]),
               let text = String(data: input, encoding: .utf8)
         else { return nil }
         var components = URLComponents()
@@ -117,12 +127,24 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
         guard let paramsJSON, paramsJSON.utf8.count <= 16_384,
               let value = try? JSONSerialization.jsonObject(with: Data(paramsJSON.utf8)),
               let object = value as? [String: Any],
-              Set(object.keys) == ["recipient", "body"],
-              let recipient = (object["recipient"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !recipient.isEmpty, recipient.count <= 256,
               let body = object["body"] as? String,
               !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, body.utf8.count <= 4_000
         else { return nil }
-        return Parameters(recipient: recipient, body: body)
+        let raw: [String]
+        switch Set(object.keys) {
+        case ["recipient", "body"]:
+            guard let one = object["recipient"] as? String else { return nil }
+            raw = [one]
+        case ["recipients", "body"]:
+            guard let several = object["recipients"] as? [String], (2...Self.groupLimit).contains(several.count) else { return nil }
+            raw = several
+        default:
+            return nil
+        }
+        let recipients = raw.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard recipients.allSatisfy({ !$0.isEmpty && $0.count <= 256 }),
+              Set(recipients.map { $0.lowercased() }).count == recipients.count
+        else { return nil }
+        return Parameters(recipients: recipients, body: body)
     }
 }

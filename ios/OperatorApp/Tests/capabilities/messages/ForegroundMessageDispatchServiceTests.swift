@@ -41,11 +41,24 @@ final class ForegroundMessageDispatchServiceTests: XCTestCase {
         XCTAssertEqual(recorded, ["sms.send"], "the session log shows it went out without a tap")
     }
 
-    func testGroupTextsAndOddShapesStillGoThroughTheComposerEvenWithTheGrant() async {
+    func testWithTheGrantAGroupTextIsSentForTheOwnerWithTheWholeList() async throws {
         let composer = Recorder("compose"), sender = Recorder("send")
         let dispatch = ForegroundMessageDispatchService(compose: composer, send: sender, autosendAllowed: { true })
+        let result = await dispatch.handleNodeCommand("sms.compose", paramsJSON: #"{"recipients":["+12175550100","ann@example.com","+12175550102"],"body":"dinner at 7?"}"#, timeoutMilliseconds: nil)
+        XCTAssertEqual(result, .success(payloadJSON: #"{"via":"send"}"#))
+        XCTAssertEqual(composer.calls.count, 0)
+        let params = try XCTUnwrap(JSONSerialization.jsonObject(with: Data((sender.calls[0].params ?? "").utf8)) as? [String: Any])
+        XCTAssertEqual(params["recipients"] as? [String], ["+12175550100", "ann@example.com", "+12175550102"], "order kept: it is the group's membership")
+        XCTAssertEqual(params["body"] as? String, "dinner at 7?")
+        XCTAssertNil(params["recipient"])
+    }
+
+    func testOversizedGroupsAndOddShapesStillGoThroughTheComposerEvenWithTheGrant() async {
+        let composer = Recorder("compose"), sender = Recorder("send")
+        let dispatch = ForegroundMessageDispatchService(compose: composer, send: sender, autosendAllowed: { true })
+        let eleven = (1...11).map { "\"+1217555010\($0)\"" }.joined(separator: ",")
         for params in [
-            #"{"recipients":["+1","+2"],"body":"hi"}"#,
+            #"{"recipients":[\#(eleven)],"body":"hi"}"#,
             #"{"recipients":[],"body":"hi"}"#,
             #"{"recipient":"+1","body":"hi"}"#,
             "not json", nil,

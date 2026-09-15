@@ -51,6 +51,39 @@ final class DirectAccountWriterTests: XCTestCase {
         XCTAssertEqual(Set(body.keys), ["summary", "description", "start", "end", "attendees"])
     }
 
+    func testGoogleCalendarMeetLinkIsRequestedAndReturnedOnCreateAndUpdate() async throws {
+        let created = WriteFixtureTransport(status: 200, body: #"{"id":"event-4","hangoutLink":"https://meet.google.com/abc-defg-hij","conferenceData":{"entryPoints":[{"uri":"https://meet.google.com/abc-defg-hij"}]}}"#)
+        let writer = DirectAccountWriter(transport: created, bearer: { _ in "token" })
+        let receipt = try await writer.writeAfterOwnerConfirmation(.googleCalendarCreateEvent(.init(
+            summary: "Sync", description: "", startRFC3339: "2026-09-09T14:00:00Z", endRFC3339: "2026-09-09T14:30:00Z", addMeetLink: true)))
+        XCTAssertEqual(receipt, .googleCalendarEvent(id: "event-4", meetLink: "https://meet.google.com/abc-defg-hij"))
+        let createdRequest = await created.onlyRequest()
+        let request = try XCTUnwrap(createdRequest)
+        XCTAssertEqual(request.url?.absoluteString, "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1", "without conferenceDataVersion=1 Google ignores the conference request")
+        let body = try jsonObject(request.httpBody)
+        let conference = try XCTUnwrap(body["conferenceData"] as? [String: Any])
+        let create = try XCTUnwrap(conference["createRequest"] as? [String: Any])
+        XCTAssertEqual((create["conferenceSolutionKey"] as? [String: String])?["type"], "hangoutsMeet")
+        XCTAssertFalse((create["requestId"] as? String ?? "").isEmpty)
+
+        let updated = WriteFixtureTransport(status: 200, body: #"{"id":"event-4","hangoutLink":"javascript:alert(1)"}"#)
+        let updater = DirectAccountWriter(transport: updated, bearer: { _ in "token" })
+        let patched = try await updater.writeAfterOwnerConfirmation(.googleCalendarUpdateEvent(.init(
+            eventID: "event-4", summary: nil, description: nil, startRFC3339: nil, endRFC3339: nil, attendees: nil, addMeetLink: true)))
+        XCTAssertEqual(patched, .googleCalendarEvent(id: "event-4", meetLink: nil), "a link that is not a Meet URL is not passed to the model")
+        let updatedRequest = await updated.onlyRequest()
+        let patch = try XCTUnwrap(updatedRequest)
+        XCTAssertEqual(patch.url?.absoluteString, "https://www.googleapis.com/calendar/v3/calendars/primary/events/event-4?sendUpdates=all&conferenceDataVersion=1")
+        XCTAssertEqual(Set(try jsonObject(patch.httpBody).keys), ["conferenceData"])
+
+        let plain = WriteFixtureTransport(status: 200, body: #"{"id":"event-5"}"#)
+        _ = try await DirectAccountWriter(transport: plain, bearer: { _ in "token" }).writeAfterOwnerConfirmation(.googleCalendarCreateEvent(.init(
+            summary: "Sync", description: "", startRFC3339: "2026-09-09T14:00:00Z", endRFC3339: "2026-09-09T14:30:00Z")))
+        let plainCaptured = await plain.onlyRequest()
+        let plainRequest = try XCTUnwrap(plainCaptured)
+        XCTAssertNil(try jsonObject(plainRequest.httpBody)["conferenceData"], "no Meet room unless asked")
+    }
+
     func testGoogleCalendarUpdateEventPatchesOnlyTheGivenFields() async throws {
         let transport = WriteFixtureTransport(status: 200, body: #"{"id":"event-3","summary":"Moved","attendees":[{"email":"private@example.com"}]}"#)
         let writer = DirectAccountWriter(transport: transport, bearer: { provider in
