@@ -50,6 +50,10 @@ struct ChatScreen: View {
     @ObservedObject var permissions: ConnectorPermissionCenter
     @State private var isConnectionsPresented = false
     @State private var isPermissionsPresented = false
+    /// Whether the transcript is scrolled to (or near) its end. While the
+    /// person has scrolled up to read, streaming and activity updates must
+    /// not pull the view back down; their own new message still does.
+    @State private var isNearBottom = true
 
     /// "Signed in" / "Not signed in" for the Permissions page's account rows.
     private func accountStatus(_ id: ConnectorID) -> String? {
@@ -146,18 +150,28 @@ struct ChatScreen: View {
                     }
                     .padding(16)
                 }
+                .scrollDismissesKeyboard(.interactively)
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - 80
+                } action: { _, nearBottom in
+                    self.isNearBottom = nearBottom
+                }
                 .onChange(of: self.model.messages.count) {
-                    if let id = self.model.messages.last?.id {
-                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .bottom) }
+                    guard let last = self.model.messages.last else { return }
+                    // The person's own message always comes into view; a reply
+                    // only when they are already at the end, so reading back
+                    // through a long transcript is never interrupted.
+                    if last.role == .user || self.isNearBottom {
+                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
                 .onChange(of: self.model.streamingReply) {
-                    if self.model.streamingReply != nil {
+                    if self.model.streamingReply != nil, self.isNearBottom {
                         proxy.scrollTo("streaming-reply", anchor: .bottom)
                     }
                 }
                 .onChange(of: self.model.liveActivity) {
-                    if self.model.liveActivity != nil {
+                    if self.model.liveActivity != nil, self.isNearBottom {
                         withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("streaming-reply", anchor: .bottom) }
                     }
                 }
