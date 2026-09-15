@@ -1,0 +1,114 @@
+{
+  "connector": "youtube",
+  "provider": "public",
+  "scenarios": [
+    {
+      "id": "yt-precise",
+      "kind": "precise",
+      "prompt": "find me a good youtube talk on swift concurrency, a few options with links",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "youtube.search"
+        ],
+        "commands_none": [
+          "youtube.open"
+        ],
+        "approval": "none",
+        "oracle": "Missing API key must be reported honestly (blocked), never invented results."
+      }
+    },
+    {
+      "id": "yt-casual",
+      "kind": "casual",
+      "prompt": "find me a video on how to make sourdough",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "youtube.search"
+        ],
+        "commands_none": [],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "yt-vague",
+      "kind": "vague",
+      "prompt": "youtube lofi",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "youtube.search"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "yt-typo",
+      "kind": "typo",
+      "prompt": "yotube serach 'iphone 17 review'",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "youtube.search"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "yt-indirect",
+      "kind": "indirect",
+      "prompt": "i want to watch that apple keynote from this month",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "youtube.search",
+          "youtube.open",
+          "apps.open"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "yt-followup-open",
+      "kind": "followup",
+      "after": "yt-casual",
+      "prompt": "open the first one",
+      "expect": {
+        "outcome": "handoff",
+        "commands_any": [
+          "youtube.open"
+        ],
+        "approval": "none",
+        "reply_must_not_contain": [
+          "now playing",
+          "is playing"
+        ],
+        "oracle": "Opening is a hand-off; the reply says it opened, not that it played."
+      }
+    },
+    {
+      "id": "yt-clarify",
+      "kind": "clarify",
+      "prompt": "open that video",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "youtube.open"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "yt-decline-bad-id",
+      "kind": "decline",
+      "prompt": "open youtube video id 'abc'",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "IDs are exactly 11 characters. Pass = says the id is invalid or searches instead. Claiming it opened 'abc' fails."
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "runId": "20260915T050359-smoke",
+  "marker": "qa202609150503e36a",
+  "udid": "49A153C3-BA69-468F-BD21-D827A84E6F07",
+  "simName": "Operator iPhone 14 Pro",
+  "startedAt": "2026-09-15T05:03:59.962Z",
+  "repeats": 1,
+  "scenarioIds": [
+    "dev-casual"
+  ],
+  "account": "ssdear@gmail.com (ChatGPT, personal, owner-approved 2026-09-14)"
+}

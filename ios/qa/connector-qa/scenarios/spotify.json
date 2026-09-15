@@ -1,0 +1,143 @@
+{
+  "connector": "spotify",
+  "provider": "spotify",
+  "scenarios": [
+    {
+      "id": "spotify-precise-search",
+      "kind": "precise",
+      "prompt": "find me some lofi beats on spotify, a few options",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "spotifySearch"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "spotify-casual-playing",
+      "kind": "casual",
+      "prompt": "what am i listening to on spotify",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "spotifyPlayback"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "No active device / nothing playing reported honestly is a pass."
+      }
+    },
+    {
+      "id": "spotify-vague",
+      "kind": "vague",
+      "prompt": "spotify",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "spotifyPlayback",
+          "spotifySearch"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Reporting playback state or asking what to do both pass."
+      }
+    },
+    {
+      "id": "spotify-typo",
+      "kind": "typo",
+      "prompt": "find 'bohemian rapsody' on spotfy",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "spotifySearch"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "spotify-indirect",
+      "kind": "indirect",
+      "prompt": "i want something chill for studying, spotify",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "spotifySearch"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "spotify-followup",
+      "kind": "followup",
+      "after": "spotify-precise-search",
+      "prompt": "who's the artist on the second one",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Must come from the previous results or a new search; must not invent."
+      }
+    },
+    {
+      "id": "spotify-clarify-play",
+      "kind": "clarify",
+      "prompt": "play it",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "spotify-write-play",
+      "kind": "write",
+      "cleanup": "none",
+      "prompt": "play 'Weightless' by Marconi Union on spotify",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.write"
+        ],
+        "operations_any": [
+          "spotifyStartPlayback"
+        ],
+        "approval": "required",
+        "oracle": "Needs an active Spotify device. NO_ACTIVE_DEVICE or similar reported honestly is a pass for the connector; claiming playback started without status 2xx is a fail."
+      }
+    }
+  ]
+}

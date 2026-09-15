@@ -66,6 +66,7 @@
 		88573980BCFBB4421850EC00 /* MediaServicesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366689038FC12DFA9FED5ADF /* MediaServicesTests.swift */; };
 		8CA2E8E840C22B680681DD6E /* LocalModelSetupGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C13CFDD2D788E106F260D4B /* LocalModelSetupGateway.swift */; };
 		8DAA325B2CE2A7D6BB1A96AC /* ChatScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 996961BE0B62984DE5354052 /* ChatScreen.swift */; };
+		8DB4E9251F29950ED07953BE /* ScenarioDriverUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61FC1CAA927881E1E5A7D049 /* ScenarioDriverUITests.swift */; };
 		8ECB3416679F87B98DB20431 /* ForegroundAccountReadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEBFC827D5CF6DD89F8A2B9 /* ForegroundAccountReadService.swift */; };
 		91BDE8406392591410390C6E /* SystemPermissionStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C1F2FCE90E94275E45355B3 /* SystemPermissionStatus.swift */; };
 		927E4629901EF1BA4F78240B /* NativeNotionSetupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D490F4DB23A72D1FB9731241 /* NativeNotionSetupCoordinator.swift */; };
@@ -238,6 +239,7 @@
 		5C13CFDD2D788E106F260D4B /* LocalModelSetupGateway.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelSetupGateway.swift; sourceTree = "<group>"; };
 		5E260410CCF3BEE7038F1C3C /* ForegroundMediaNodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMediaNodeService.swift; sourceTree = "<group>"; };
 		5F5454686119833200D7DBB5 /* ForegroundContactsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundContactsService.swift; sourceTree = "<group>"; };
+		61FC1CAA927881E1E5A7D049 /* ScenarioDriverUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioDriverUITests.swift; sourceTree = "<group>"; };
 		66E68FE88088C4AE52ED6FDD /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		6B6D712F69ADF6344534D5B5 /* NativeAccountSetupCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAccountSetupCoordinator.swift; sourceTree = "<group>"; };
 		6BACC7C7C5D24B5E133FCEC2 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
@@ -903,6 +905,7 @@
 			isa = PBXGroup;
 			children = (
 				E8494D608BFF220294347A7F /* ChatEndToEndUITests.swift */,
+				61FC1CAA927881E1E5A7D049 /* ScenarioDriverUITests.swift */,
 			);
 			name = UITests;
 			path = OperatorApp/UITests;
@@ -1211,14 +1214,14 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_165A1AD1-B286-49F2-B0DE-5CF54822550F" /* runtime */ = {
+		"TEMP_6FC639E3-CC26-454F-9261-AB062F418578" /* runtime */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			path = runtime;
 			sourceTree = "<group>";
 		};
-		"TEMP_C57A4560-4054-4953-875D-936F79F5476F" /* embedded */ = {
+		"TEMP_B6A77D4A-9665-4A48-A699-FA55182E4669" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1370,6 +1373,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CBD80759C8879BA1902DE495 /* ChatEndToEndUITests.swift in Sources */,
+				8DB4E9251F29950ED07953BE /* ScenarioDriverUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

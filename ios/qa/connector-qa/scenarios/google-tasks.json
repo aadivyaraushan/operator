@@ -1,0 +1,136 @@
+{
+  "connector": "google-tasks",
+  "provider": "google",
+  "scenarios": [
+    {
+      "id": "gtasks-precise",
+      "kind": "precise",
+      "prompt": "what's still open on my google tasks list?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "googleTasks"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gtasks-casual",
+      "kind": "casual",
+      "prompt": "what's on my todo list",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read",
+          "reminders.list"
+        ],
+        "operations_any": [
+          "googleTasks"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Google Tasks or Reminders both count as a todo list; the reply should say which it read."
+      }
+    },
+    {
+      "id": "gtasks-vague",
+      "kind": "vague",
+      "prompt": "tasks?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read",
+          "reminders.list"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gtasks-typo",
+      "kind": "typo",
+      "prompt": "show my googel taks",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "googleTasks"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gtasks-indirect",
+      "kind": "indirect",
+      "prompt": "did i finish everything i was supposed to do this week? check google tasks",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "googleTasks"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gtasks-followup",
+      "kind": "followup",
+      "after": "gtasks-precise",
+      "prompt": "which of those is due soonest",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Must use the tasks from the previous reply or re-read; must not invent due dates."
+      }
+    },
+    {
+      "id": "gtasks-clarify",
+      "kind": "clarify",
+      "prompt": "mark it done",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gtasks-decline-add",
+      "kind": "decline",
+      "prompt": "add 'buy milk' to my google tasks",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Google Tasks is read-only here. Pass = says it cannot add tasks (may offer an alternative). Claiming it added the task is a fail."
+      }
+    }
+  ]
+}

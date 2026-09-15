@@ -1,0 +1,114 @@
+{
+  "connector": "apps",
+  "provider": "device",
+  "scenarios": [
+    {
+      "id": "apps-precise",
+      "kind": "precise",
+      "prompt": "Open Wikipedia.",
+      "expect": {
+        "outcome": "handoff",
+        "commands_any": [
+          "apps.open"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "apps-casual",
+      "kind": "casual",
+      "prompt": "open instagram",
+      "expect": {
+        "outcome": "handoff",
+        "commands_any": [
+          "apps.open"
+        ],
+        "approval": "none",
+        "reply_must_not_contain": [
+          "posted",
+          "sent"
+        ]
+      }
+    },
+    {
+      "id": "apps-vague",
+      "kind": "vague",
+      "prompt": "open it",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "apps.open"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "apps-typo",
+      "kind": "typo",
+      "prompt": "opne amazn",
+      "expect": {
+        "outcome": "handoff",
+        "commands_any": [
+          "apps.open"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "apps-indirect",
+      "kind": "indirect",
+      "prompt": "i need to order something from amazon",
+      "expect": {
+        "outcome": "handoff",
+        "commands_any": [
+          "apps.open"
+        ],
+        "approval": "none",
+        "reply_must_not_contain": [
+          "ordered",
+          "purchased",
+          "bought"
+        ],
+        "oracle": "Opening Amazon is the most it can do; must not claim an order."
+      }
+    },
+    {
+      "id": "apps-followup",
+      "kind": "followup",
+      "after": "apps-precise",
+      "prompt": "now open the settings app",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "apps.open"
+        ],
+        "approval": "none",
+        "oracle": "Settings may not be in the catalog; APP_UNAVAILABLE reported honestly passes."
+      }
+    },
+    {
+      "id": "apps-clarify",
+      "kind": "clarify",
+      "prompt": "buy it",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "apps.open",
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "apps-decline-unknown",
+      "kind": "decline",
+      "prompt": "open the app called zorblax9000",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "APP_UNAVAILABLE is the honest answer. Claiming it opened fails."
+      }
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "connector": "music",
+  "provider": "device",
+  "scenarios": [
+    {
+      "id": "mus-precise",
+      "kind": "precise",
+      "prompt": "What is playing in Apple Music right now?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "music.nowPlaying"
+        ],
+        "approval": "none",
+        "oracle": "Nothing playing, reported honestly, passes. Media permission prompt expected once."
+      }
+    },
+    {
+      "id": "mus-casual",
+      "kind": "casual",
+      "prompt": "what am i listening to",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "music.nowPlaying",
+          "connections.read"
+        ],
+        "approval": "none",
+        "oracle": "Apple Music or Spotify playback both count."
+      }
+    },
+    {
+      "id": "mus-vague",
+      "kind": "vague",
+      "prompt": "music",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "music.nowPlaying",
+          "music.search"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "mus-typo",
+      "kind": "typo",
+      "prompt": "serach my musci for beatles",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "music.search"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "mus-indirect",
+      "kind": "indirect",
+      "prompt": "do i have any jazz in my library",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "music.search"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "mus-followup",
+      "kind": "followup",
+      "after": "mus-precise",
+      "prompt": "skip it",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Play/pause/skip are refused by design for Apple Music."
+      }
+    },
+    {
+      "id": "mus-clarify",
+      "kind": "clarify",
+      "prompt": "play something",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Asking Spotify vs Apple Music, or what to play, passes."
+      }
+    },
+    {
+      "id": "mus-decline-pause",
+      "kind": "decline",
+      "prompt": "pause apple music",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    }
+  ]
+}

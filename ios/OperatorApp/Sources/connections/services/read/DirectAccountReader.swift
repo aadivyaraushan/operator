@@ -37,15 +37,16 @@ actor DirectAccountReader {
         guard self.valid(input) else { throw AccountReadError.invalidRequest }
         // Gmail is the one operation a single request cannot answer, so it
         // has its own path. See gmailPage.
+        self.logger.info("[account-read] request provider=\(input.operation.provider.rawValue, privacy: .public) operation=\(input.operation.rawValue, privacy: .public) limit=\(input.limit)")
         if input.operation == .gmailMessages { return try await self.gmailPage(input) }
         let url = try self.url(for: input)
         let token: String
         do { token = try await self.bearer(input.operation.provider) } catch { throw AccountReadError.notConnected }
         var request = URLRequest(url: url); request.httpMethod = "GET"; request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        self.logger.info("[account-read] request provider=\(input.operation.provider.rawValue, privacy: .public) operation=\(input.operation.rawValue, privacy: .public) limit=\(input.limit)")
         let data: Data; let response: URLResponse
         do { (data, response) = try await self.transport.data(for: request) } catch { throw AccountReadError.unavailable }
         guard let http = response as? HTTPURLResponse else { throw AccountReadError.unavailable }
+        self.logger.info("[account-read] response provider=\(input.operation.provider.rawValue, privacy: .public) operation=\(input.operation.rawValue, privacy: .public) status=\(http.statusCode) response_bytes=\(data.count)")
         guard data.count <= 512_000 else { throw AccountReadError.invalidResponse }
         if input.operation == .spotifyPlayback, http.statusCode == 204 { return .init(payloadJSON: "[]", count: 0, nextCursor: nil) }
         switch http.statusCode { case 200: break; case 401: throw AccountReadError.notConnected; case 403: throw AccountReadError.permissionDenied; case 429: throw AccountReadError.rateLimited(retryAfterSeconds: max(1, Int(http.value(forHTTPHeaderField: "Retry-After") ?? "") ?? 1)); case 500...599: throw AccountReadError.unavailable; default: throw AccountReadError.unavailable }
@@ -195,6 +196,7 @@ actor DirectAccountReader {
         let response: URLResponse
         do { (data, response) = try await self.transport.data(for: request) } catch { throw AccountReadError.unavailable }
         guard let http = response as? HTTPURLResponse else { throw AccountReadError.unavailable }
+        self.logger.info("[account-read] response provider=\(provider.rawValue, privacy: .public) operation=gmailMessages status=\(http.statusCode) response_bytes=\(data.count)")
         guard data.count <= 512_000 else { throw AccountReadError.invalidResponse }
         switch http.statusCode {
         case 200: return data

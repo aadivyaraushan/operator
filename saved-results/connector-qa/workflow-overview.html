@@ -1,0 +1,474 @@
+<title>Operator Connector QA</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #f2f4f6;
+    --surface: #ffffff;
+    --sunk: #e8ebef;
+    --ink: #14181d;
+    --ink-2: #4a5360;
+    --ink-3: #7b8592;
+    --line: #d5dae0;
+    --accent: #2f4bd8;
+    --accent-ink: #1f36a8;
+    --pass: #1f7a4d;
+    --pass-bg: #dff3e7;
+    --flaky: #a3690f;
+    --flaky-bg: #fbecc9;
+    --fail: #b3261e;
+    --fail-bg: #f9dcd9;
+    --blocked: #5b6470;
+    --blocked-bg: #e1e5ea;
+    --bubble-user: #2f4bd8;
+    --bubble-user-ink: #ffffff;
+    --bubble-app: #e8ebef;
+    --code-bg: #1b2028;
+    --code-ink: #dfe5ec;
+    --code-dim: #8a95a3;
+    --code-key: #9ec7ff;
+    --code-num: #f5c26b;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0f1216;
+      --surface: #171b21;
+      --sunk: #1f242b;
+      --ink: #e7ebef;
+      --ink-2: #b1b9c3;
+      --ink-3: #7f8996;
+      --line: #2b323b;
+      --accent: #8fa2ff;
+      --accent-ink: #b5c2ff;
+      --pass: #5fd08f;
+      --pass-bg: #163a27;
+      --flaky: #f0bd57;
+      --flaky-bg: #3d2f0e;
+      --fail: #ff8a80;
+      --fail-bg: #45201c;
+      --blocked: #aab3be;
+      --blocked-bg: #262c34;
+      --bubble-user: #3d55d6;
+      --bubble-user-ink: #ffffff;
+      --bubble-app: #242a32;
+      --code-bg: #0b0e12;
+      --code-ink: #dfe5ec;
+      --code-dim: #7d8794;
+      --code-key: #9ec7ff;
+      --code-num: #f5c26b;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0f1216;
+    --surface: #171b21;
+    --sunk: #1f242b;
+    --ink: #e7ebef;
+    --ink-2: #b1b9c3;
+    --ink-3: #7f8996;
+    --line: #2b323b;
+    --accent: #8fa2ff;
+    --accent-ink: #b5c2ff;
+    --pass: #5fd08f;
+    --pass-bg: #163a27;
+    --flaky: #f0bd57;
+    --flaky-bg: #3d2f0e;
+    --fail: #ff8a80;
+    --fail-bg: #45201c;
+    --blocked: #aab3be;
+    --blocked-bg: #262c34;
+    --bubble-user: #3d55d6;
+    --bubble-user-ink: #ffffff;
+    --bubble-app: #242a32;
+    --code-bg: #0b0e12;
+    --code-ink: #dfe5ec;
+    --code-dim: #7d8794;
+    --code-key: #9ec7ff;
+    --code-num: #f5c26b;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    padding-inline: clamp(16px, 4vw, 40px);
+    padding-block: 0 80px;
+  }
+  .wrap { max-width: 78ch; margin-inline: auto; }
+  h1, h2, h3 { font-family: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1.05; }
+  h2 { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+  h3 { font-size: 1.05rem; font-weight: 700; }
+  p { margin: 0; max-width: 68ch; }
+  a { color: var(--accent-ink); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  code, pre, .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  code { font-size: 0.88em; background: var(--sunk); padding: 0.05em 0.35em; border-radius: 3px; }
+  pre { margin: 0; background: var(--code-bg); color: var(--code-ink); padding: 14px 16px; border-radius: 6px; overflow-x: auto; font-size: 0.82rem; line-height: 1.5; }
+  pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+  .k { color: var(--code-key); } .n { color: var(--code-num); } .d { color: var(--code-dim); }
+  .eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); font-weight: 600; }
+
+  header { padding-block: 56px 32px; border-bottom: 1px solid var(--line); display: grid; gap: 18px; }
+  header .lede { font-size: 1.15rem; color: var(--ink-2); max-width: 60ch; }
+  .facts { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 0.9rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .facts b { color: var(--ink); font-weight: 600; }
+
+  section { padding-block: 44px 0; display: grid; gap: 18px; }
+  section > p { color: var(--ink-2); }
+  section > p strong { color: var(--ink); }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+  .lesson { border-left: 3px solid var(--fail); padding-left: 14px; display: grid; gap: 6px; }
+  .lesson.fix { border-left-color: var(--pass); }
+  .lesson .eyebrow { color: inherit; }
+  .lesson.fix .eyebrow { color: var(--pass); }
+  .lesson:not(.fix) .eyebrow { color: var(--fail); }
+  .lesson p { font-size: 0.95rem; color: var(--ink-2); }
+
+  /* pipeline */
+  .pipe { display: grid; gap: 0; }
+  .stage { display: grid; grid-template-columns: 44px 1fr; gap: 0 16px; position: relative; padding-block: 0 22px; }
+  .stage::before { content: ""; position: absolute; left: 21px; top: 30px; bottom: 0; width: 2px; background: var(--line); }
+  .stage:last-child::before { display: none; }
+  .stage .num { width: 44px; height: 44px; border-radius: 50%; background: var(--ink); color: var(--paper); display: grid; place-items: center; font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 1.05rem; position: relative; z-index: 1; }
+  .stage .body { display: grid; gap: 8px; padding-top: 8px; }
+  .stage .body p { color: var(--ink-2); font-size: 0.97rem; }
+  .out { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.8rem; color: var(--ink-3); }
+  .out span { background: var(--sunk); color: var(--ink-2); padding: 2px 8px; border-radius: 3px; font-family: "IBM Plex Mono", monospace; font-size: 0.76rem; }
+
+  /* kinds table */
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  .tbl { overflow-x: auto; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); font-weight: 600; }
+  td.kind { font-weight: 600; white-space: nowrap; }
+  td.q { font-style: italic; color: var(--ink-2); }
+
+  /* chat mock */
+  .phone { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; max-width: 420px; }
+  .phone .eyebrow { margin-bottom: 4px; }
+  .bubble { padding: 9px 13px; border-radius: 16px; max-width: 86%; font-size: 0.92rem; line-height: 1.4; }
+  .bubble.user { background: var(--bubble-user); color: var(--bubble-user-ink); justify-self: end; border-bottom-right-radius: 4px; }
+  .bubble.app { background: var(--bubble-app); color: var(--ink); justify-self: start; border-bottom-left-radius: 4px; }
+  .alert { justify-self: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 0.85rem; text-align: center; display: grid; gap: 6px; box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+  .alert .btns { display: flex; justify-content: center; gap: 18px; color: var(--accent-ink); font-weight: 600; }
+  .alert .btns .tap { text-decoration: underline; text-underline-offset: 3px; }
+
+  /* verdicts */
+  .chip { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; font-family: "IBM Plex Mono", monospace; letter-spacing: 0.02em; }
+  .chip.pass { background: var(--pass-bg); color: var(--pass); }
+  .chip.flaky { background: var(--flaky-bg); color: var(--flaky); }
+  .chip.fail { background: var(--fail-bg); color: var(--fail); }
+  .chip.blocked { background: var(--blocked-bg); color: var(--blocked); }
+  .verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .verdicts div { display: grid; gap: 6px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; font-size: 0.9rem; color: var(--ink-2); }
+  .verdicts .chip { justify-self: start; }
+  .matrix td { font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+  .matrix td:first-child { font-family: "IBM Plex Sans", sans-serif; font-size: 0.9rem; }
+  .matrix .r { display: inline-flex; gap: 6px; }
+
+  /* checks list */
+  ol.checks { margin: 0; padding-left: 22px; display: grid; gap: 6px; font-size: 0.95rem; }
+  ol.checks li::marker { color: var(--ink-3); font-family: "IBM Plex Mono", monospace; font-size: 0.85rem; }
+  ol.checks b { font-family: "IBM Plex Mono", monospace; font-weight: 500; font-size: 0.88em; color: var(--ink); }
+  ol.checks span { color: var(--ink-2); }
+  ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 0.95rem; color: var(--ink-2); }
+  ul.plain b { color: var(--ink); font-weight: 600; }
+
+  .files { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 0.92rem; }
+  .files code { white-space: nowrap; }
+  .files span { color: var(--ink-2); }
+  @media (max-width: 520px) { .files { grid-template-columns: 1fr; } .files span { padding-bottom: 6px; } }
+
+  .finding { display: grid; gap: 6px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+  .finding h3 { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .finding p { font-size: 0.93rem; color: var(--ink-2); }
+  .findings { display: grid; gap: 10px; }
+
+  .rule { border-top: 1px solid var(--line); }
+  footer { padding-top: 28px; font-size: 0.85rem; color: var(--ink-3); display: grid; gap: 4px; }
+  @media (prefers-reduced-motion: no-preference) { a { transition: color 120ms; } }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Operator iPhone app · branch qa/connector-workflow</div>
+  <h1>How the connector QA workflow works</h1>
+  <p class="lede">A runner that talks to the real app on the live Simulator through the real ChatGPT model, the way a person would, several times over, and then refuses to believe the reply until the app's own log agrees with it.</p>
+  <div class="facts">
+    <div><b>23</b> connector banks</div>
+    <div><b>188</b> scenarios</div>
+    <div><b>9</b> prompt registers</div>
+    <div><b>3</b> repeats by default</div>
+    <div><b>4</b> verdicts, flaky never rounded up</div>
+  </div>
+</header>
+
+<section>
+  <h2>Why the first attempt failed, and what changed</h2>
+  <p>The naive QA drove each feature once with a test-shaped prompt, then read the reply. It passed things that broke for real users and missed things that only failed sometimes.</p>
+  <div class="two">
+    <div class="lesson">
+      <div class="eyebrow">Problem 1</div>
+      <p>Prompts were overly specific. "Read gmail message list, limit 5" works when "anything new in my inbox?" does not, and only the second one is what people type.</p>
+    </div>
+    <div class="lesson fix">
+      <div class="eyebrow">Fix</div>
+      <p>Every connector has a bank of prompts in nine registers: precise, casual, vague, typo, indirect, followup, clarify, decline and write. The unit tests refuse a bank that lacks the required kinds.</p>
+    </div>
+    <div class="lesson">
+      <div class="eyebrow">Problem 2</div>
+      <p>Everything ran once. A feature that works from a cold launch but not mid-conversation, or two times in three, looked fine.</p>
+    </div>
+    <div class="lesson fix">
+      <div class="eyebrow">Fix</div>
+      <p>Each scenario runs three times, alternating a fresh app launch with continuing the existing chat. Mixed results are reported as <span class="chip flaky">flaky</span>, a real verdict that nobody gets to round up to pass.</p>
+    </div>
+    <div class="lesson">
+      <div class="eyebrow">Problem 3</div>
+      <p>The reply was the only evidence. A confident answer that never touched the connector counted as a pass.</p>
+    </div>
+    <div class="lesson fix">
+      <div class="eyebrow">Fix</div>
+      <p>Ground truth is the app's log stream plus the chat store on disk. A reply alone can never pass. The command must appear in the log, the provider must answer 2xx, and no write may fire on a read.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The pipeline</h2>
+  <p>One run is one command. Everything below happens inside it, in this order.</p>
+  <div class="pipe">
+    <div class="stage">
+      <div class="num">1</div>
+      <div class="body">
+        <h3>Pick scenarios and expand them into steps</h3>
+        <p>Banks live in <code>ios/qa/connector-qa/scenarios/*.json</code>. Filters narrow by connector, kind or id. Each scenario becomes N steps, launches alternate cold and warm, and a followup pulls its predecessor in first. Write prompts get a fresh run marker like <code>qa2026091505030ab1f</code> substituted in.</p>
+        <div class="out">Produces <span>run.json</span> <span>batch-N.json</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="num">2</div>
+      <div class="body">
+        <h3>Boot the Simulator and start the log stream</h3>
+        <p>The live "Operator iPhone 14 Pro" Simulator keeps its Keychain, sign-in and connected accounts. The runner never erases it and only ever upgrade-installs. It streams the app's unified log (subsystem <code>app.operator.ios</code>) to disk for the whole run.</p>
+        <div class="out">Produces <span>app-log.ndjson</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="num">3</div>
+      <div class="body">
+        <h3>Drive batches of 8 through the real chat</h3>
+        <p>An XCUITest driver (<code>ScenarioDriverUITests</code>, only active with <code>OPERATOR_QA=1</code>) types each prompt into the app, waits for the header to go from "Working" back to "Ready" for two consecutive polls, and taps Allow or Cancel on approval sheets by itself. If the app dies it marks the step <code>app-crashed</code>, relaunches, and continues with the next step instead of taking the batch down with it.</p>
+        <div class="out">Produces <span>batch-N.results.jsonl</span> <span>batch-N.xcodebuild.log</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="num">4</div>
+      <div class="body">
+        <h3>Collect ground truth per turn</h3>
+        <p>After each batch the runner cuts a window of log lines from two seconds before the prompt was sent to three seconds after the driver saw the app go idle, and reads the reply from the chat store the app persisted. The store path is resolved again after every batch because a reinstall moves the app's data container.</p>
+        <div class="out">Produces <span>batch-N.conversation.json</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="num">5</div>
+      <div class="body">
+        <h3>Run the mechanical checks</h3>
+        <p>Pure functions, no model. They decide pass, fail or blocked for each step from the log window, the alerts the driver saw and the reply text. The same checks can be replayed offline with <code>rescore</code> after a check or an expectation changes, spending no turns.</p>
+        <div class="out">Produces <span>results.jsonl</span> <span>judge-input.jsonl</span> <span>report.md</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="num">6</div>
+      <div class="body">
+        <h3>Judge what the checks cannot</h3>
+        <p>A fresh LLM subagent that has not seen the run reads every row against <code>judge/rubric.md</code>: did the reply actually satisfy a person who typed that prompt in that register? It may only lower a verdict, never raise one. <code>report --run</code> merges its verdicts into the report.</p>
+        <div class="out">Produces <span>verdicts.jsonl</span> <span>report.md (merged)</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="num">7</div>
+      <div class="body">
+        <h3>Sweep what the run wrote</h3>
+        <p><code>cleanup --run</code> searches Drive, Calendar, Tasks, Outlook and Slack for the run marker and deletes the matches. It refuses to report a clean sweep when a provider's cleanup test was skipped. Notion pages have no delete tool and must be removed by hand.</p>
+        <div class="out">Produces <span>cleanup summary in the reply</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What "realistic" means in the banks</h2>
+  <p>Each connector bank is eight to ten scenarios. Here is the Gmail bank, verbatim. Prompts are written the way messages actually get typed, thumbs and all. Gmail has no write scenario on purpose (sending mail is the decline case); Calendar, Drive, Tasks, Outlook, Slack and Notion carry the marker-tagged writes.</p>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>Kind</th><th>Prompt</th><th>Expected</th></tr></thead>
+    <tbody>
+      <tr><td class="kind">precise</td><td class="q">what's the most recent email in my gmail, who's it from and what's the subject?</td><td>Read inbox, answer, no write</td></tr>
+      <tr><td class="kind">casual</td><td class="q">anything new in my inbox?</td><td>Read inbox, answer</td></tr>
+      <tr><td class="kind">vague</td><td class="q">check mail</td><td>Gmail or Outlook is fine, reply must say which</td></tr>
+      <tr><td class="kind">typo</td><td class="q">did anyone emial me today? gmial</td><td>Read inbox regardless</td></tr>
+      <tr><td class="kind">indirect</td><td class="q">I'm waiting on a reply from someone, has it come in yet? gmail</td><td>Read inbox, then a grounded yes/no</td></tr>
+      <tr><td class="kind">followup</td><td class="q">(right after "anything new in my inbox?") who was the last one from?</td><td>Answer from the earlier turn's context</td></tr>
+      <tr><td class="kind">clarify</td><td class="q">reply to him and say yes</td><td>Ask who, and fire no write</td></tr>
+      <tr><td class="kind">decline</td><td class="q">send an email from my gmail to ssdear@gmail.com saying hi</td><td>Driver taps Cancel on the sheet; reply must not claim it was sent</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="two">
+    <div class="phone">
+      <div class="eyebrow">What the driver sees on screen</div>
+      <div class="bubble user">put a 30 minute slot on my google calendar tomorrow at 3pm called 'dentist follow up qa2026091505030ab1f'</div>
+      <div class="alert">
+        <b>Allow account action?</b>
+        <div class="btns"><span>Cancel</span><span class="tap">Allow</span></div>
+      </div>
+      <div class="bubble app">Added "dentist follow up qa2026091505030ab1f" to your Google Calendar, tomorrow 3:00 to 3:30 PM.</div>
+    </div>
+    <div style="display:grid;gap:10px">
+      <div class="eyebrow">What the runner reads instead</div>
+      <pre><code><span class="d">[location-node]</span> handling command=<span class="k">connections.write</span> id=14
+<span class="d">[account-write]</span> request provider=google operation=<span class="k">googleCalendarCreateEvent</span>
+<span class="d">[account-write]</span> response provider=google operation=googleCalendarCreateEvent status=<span class="n">200</span>
+<span class="d">[chat-timing]</span> phase=terminal
+<span class="d">[chat]</span> reply persisted</code></pre>
+      <p style="font-size:0.9rem">The write scenario passes only if all four are true: the write command ran, the provider answered 2xx, the driver saw and allowed an "Allow account action?" sheet, and the reply contains no failure phrase. Any one missing is a fail even when the bubble looks perfect.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The mechanical checks, in the order they run</h2>
+  <p>The first check that settles the verdict wins. Blocked means the environment, not the connector, and is never mixed with fail.</p>
+  <ol class="checks">
+    <li><b>driver blocked</b> <span>the driver could not even send the turn (not signed in, permission sheet it cannot answer, rate limit)</span></li>
+    <li><b>app-alive</b> <span>the app crashed during the turn. Always a fail, never blocked</span></li>
+    <li><b>blocked log/reply</b> <span>notConnected, RATE_LIMITED, Keychain errors, "not connected on this device"</span></li>
+    <li><b>reply-present</b> <span>an assistant message for this exact prompt was persisted after it was sent</span></li>
+    <li><b>commands-any</b> <span>at least one expected native command appears in the log window</span></li>
+    <li><b>commands-none</b> <span>no forbidden command ran. Clarify and decline scenarios forbid every write by default even if the bank forgot to say so</span></li>
+    <li><b>operations-any</b> <span>the expected provider operation was requested (skipped when the user denied)</span></li>
+    <li><b>status-2xx</b> and <b>response-seen</b> <span>the provider actually answered, and with success</span></li>
+    <li><b>no-rejected</b> <span>no service-layer rejection such as permissionDenied (a 403 is a fail, not blocked)</span></li>
+    <li><b>approval-seen / approval-denied / no-approval</b> <span>the approval sheet appeared exactly when the scenario says it should, and the tap matched</span></li>
+    <li><b>no-failure-phrase</b> <span>"couldn't", "unable to", "not connected" and friends, negation-aware so "I did not create it because you cancelled" is fine</span></li>
+    <li><b>reply-contains / reply-must-not-contain</b> <span>bank-specific words, such as no "created" after a Cancel</span></li>
+    <li><b>asks-a-question</b> <span>a clarify turn has to end in a question</span></li>
+  </ol>
+  <div class="verdicts">
+    <div><span class="chip pass">pass</span>Every repeat passed both the checks and the judge.</div>
+    <div><span class="chip flaky">flaky</span>Some repeats passed, some failed. Reported as its own row, never averaged away.</div>
+    <div><span class="chip fail">fail</span>Every repeat failed, or any repeat crashed the app.</div>
+    <div><span class="chip blocked">blocked</span>Environment stopped the test. Fix sign-in, permission or rate limit and rerun.</div>
+  </div>
+  <div class="tbl">
+  <table class="matrix">
+    <thead><tr><th>Scenario</th><th>Repeats</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td>gmail-precise-latest</td><td><span class="r">1:p 2:p 3:p</span></td><td><span class="chip pass">pass</span></td></tr>
+      <tr><td>gmail-casual-anything-new</td><td><span class="r">1:f 2:p 3:p</span></td><td><span class="chip flaky">flaky</span></td></tr>
+      <tr><td>gmail-clarify-reply</td><td><span class="r">1:f 2:f 3:f</span></td><td><span class="chip fail">fail</span></td></tr>
+      <tr><td>slack-write-dm</td><td><span class="r">1:b 2:b 3:b</span></td><td><span class="chip blocked">blocked</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="font-size:0.88rem">Example matrix in the shape <code>report.md</code> uses. The rows are illustrative; real numbers live in each run directory.</p>
+</section>
+
+<section>
+  <h2>The judge</h2>
+  <p>Mechanical checks prove the app did the work. They cannot tell whether the answer was the one the person wanted. That is the judge's only job, and it works under eleven rules in <code>judge/rubric.md</code>. The ones that matter most:</p>
+  <ul class="plain">
+    <li><b>Only lower.</b> A judge can turn a mechanical pass into a fail. It cannot rescue a fail.</li>
+    <li><b>Grade what the app did, not what it said.</b> The row carries the commands, operations and statuses; a reply that contradicts them loses.</li>
+    <li><b>Satisfaction per register.</b> A vague prompt that got a reasonable interpretation passes. A precise prompt that got a partial answer fails.</li>
+    <li><b>Clarify must ask, decline must be honest, followup must reuse.</b> Each kind has its own bar in a per-kind table.</li>
+    <li><b>Oracles.</b> Where a bank gives an oracle ("compare with the newest message in the owner's inbox") the judge uses it.</li>
+    <li><b>Latency is not a fail.</b> When unsure, fail, and say why in one line.</li>
+  </ul>
+  <p>It runs in a fresh subagent that has not seen the run, so it reasons from the rubric instead of from the operator's expectations. It writes one <code>{stepKey, verdict, reason}</code> per row.</p>
+</section>
+
+<section>
+  <h2>Running it</h2>
+  <p>The whole procedure is a skill, <code>ios/qa/connector-qa/SKILL.md</code>. Codex finds it through the root <code>AGENTS.md</code>; Claude Code through a symlink under <code>.claude/skills</code>. Either agent follows the same eight steps.</p>
+  <pre><code><span class="d"># 1. free, seconds: validates the banks and the checks</span>
+node --test ios/qa/connector-qa/tests/*.test.mjs
+
+<span class="d"># 2. plan, and read the turn count before spending anything</span>
+node ios/qa/connector-qa/run.mjs run --connector gmail --repeats 3 --dry-run
+
+<span class="d"># 3. run in the background (10 to 40 minutes per connector)</span>
+node ios/qa/connector-qa/run.mjs run --connector gmail --repeats 3 --label gmail --skip-build
+
+<span class="d"># 4. read saved-results/connector-qa/runs/&lt;runId&gt;/report.md</span>
+<span class="d"># 5. judge judge-input.jsonl in a fresh subagent  ->  verdicts.jsonl</span>
+
+<span class="d"># 6. merge the verdicts into the report</span>
+node ios/qa/connector-qa/run.mjs report --run &lt;runId&gt;
+
+<span class="d"># 7. sweep the marker from every provider the run wrote to</span>
+node ios/qa/connector-qa/run.mjs cleanup --run &lt;runId&gt;
+
+<span class="d"># redo the checks offline after changing a check or an expect block</span>
+node ios/qa/connector-qa/run.mjs rescore --run &lt;runId&gt;</code></pre>
+  <div class="files">
+    <code>run.json</code><span>run id, marker, Simulator, account, scenario ids, repeats</span>
+    <code>app-log.ndjson</code><span>the full app log stream for the run</span>
+    <code>batch-N.json / .results.jsonl</code><span>what was sent to the driver and what it saw per step</span>
+    <code>batch-N.conversation.json</code><span>snapshot of the chat store after the batch</span>
+    <code>results.jsonl</code><span>one record per step: checks, log window, reply, alerts, timings</span>
+    <code>judge-input.jsonl</code><span>the same rows trimmed for the judge</span>
+    <code>verdicts.jsonl</code><span>the judge's answer per step</span>
+    <code>report.md</code><span>summary, per-connector matrix, and every turn in full</span>
+  </div>
+</section>
+
+<section>
+  <h2>Guardrails</h2>
+  <ul class="plain">
+    <li><b>Money.</b> Every step is one real ChatGPT turn on the owner's personal account, approved on 2026-09-14 for this workflow with no cap. A full pass at three repeats is roughly 600 turns. The dry run prints the count before anything is spent, and the account is written into every <code>run.json</code>.</li>
+    <li><b>The Simulator is precious.</b> It holds the signed-in ChatGPT session and every connected account in its Keychain. The runner never erases it, never uninstalls, and never builds with signing off.</li>
+    <li><b>Writes only hit the owner.</b> Every write prompt carries the run marker and targets the owner's own Drive, Calendar, Tasks, Outlook mailbox, Slack DM or Notion. The unit tests reject a write prompt with a foreign address or no marker. WhatsApp never messages an external number.</li>
+    <li><b>Approval sheets are real.</b> The driver taps Allow on the app's own "Allow account action?" and "Allow Notion action?" sheets, and Cancel when a scenario says deny. System permission prompts from Springboard are answered but never counted as an approval.</li>
+    <li><b>Stop on rate limits.</b> The runner marks them blocked and aborts after three consecutive errors instead of burning turns.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>What it has found so far</h2>
+  <p>Built and exercised on 2026-09-14 and 15 with three smoke runs and three Gmail runs. All of these came out of the runner, not out of reading code.</p>
+  <div class="findings">
+    <div class="finding">
+      <h3><span class="chip fail">fail</span> The embedded runtime crashes on some Gmail replies</h3>
+      <p>Reproduced four times across three Gmail runs: the turn after reading an inbox whose subject line contains emoji dies with EXC_BAD_ACCESS on the NodeMobile thread, inside V8's Intl.Segmenter. The lead is openclaw's text-chunking code calling Intl.Segmenter on the reply. The first two runs lost the rest of the batch to it; the driver now relaunches and finishes, so the crash shows up as one failed repeat and the other scenarios still get graded.</p>
+    </div>
+    <div class="finding">
+      <h3><span class="chip flaky">flaky</span> A turn hung once and answered on relaunch</h3>
+      <p>In the first smoke run the model streamed its first text at 30 seconds and never reached a terminal event for four minutes. The same prompt answered normally after a cold launch. The third Gmail run hit the same hang three times in 18 turns, with passing turns in between, so it is intermittent and not yet root-caused. Exactly the kind of one-in-N behaviour a single-shot test would miss.</p>
+    </div>
+    <div class="finding">
+      <h3><span class="chip blocked">blocked</span> The Simulator moves the app's data container on every reinstall</h3>
+      <p>Two working turns were scored "no reply" because the runner had cached the chat store path at startup. Each XCUITest invocation reinstalls the app and the container id changes. The path is now resolved after every batch, and a memory note records the trap for future sessions.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Adding a connector or a scenario</h2>
+  <p>Create or edit <code>ios/qa/connector-qa/scenarios/&lt;connector&gt;.json</code> with the schema in <code>scenarios/README.md</code>. Each scenario names its kind, the prompt, and an <code>expect</code> block: the outcome (answer, clarify, decline, handoff), which native commands must and must not run, which provider operations, whether an approval sheet is required, and optional reply words and an oracle for the judge. Run the unit tests; they refuse a bank that lacks any of the seven required kinds, a followup without a predecessor, a write without a marker, or a write aimed at anyone but the owner.</p>
+</section>
+
+<footer class="rule">
+  <div>Source: <code>ios/qa/connector-qa/</code> on branch <code>qa/connector-workflow</code>. Runs and notes under <code>saved-results/connector-qa/</code>.</div>
+  <div>Written 2026-09-15. The third Gmail run (18 turns, 8 scenarios, 2 repeats) finished with 2 pass, 3 flaky, 3 fail after the judge.</div>
+</footer>
+</div>

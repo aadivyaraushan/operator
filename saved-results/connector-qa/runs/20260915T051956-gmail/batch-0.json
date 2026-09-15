@@ -1,0 +1,55 @@
+{
+  "steps": [
+    {
+      "stepKey": "gmail-precise-latest#1",
+      "prompt": "what's the most recent email in my gmail, who's it from and what's the subject?",
+      "launch": "relaunch",
+      "approve": "allow"
+    },
+    {
+      "stepKey": "gmail-precise-latest#2",
+      "prompt": "what's the most recent email in my gmail, who's it from and what's the subject?",
+      "launch": "continue",
+      "approve": "allow"
+    },
+    {
+      "stepKey": "gmail-casual-anything-new#1",
+      "prompt": "anything new in my inbox?",
+      "launch": "relaunch",
+      "approve": "allow"
+    },
+    {
+      "stepKey": "gmail-casual-anything-new#2",
+      "prompt": "anything new in my inbox?",
+      "launch": "continue",
+      "approve": "allow"
+    },
+    {
+      "stepKey": "gmail-vague-mail#1",
+      "prompt": "check mail",
+      "launch": "relaunch",
+      "approve": "allow"
+    },
+    {
+      "stepKey": "gmail-vague-mail#2",
+      "prompt": "check mail",
+      "launch": "continue",
+      "approve": "allow"
+    },
+    {
+      "stepKey": "gmail-typo#1",
+      "prompt": "did anyone emial me today? gmial",
+      "launch": "relaunch",
+      "approve": "allow"
+    },
+    {
+      "stepKey": "gmail-typo#2",
+      "prompt": "did anyone emial me today? gmial",
+      "launch": "continue",
+      "approve": "allow"
+    }
+  ],
+  "resultsPath": "/Users/aadivyar/Documents/Startups/ai native mobile software/codex-launcher/.claude/worktrees/ios-connectors/saved-results/connector-qa/runs/20260915T051956-gmail/batch-0.results.jsonl",
+  "launchTimeoutSeconds": 150,
+  "replyTimeoutSeconds": 240
+}

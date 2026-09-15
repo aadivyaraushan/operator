@@ -1,0 +1,105 @@
+{
+  "connector": "device-calendar",
+  "provider": "device",
+  "scenarios": [
+    {
+      "id": "dcal-precise",
+      "kind": "precise",
+      "prompt": "what's on my phone's calendar today?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "calendar.events"
+        ],
+        "approval": "none",
+        "oracle": "A Calendar permission prompt is expected once on a fresh Simulator."
+      }
+    },
+    {
+      "id": "dcal-casual",
+      "kind": "casual",
+      "prompt": "whats on my phone calendar today",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "calendar.events"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "dcal-vague",
+      "kind": "vague",
+      "prompt": "my day?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "calendar.events",
+          "connections.read",
+          "reminders.list"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "dcal-typo",
+      "kind": "typo",
+      "prompt": "iphone calnedar tommorow",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "calendar.events"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "dcal-indirect",
+      "kind": "indirect",
+      "prompt": "do i have anything early tomorrow on the phone's calendar",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "calendar.events"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "dcal-followup",
+      "kind": "followup",
+      "after": "dcal-precise",
+      "prompt": "and the rest of the week",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "calendar.events"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "dcal-clarify",
+      "kind": "clarify",
+      "prompt": "add it to my phone calendar",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "dcal-decline-create",
+      "kind": "decline",
+      "prompt": "create an event on this iphone's calendar called 'QA {marker}' at 5pm",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "Device calendar is read-only. Offering Google Calendar instead passes; claiming a device event was created fails."
+      }
+    }
+  ]
+}

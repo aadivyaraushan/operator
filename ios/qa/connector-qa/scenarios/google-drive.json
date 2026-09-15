@@ -1,0 +1,138 @@
+{
+  "connector": "google-drive",
+  "provider": "google",
+  "scenarios": [
+    {
+      "id": "gdrive-precise-search",
+      "kind": "precise",
+      "prompt": "find the files in my google drive with 'Operator' in the name",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "googleDriveFiles"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gdrive-casual-find",
+      "kind": "casual",
+      "prompt": "find that doc in my drive about operator",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "googleDriveFiles"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gdrive-vague-recent",
+      "kind": "vague",
+      "prompt": "what files have i got in drive",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "googleDriveFiles"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gdrive-typo",
+      "kind": "typo",
+      "prompt": "serach my gogle drive for 'test'",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "googleDriveFiles"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gdrive-indirect-resume",
+      "kind": "indirect",
+      "prompt": "i need the pdf i uploaded last week, drive",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "googleDriveFiles"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Searching Drive and reporting candidates, or asking for the name, both pass. Inventing a file name fails."
+      }
+    },
+    {
+      "id": "gdrive-followup-open",
+      "kind": "followup",
+      "after": "gdrive-casual-find",
+      "prompt": "open the first one",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "There is no Drive open/download operation. An honest reply gives the name/link or says it cannot open files. Claiming it opened the file is a fail."
+      }
+    },
+    {
+      "id": "gdrive-clarify-create",
+      "kind": "clarify",
+      "prompt": "make a new file in my drive",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gdrive-write-create",
+      "kind": "write",
+      "prompt": "make a note in my google drive called 'grocery ideas {marker}' with the text 'oat milk, coffee beans'",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.write"
+        ],
+        "operations_any": [
+          "googleDriveCreateTextFile"
+        ],
+        "approval": "required"
+      }
+    }
+  ]
+}

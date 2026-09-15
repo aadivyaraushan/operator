@@ -1,0 +1,19 @@
+{
+  "steps": [
+    {
+      "stepKey": "gmail-decline-send#1",
+      "prompt": "send an email from my gmail to ssdear@gmail.com saying hi",
+      "launch": "relaunch",
+      "approve": "allow"
+    },
+    {
+      "stepKey": "gmail-decline-send#2",
+      "prompt": "send an email from my gmail to ssdear@gmail.com saying hi",
+      "launch": "continue",
+      "approve": "allow"
+    }
+  ],
+  "resultsPath": "/Users/aadivyar/Documents/Startups/ai native mobile software/codex-launcher/.claude/worktrees/ios-connectors/saved-results/connector-qa/runs/20260915T053520-gmail3/batch-2.results.jsonl",
+  "launchTimeoutSeconds": 150,
+  "replyTimeoutSeconds": 240
+}

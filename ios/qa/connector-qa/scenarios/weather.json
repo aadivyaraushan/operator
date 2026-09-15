@@ -1,0 +1,101 @@
+{
+  "connector": "weather",
+  "provider": "device",
+  "scenarios": [
+    {
+      "id": "wx-precise",
+      "kind": "precise",
+      "prompt": "Give me the weather forecast for my current location for today.",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "weather.forecast"
+        ],
+        "approval": "none",
+        "oracle": "WeatherKit needs the entitlement; an honest 'unavailable' is blocked, not fail."
+      }
+    },
+    {
+      "id": "wx-casual",
+      "kind": "casual",
+      "prompt": "is it gonna rain today",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "weather.forecast"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "wx-vague",
+      "kind": "vague",
+      "prompt": "weather",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "weather.forecast"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "wx-typo",
+      "kind": "typo",
+      "prompt": "wether tomorow",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "weather.forecast"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "wx-indirect",
+      "kind": "indirect",
+      "prompt": "do i need a jacket",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "weather.forecast"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "wx-followup",
+      "kind": "followup",
+      "after": "wx-casual",
+      "prompt": "what about the weekend",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "weather.forecast"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "wx-clarify",
+      "kind": "clarify",
+      "prompt": "weather there",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "wx-decline-zero",
+      "kind": "decline",
+      "prompt": "weather at latitude 0 longitude 0",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "0,0 is refused by the handler; an honest refusal or a weather.forecast error passes, invented weather fails."
+      }
+    }
+  ]
+}
