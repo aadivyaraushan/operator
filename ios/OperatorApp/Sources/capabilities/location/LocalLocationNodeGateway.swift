@@ -8,6 +8,7 @@ actor LocalLocationNodeGateway {
     private let appVersion: String
     private let platform: String
     private let handler: any GatewayNodeCommandHandler
+    private let agentTools: @Sendable () -> [GatewayNodeAgentToolDescriptor]
     private let policySetup: NativeNodePolicySetup
     private let reconnectDelay: @Sendable () async -> Void
     private let logger = Logger(subsystem: "app.operator.ios", category: "location-node-runtime")
@@ -20,10 +21,12 @@ actor LocalLocationNodeGateway {
         appVersion: String,
         platform: String,
         handler: any GatewayNodeCommandHandler,
+        agentTools: @escaping @Sendable () -> [GatewayNodeAgentToolDescriptor] = { GatewayNodeAgentTools.descriptors },
         reconnectDelay: @escaping @Sendable () async -> Void = {
             try? await Task.sleep(for: .seconds(1))
         })
     {
+        self.agentTools = agentTools
         self.url = url
         self.vault = vault
         self.appVersion = appVersion
@@ -46,6 +49,12 @@ actor LocalLocationNodeGateway {
         self.runTask = Task { [weak self] in
             await self?.runLoop()
         }
+    }
+
+    /// The owner changed a grant: offer the model the new tool set now rather
+    /// than on the next reconnect.
+    func republishAgentTools() async {
+        await self.connection?.republishAgentTools()
     }
 
     func stop() async {
@@ -76,7 +85,8 @@ actor LocalLocationNodeGateway {
                     approveOwnDeviceRole: { [weak self] in
                         guard let self else { throw CancellationError() }
                         try await self.approveOwnDeviceRole(credentials: credentials)
-                    })
+                    },
+                    agentTools: self.agentTools)
                 self.connection = connection
                 try await connection.connect()
                 if try await self.prepareNativeNode(credentials: credentials) {

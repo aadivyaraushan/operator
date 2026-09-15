@@ -12,6 +12,9 @@ public actor OpenClawNodeConnection {
     private let requestID: @Sendable () -> String
     private let pairingRetryDelay: @Sendable () async -> Void
     private let approveOwnDeviceRole: @Sendable () async throws -> Void
+    /// The tools to offer the model, read fresh on every publish so a grant
+    /// the owner changes mid-session takes effect on the next republish.
+    private let agentTools: @Sendable () -> [GatewayNodeAgentToolDescriptor]
     private let logger = Logger(subsystem: "app.operator.ios", category: "location-node")
     private var bufferedFrames: [Data] = []
 
@@ -25,8 +28,10 @@ public actor OpenClawNodeConnection {
         pairingRetryDelay: @escaping @Sendable () async -> Void = {
             try? await Task.sleep(for: .milliseconds(250))
         },
-        approveOwnDeviceRole: @escaping @Sendable () async throws -> Void = {})
+        approveOwnDeviceRole: @escaping @Sendable () async throws -> Void = {},
+        agentTools: @escaping @Sendable () -> [GatewayNodeAgentToolDescriptor] = { GatewayNodeAgentTools.descriptors })
     {
+        self.agentTools = agentTools
         self.transport = transport
         self.token = token
         self.identity = identity
@@ -160,15 +165,24 @@ public actor OpenClawNodeConnection {
     /// here must not tear down a connection that is otherwise fine.
     private func publishAgentTools() async {
         let id = self.requestID()
+        let tools = self.agentTools()
         do {
-            let request = GatewayRequestFactory.nodePluginToolsUpdate(requestID: id)
+            let request = GatewayRequestFactory.nodePluginToolsUpdate(requestID: id, tools: tools)
             try await self.transport.send(try JSONEncoder().encode(request))
         } catch {
             self.logger.error("[location-node] could not publish agent tools")
             return
         }
         self.logger.info(
-            "[location-node] published agent tools count=\(GatewayNodeAgentTools.descriptors.count, privacy: .public) commands=\(GatewayNodeAgentTools.publishedCommands.joined(separator: ","), privacy: .public)")
+            "[location-node] published agent tools count=\(tools.count, privacy: .public) commands=\(tools.map(\.command).joined(separator: ","), privacy: .public)")
+    }
+
+    /// Re-offer the model the current tool set on a live connection. Called
+    /// when the owner changes a grant; a no-op when not connected, because
+    /// the next connect publishes anyway.
+    public func republishAgentTools() async {
+        guard self.isConnected else { return }
+        await self.publishAgentTools()
     }
 
     private func sendResult(

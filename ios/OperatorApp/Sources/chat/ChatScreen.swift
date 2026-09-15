@@ -46,13 +46,34 @@ struct ChatScreen: View {
     @ObservedObject var accounts: NativeAccountSetupCoordinator
     @ObservedObject var notion: NativeNotionSetupCoordinator
     @ObservedObject var youtube: YouTubeAPIKeySetupModel
+    @ObservedObject var permissions: ConnectorPermissionCenter
     @State private var isConnectionsPresented = false
+    @State private var isPermissionsPresented = false
+
+    /// "Signed in" / "Not signed in" for the Permissions page's account rows.
+    private func accountStatus(_ id: ConnectorID) -> String? {
+        let provider: OAuthProvider? = switch id {
+        case .google: .google
+        case .microsoft: .microsoftOutlook
+        case .slack: .slack
+        case .spotify: .spotify
+        default: nil
+        }
+        if let provider {
+            return self.accounts.state(for: provider) == .connected ? "Signed in" : "Not signed in"
+        }
+        if id == .notion { return self.notion.state == .connected ? "Signed in" : "Not signed in" }
+        if id == .whatsapp { return self.whatsapp.state == .linked ? "Linked" : "Not linked" }
+        return nil
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Header(state: self.model.connectionState)
                 Menu {
+                    Button("Permissions") { self.isPermissionsPresented = true }
+                    Divider()
                     Button("Connect WhatsApp") { self.whatsapp.present() }
                     Button("Connect accounts") { self.isConnectionsPresented = true }
                     if self.notion.state == .needsSetup {
@@ -74,6 +95,12 @@ struct ChatScreen: View {
                 }
                 .sheet(isPresented: self.$isConnectionsPresented) {
                     NativeAccountConnectionSheet(model: self.accounts, youtube: self.youtube)
+                }
+                .sheet(isPresented: self.$isPermissionsPresented) {
+                    ConnectorPermissionsScreen(
+                        center: self.permissions, mode: .settings,
+                        accountStatus: self.accountStatus,
+                        onDone: { self.isPermissionsPresented = false })
                 }
             }
                 .padding(.horizontal, 18)
@@ -135,6 +162,14 @@ struct ChatScreen: View {
             }
 
             Divider()
+            if let request = self.permissions.pendingRequest {
+                PermissionRequestBanner(
+                    request: request,
+                    onAllow: { self.permissions.allowPendingRequest() },
+                    onDismiss: { self.permissions.dismissPendingRequest() })
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
+            }
             if !self.model.messages.isEmpty, self.setup.state == .needsSignIn {
                 SetupBanner(setup: self.setup)
                     .padding(.horizontal, 14)
@@ -155,6 +190,18 @@ struct ChatScreen: View {
                 set: { if !$0 { self.setup.dismiss() } }))
         {
             ModelSetupSheet(model: self.setup)
+        }
+        // First launch: the Permissions page before anything else, with
+        // nothing selected. A cover rather than a sheet so it can coexist with
+        // the model-setup sheet on the same view and cannot be swiped away.
+        .fullScreenCover(isPresented: Binding(
+            get: { !self.permissions.hasCompletedOnboarding },
+            set: { if !$0 { self.permissions.completeOnboarding() } }))
+        {
+            ConnectorPermissionsScreen(
+                center: self.permissions, mode: .onboarding,
+                accountStatus: self.accountStatus,
+                onDone: { self.permissions.completeOnboarding() })
         }
     }
 }

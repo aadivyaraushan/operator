@@ -50,6 +50,7 @@ struct OperatorApp: App {
     @StateObject private var accounts: NativeAccountSetupCoordinator
     @StateObject private var notion: NativeNotionSetupCoordinator
     @StateObject private var youtube: YouTubeAPIKeySetupModel
+    @StateObject private var permissions: ConnectorPermissionCenter
     private let locationNode: LocalLocationNodeGateway
     private let foregroundRuntime: ForegroundRuntimeCoordinator
     private let embeddedRuntime: EmbeddedRuntimeHost
@@ -152,12 +153,16 @@ struct OperatorApp: App {
             vault: vault,
             appVersion: version,
             platform: platform)
+        // Every node command passes through the owner's grants before it
+        // reaches a connector, and the model is offered only the tools those
+        // grants allow. A fresh install grants nothing.
+        let permissions = ConnectorPermissionCenter(store: UserDefaultsConnectorGrantStore())
         let locationNode = LocalLocationNodeGateway(
             url: gatewayURL,
             vault: vault,
             appVersion: version,
             platform: platform,
-            handler: ForegroundNodeCommandRouter(
+            handler: PermissionGuardedNodeCommandHandler(center: permissions, next: ForegroundNodeCommandRouter(
                 location: ForegroundLocationService(),
                 calendar: ForegroundCalendarService(),
                 reminders: ForegroundRemindersService(),
@@ -182,7 +187,9 @@ struct OperatorApp: App {
                 accountWrite: accountWrite,
                 discovery: discovery,
                 media: mediaService,
-                notion: notionService))
+                notion: notionService)),
+            agentTools: { permissions.currentPublishedTools() })
+        permissions.grantsDidChange = { Task { await locationNode.republishAgentTools() } }
         self.locationNode = locationNode
         self.foregroundRuntime = ForegroundRuntimeCoordinator(
             waitForChatGateway: { [weak chat] in
@@ -196,13 +203,14 @@ struct OperatorApp: App {
         _accounts = StateObject(wrappedValue: accountSetup)
         _notion = StateObject(wrappedValue: notionSetup)
         _youtube = StateObject(wrappedValue: youtubeSetup)
+        _permissions = StateObject(wrappedValue: permissions)
         _whatsapp = StateObject(wrappedValue: WhatsAppLinkFlowModel(
             gateway: NativeWhatsAppLinkClient(supportDirectory: supportDirectory)))
     }
 
     var body: some Scene {
         WindowGroup {
-            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube)
+            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, permissions: self.permissions)
                 .onChange(of: self.scenePhase, initial: true) { _, phase in
                     // Permission alerts temporarily interrupt interaction; they do not leave the app.
                     if phase == .active {

@@ -130,11 +130,14 @@ public extension GatewayRequestFactory {
     /// Publishes the descriptors that make this node's read commands callable
     /// by the agent. Without this the gateway has the commands but the model
     /// has no tools, so it never reaches for them.
-    static func nodePluginToolsUpdate(requestID: String) -> GatewayRequest<GatewayNodePluginToolsUpdateParams> {
+    static func nodePluginToolsUpdate(
+        requestID: String,
+        tools: [GatewayNodeAgentToolDescriptor] = GatewayNodeAgentTools.descriptors) -> GatewayRequest<GatewayNodePluginToolsUpdateParams>
+    {
         GatewayRequest(
             id: requestID,
             method: "node.pluginTools.update",
-            params: GatewayNodePluginToolsUpdateParams(tools: GatewayNodeAgentTools.descriptors))
+            params: GatewayNodePluginToolsUpdateParams(tools: tools))
     }
 
     static func nodeInvokeResult(
