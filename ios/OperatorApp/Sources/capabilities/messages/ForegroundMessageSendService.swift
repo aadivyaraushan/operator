@@ -30,30 +30,19 @@ final class SystemShortcutRunner: ShortcutRunner {
 /// payload is written so the model cannot claim otherwise.
 @MainActor
 final class ForegroundMessageSendService: GatewayNodeCommandHandler {
-    static let shortcutName = "Operator Send Message"
+    static let shortcutName = "OperatorSendMessage"
     static let callbackScheme = "app.operator.ios"
     static let callbackHost = "shortcut"
 
-    /// The signed shortcut file, built and signed with `shortcuts sign --mode
-    /// anyone` on a Mac and checked in beside the app. Served from the public
-    /// repository so Shortcuts can fetch it; a Shortcuts import needs an https
-    /// URL, and unsigned files are refused since iOS 15.
-    static let signedShortcutURL = URL(string:
-        "https://raw.githubusercontent.com/aadivyaraushan/operator/codex/ios-connectors/ios/OperatorApp/Resources/shortcuts/Operator%20Send%20Message.shortcut")!
-
-    /// Opens Shortcuts on its import preview for the signed file; one tap on
-    /// "Add Shortcut" there installs it under the exact name sms.send runs.
-    static var installURL: URL {
-        var components = URLComponents()
-        components.scheme = "shortcuts"
-        components.host = "import-shortcut"
-        components.queryItems = [
-            .init(name: "url", value: self.signedShortcutURL.absoluteString),
-            .init(name: "name", value: self.shortcutName),
-            .init(name: "silent", value: "true"),
-        ]
-        return components.url!
-    }
+    /// The shortcut, shared from the Shortcuts app as an iCloud link. Opening
+    /// the link itself is the install: iOS routes icloud.com/shortcuts into
+    /// Shortcuts' preview, which has one Add Shortcut button. Everything else
+    /// was tried and refused on iOS 18 and 26: unsigned files (since iOS 15),
+    /// a signed file on any other https host ("The shortcut URL provided was
+    /// invalid"), and shortcuts://import-shortcut pointed at this very link
+    /// ("The file isn't in the correct format"). The file the link serves is
+    /// checked in under Resources/shortcuts; sharing it again renews the link.
+    static let installURL = URL(string: "https://www.icloud.com/shortcuts/cfc6a751e7f44cdc8f93a0da747e46f8")!
 
     private struct Parameters {
         let recipient: String

@@ -30,7 +30,7 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
         XCTAssertEqual(components.host, "x-callback-url")
         XCTAssertEqual(components.path, "/run-shortcut")
         let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
-        XCTAssertEqual(query["name"], "Operator Send Message")
+        XCTAssertEqual(query["name"], "OperatorSendMessage")
         XCTAssertEqual(query["input"], "text")
         XCTAssertEqual(query["x-success"], "app.operator.ios://shortcut/success")
         XCTAssertEqual(query["x-error"], "app.operator.ios://shortcut/error")
@@ -66,7 +66,7 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
 
         guard case let .failure(code, message) = result else { return XCTFail("expected refusal") }
         XCTAssertEqual(code, "SHORTCUT_UNAVAILABLE")
-        XCTAssertTrue(message.contains("Operator Send Message"))
+        XCTAssertTrue(message.contains("OperatorSendMessage"))
         XCTAssertTrue(message.contains("Nothing was sent"))
     }
 
@@ -89,16 +89,11 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
         XCTAssertNil(ForegroundMessageSendService.callbackOutcome(URL(string: "https://example.com/shortcut/success")!))
     }
 
-    func testInstallURLImportsTheSignedFileUnderTheExactNameTheSendUses() throws {
-        let components = try XCTUnwrap(URLComponents(url: ForegroundMessageSendService.installURL, resolvingAgainstBaseURL: false))
-        XCTAssertEqual(components.scheme, "shortcuts")
-        XCTAssertEqual(components.host, "import-shortcut")
-        let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
-        XCTAssertEqual(query["name"], ForegroundMessageSendService.shortcutName)
-        let file = try XCTUnwrap(URL(string: query["url"] ?? ""))
-        XCTAssertEqual(file.scheme, "https", "Shortcuts only imports over https")
-        XCTAssertEqual(file.lastPathComponent, "\(ForegroundMessageSendService.shortcutName).shortcut", "the imported name follows the file name; it must match what sms.send runs")
-        // The file the URL names is the one checked in beside the app.
+    func testInstallOpensAnICloudShortcutLinkAndTheSharedFileIsCheckedIn() throws {
+        let url = ForegroundMessageSendService.installURL
+        XCTAssertEqual(url.scheme, "https")
+        XCTAssertEqual(url.host, "www.icloud.com", "only an iCloud share link installs; see the comment on installURL")
+        XCTAssertTrue(url.path.hasPrefix("/shortcuts/"))
         let checkedIn = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Resources/shortcuts/\(ForegroundMessageSendService.shortcutName).shortcut")

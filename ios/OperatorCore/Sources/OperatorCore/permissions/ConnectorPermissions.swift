@@ -120,7 +120,7 @@ public enum ConnectorCatalog {
               readCommands: [], writeCommands: ["sms.send"],
               systemPermission: nil, requiresAccount: false,
               setupInstructions: """
-              Needs a shortcut named "Operator Send Message" in the Shortcuts app. Tap Install shortcut, then Add Shortcut. \
+              Needs a shortcut named "OperatorSendMessage" in the Shortcuts app. Tap Install shortcut, then Add Shortcut. \
               The first send will ask you once to let the shortcut send messages. \
               Building it by hand instead: Get Dictionary from Input; Get Dictionary Value "body"; Get Dictionary Value "to"; \
               Send Message with that body to that recipient, "Show When Run" off.
