@@ -1632,3 +1632,34 @@ pass. `OperatorAppQA` build-for-testing: success.
   .testSpotifyUsesExactLocalCallbackAndCompletesExistingClient` failed 2 of 4
   full-suite runs on this Mac with the loopback callback never arriving;
   unrelated to the calendar change and not investigated.
+
+## 2026-09-15, evening: Discord announcements digest built, not yet run
+
+Plan: `planning/discord-announcements-plan.md`. Decision and risk record:
+the owner asked for a TL;DR of announcement channels in servers they are
+in, about twice a day, with dated items offered as calendar events. The
+bot + Follow design was explained and does not cover servers whose
+announcement channels are not followable and where the owner is not an
+admin. Reading through the owner's own account was researched (policy
+forbids it; sanction is the account; reported enforcement is behavioural;
+read-only low volume is the lowest-risk class; sources in the chat record)
+and the owner chose it, read-only, twice a day, on a second account.
+
+Built (commits after 2e6322c): `discord` connector row, read-only, behind
+an acknowledgement sheet shown every time the read grant is turned on;
+token + channel-list setup under Connect accounts; `discord.announcements`
+with the pace guard (4 passes / 24 h, 2 h apart, day's pause after a 429);
+digest guidance in the seeded AGENTS.md; QA bank `discord.json` (9
+scenarios). Unit tests: 14 Discord, OperatorApp 411/0, OperatorCore
+104/0, QA banks 34/0.
+
+| Connector | Command | Live result |
+| --- | --- | --- |
+| Discord (your account) | `discord.announcements` | **unproven** - needs a second account's token and channel links entered on the phone, then one read watched by the owner |
+
+Owner setup for the first live read: on a second Discord account that has
+joined the servers, copy its token; in Operator, Connect accounts > Discord
+> Save token; long-press each announcement channel in Discord > Copy Link >
+Add channel; Permissions > Discord > Read (accept the warning); then ask
+"what did I miss on Discord?". The device log's `discord-read` and
+`discord-pace` categories show the pass and the ration.

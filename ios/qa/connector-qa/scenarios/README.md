@@ -29,7 +29,7 @@ are the whole contract.
 ## Fields
 
 - `connector`: bank name, used by `--connector`.
-- `provider`: `google | microsoft | slack | spotify | notion | whatsapp | device | public`.
+- `provider`: `google | microsoft | slack | spotify | notion | whatsapp | discord | device | public`.
   `device` and `public` need no sign-in. The others are reported `blocked`, not
   `fail`, when the log shows the account is not connected.
 - `id`: unique across all banks.

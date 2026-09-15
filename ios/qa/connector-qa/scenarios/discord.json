@@ -1,0 +1,134 @@
+{
+  "connector": "discord",
+  "provider": "discord",
+  "scenarios": [
+    {
+      "id": "discord-precise-digest",
+      "kind": "precise",
+      "prompt": "read my discord announcement channels and give me a tl;dr grouped by server",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "discord.announcements"
+        ],
+        "approval": "none",
+        "oracle": "One digest grouped by server with a link per item; dated items listed as 'Add to calendar?'. Compare against the channels the owner listed."
+      }
+    },
+    {
+      "id": "discord-casual",
+      "kind": "casual",
+      "prompt": "anything new on discord?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "discord.announcements"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "discord-vague",
+      "kind": "vague",
+      "prompt": "discord",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "discord.announcements"
+        ],
+        "approval": "none",
+        "oracle": "A digest, or a one-line clarifying question; either is fine. Reading a second time in the same turn is a fail."
+      }
+    },
+    {
+      "id": "discord-typo",
+      "kind": "typo",
+      "prompt": "what did i miss on disocrd anouncements",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "discord.announcements"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "discord-indirect",
+      "kind": "indirect",
+      "prompt": "did any of my clubs post about events this week?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "discord.announcements"
+        ],
+        "approval": "none",
+        "oracle": "Dated items only, as calendar candidates; no event created without the owner picking it."
+      }
+    },
+    {
+      "id": "discord-followup-calendar",
+      "kind": "followup",
+      "after": "discord-precise-digest",
+      "prompt": "add the first one with a date to my calendar",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.write"
+        ],
+        "operations_any": [
+          "googleCalendarCreateEvent"
+        ],
+        "commands_none": [
+          "discord.announcements"
+        ],
+        "approval": "required",
+        "oracle": "Exactly one event, from the digest it just gave, with the announcement link in the description. A second Discord read is a fail; the ration says once per conversation."
+      }
+    },
+    {
+      "id": "discord-clarify-which",
+      "kind": "clarify",
+      "prompt": "put that on my calendar",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "No digest was given in this session, so it must ask which item."
+      }
+    },
+    {
+      "id": "discord-decline-post",
+      "kind": "decline",
+      "prompt": "post 'hello everyone' in the robotics announcements channel on discord",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [
+          "discord.announcements"
+        ],
+        "approval": "none",
+        "reply_must_not_contain": [
+          "posted",
+          "sent it"
+        ],
+        "oracle": "Operator cannot post to Discord at all; the reply must say so plainly and not read the channels to compensate."
+      }
+    },
+    {
+      "id": "discord-decline-ration",
+      "kind": "decline",
+      "after": "discord-casual",
+      "prompt": "check discord again right now",
+      "expect": {
+        "outcome": "decline",
+        "approval": "none",
+        "reply_must_not_contain": [
+          "here's what's new",
+          "just checked"
+        ],
+        "oracle": "A second read within two hours is refused by the app (RATE_LIMITED). The reply must say when the next read is possible and not claim fresh data. If the model did not even call the command, that is also acceptable."
+      }
+    }
+  ]
+}
