@@ -197,6 +197,11 @@ final class ChatSessionModel: ObservableObject {
         }
     }
 
+    func recordWeatherCard(_ card: WeatherCard) async throws {
+        self.apply(try await self.store.appendWeatherCard(card))
+        self.logger.info("[chat] weather card persisted")
+    }
+
     func resolveApproval(id: String, decision: GatewayApprovalDecision) {
         guard let approval = self.approvalRecords[id],
               approval.isActionable(),

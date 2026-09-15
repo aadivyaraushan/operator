@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Combine
 import Foundation
 import OperatorCore
@@ -6,6 +7,16 @@ import OSLog
 struct OAuthClientOperations: Sendable { let begin: @Sendable () async throws -> OAuthAuthorizationRequest; let complete: @Sendable (URL) async throws -> OAuthTokens; let accessToken: @Sendable () async throws -> String }
 @MainActor protocol OAuthSessionPresenting: AnyObject, Sendable { func authenticate(url: URL, callbackScheme: String?) async throws -> URL; func cancel() }
 enum NativeAccountSetupState: Equatable { case idle, needsSetup, authorizing, connected, cancelled, failed }
+
+enum OAuthSessionCancellation {
+    static func normalized(_ error: Error) -> Error {
+        let nsError = error as NSError
+        guard nsError.domain == ASWebAuthenticationSessionError.errorDomain,
+              nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue
+        else { return error }
+        return CancellationError()
+    }
+}
 
 @MainActor final class NativeAccountSetupCoordinator: ObservableObject {
     @Published private(set) var activeProvider: OAuthProvider?

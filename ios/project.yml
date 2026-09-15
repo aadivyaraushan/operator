@@ -18,6 +18,36 @@ schemes:
     test:
       targets:
         - OperatorAppTests
+  # Live-account proofs only. Sets OPERATOR_LIVE=1 so LiveConnectorReadTests /
+  # LiveConnectorWriteTests run instead of skipping. The default OperatorApp
+  # scheme never sets it, so the normal test run stays green and never touches a
+  # real account. Never run the whole suite under this scheme; select the live
+  # class explicitly with -only-testing.
+  OperatorAppLive:
+    build:
+      targets:
+        OperatorApp: all
+        OperatorAppTests: [test]
+    test:
+      targets:
+        - OperatorAppTests
+      environmentVariables:
+        OPERATOR_LIVE: "1"
+  # Paid end-to-end proof only. Drives the REAL chat UI so the on-device LLM
+  # runs and bills the owner's ChatGPT account. Sets OPERATOR_E2E=1 so the
+  # gated paid test runs; the free launch smoke-test in the same target runs
+  # regardless. Never in the default OperatorApp scheme. Run explicitly with
+  # -only-testing.
+  OperatorAppE2E:
+    build:
+      targets:
+        OperatorApp: all
+        OperatorAppUITests: [test]
+    test:
+      targets:
+        - OperatorAppUITests
+      environmentVariables:
+        OPERATOR_E2E: "1"
 targets:
   OperatorApp:
     type: application
@@ -25,13 +55,20 @@ targets:
     configFiles:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig
+    # Resources are declared here under `sources` (XcodeGen auto-classifies the
+    # asset catalog, JSON, and the runtime folder into the Copy Bundle Resources
+    # phase). A separate top-level `resources:` block is silently dropped by
+    # XcodeGen 2.46 for this target — its Copy Bundle Resources phase goes
+    # missing, so Assets and the embedded Node runtime never make it into the app
+    # and chat cannot start. Keeping them in `sources` uses a code path that
+    # actually emits the phase. See saved-results/ios-connectors-evidence.md.
     sources:
       - path: OperatorApp/Sources
-    resources:
       - path: OperatorApp/Assets.xcassets
       - path: OperatorApp/Resources/connections/handoff/android-handoff-catalog.json
       - path: build/native-node/runtime
         type: folder
+        buildPhase: resources
     dependencies:
       # The wacli WhatsApp archive is deliberately NOT listed here. It exists
       # only as an arm64-simulator slice, so an unconditional dependency breaks
@@ -98,9 +135,42 @@ targets:
     platform: iOS
     sources:
       - path: OperatorApp/Tests
+        # The per-area cheap-loop harnesses (run.sh + Package.template scratch
+        # packages, node .mjs checks) live beside the XCTest sources. They are
+        # not part of the app test bundle, and their many same-named copies
+        # collide as bundle resources ("Multiple commands produce run.sh").
+        excludes:
+          - "**/*.sh"
+          - "**/*.template"
+          - "**/*.mjs"
+          # A standalone @main check executable (run only inside its own scratch
+          # package), not an XCTest — it has no `@testable import OperatorApp`
+          # and its @main would collide in the test bundle.
+          - "runtime/embedded/endpoint/LoopbackPortChecks.swift"
     dependencies:
       - target: OperatorApp
       - package: OperatorCore
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+        # The host app's PRODUCT_NAME is "Operator", so it builds as
+        # Operator.app/Operator. XcodeGen 2.46 derives TEST_HOST from the target
+        # name (OperatorApp) instead, which points at a product that never
+        # exists and fails the build with "Could not find test host". Pin the
+        # real host path so every regeneration stays runnable.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Operator.app/Operator"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+  OperatorAppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: OperatorApp/UITests
+    dependencies:
+      - target: OperatorApp
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.operator.ios.uitests
+        # Names the app this UI-test target launches/automates via XCUIApplication().
+        TEST_TARGET_NAME: OperatorApp
+        "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"

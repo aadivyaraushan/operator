@@ -23,23 +23,83 @@ public enum GatewayDeadline {
     }
 
     /// Runs `work` under a deadline, returning nil if the deadline passes
-    /// first. The losing task is cancelled, though cancellation only stops
-    /// work that checks for it — a synchronous framework call already in
-    /// flight will still finish. What this guarantees is that the *caller*
-    /// stops waiting, which is the part the gateway needs.
+    /// first. The losing task is cancelled. A framework call that ignores
+    /// cancellation may still finish later, but it cannot keep the caller
+    /// waiting or replace the already-returned timeout result.
     public static func run<T: Sendable>(
         milliseconds: Int,
         _ work: @escaping @Sendable () async -> T) async -> T?
     {
-        await withTaskGroup(of: T?.self) { group in
-            group.addTask { await work() }
-            group.addTask {
-                try? await Task.sleep(nanoseconds: UInt64(max(1, milliseconds)) * 1_000_000)
-                return nil
+        let race = DeadlineRace<T>()
+        return await withTaskCancellationHandler(operation: {
+            await withCheckedContinuation { continuation in
+                Task { await race.install(continuation) }
+
+                let workTask = Task {
+                    await race.resolve(await work())
+                }
+                Task { await race.setWorkTask(workTask) }
+
+                let timeoutTask = Task {
+                    do {
+                        try await Task.sleep(nanoseconds: UInt64(max(1, milliseconds)) * 1_000_000)
+                    } catch {
+                        return
+                    }
+                    await race.resolve(nil)
+                }
+                Task { await race.setTimeoutTask(timeoutTask) }
             }
-            let first = await group.next() ?? nil
-            group.cancelAll()
-            return first
+        }, onCancel: {
+            Task { await race.cancel() }
+        })
+    }
+}
+
+private actor DeadlineRace<T: Sendable> {
+    private var finished = false
+    private var result: T?
+    private var continuation: CheckedContinuation<T?, Never>?
+    private var workTask: Task<Void, Never>?
+    private var timeoutTask: Task<Void, Never>?
+
+    func install(_ continuation: CheckedContinuation<T?, Never>) {
+        if self.finished {
+            continuation.resume(returning: self.result)
+        } else {
+            self.continuation = continuation
         }
+    }
+
+    func setWorkTask(_ task: Task<Void, Never>) {
+        guard !self.finished else {
+            task.cancel()
+            return
+        }
+        self.workTask = task
+    }
+
+    func setTimeoutTask(_ task: Task<Void, Never>) {
+        guard !self.finished else {
+            task.cancel()
+            return
+        }
+        self.timeoutTask = task
+    }
+
+    func resolve(_ result: T?) {
+        guard !self.finished else { return }
+        self.finished = true
+        self.result = result
+        self.continuation?.resume(returning: result)
+        self.continuation = nil
+        self.workTask?.cancel()
+        self.timeoutTask?.cancel()
+        self.workTask = nil
+        self.timeoutTask = nil
+    }
+
+    func cancel() {
+        self.resolve(nil)
     }
 }

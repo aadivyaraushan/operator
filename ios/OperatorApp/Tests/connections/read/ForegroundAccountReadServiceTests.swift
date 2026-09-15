@@ -5,6 +5,18 @@ import XCTest
 
 final class ForegroundAccountReadServiceTests: XCTestCase {
     @MainActor
+    func testMissingLimitExplainsHowToRetryWithoutRequestingCredentials() async {
+        let service = ForegroundAccountReadService(reader: DirectAccountReader(bearer: { _ in
+            XCTFail("missing limit must not request credentials")
+            throw AccountReadError.notConnected
+        }))
+        for operation in ["googleCalendarEvents", "googleDriveFiles", "gmailMessages", "googleTasks", "outlookInbox", "outlookCalendarEvents", "slackChannels", "slackHistory", "spotifySearch", "spotifyPlayback"] {
+            let result = await service.handleNodeCommand("connections.read", paramsJSON: "{\"operation\":\"\(operation)\"}", timeoutMilliseconds: nil)
+            XCTAssertEqual(result, .failure(code: "INVALID_REQUEST", message: "Missing required parameter: limit. Retry with an integer limit and the required parameters from connections.describe."), operation)
+        }
+    }
+
+    @MainActor
     func testWrongTypeOptionalFieldsNeverRequestCredentials() async {
         let service = ForegroundAccountReadService(reader: DirectAccountReader(bearer: { _ in
             XCTFail("invalid input must not request credentials")

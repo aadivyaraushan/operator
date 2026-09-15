@@ -21,6 +21,7 @@ import (
 	"errors"
 	"io"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -51,6 +52,7 @@ type linkRunner func(context.Context, string, string, linkCallbacks) error
 
 type operation struct {
 	id, phase, pairCode string
+	failureCode         string
 	cancel              context.CancelFunc
 }
 
@@ -74,6 +76,7 @@ type publicOperation struct {
 	OperationID string `json:"operationId"`
 	Phase       string `json:"phase"`
 	PairCode    string `json:"pairCode,omitempty"`
+	FailureCode string `json:"failureCode,omitempty"`
 }
 
 func newLinkService(run linkRunner) *linkService {
@@ -119,6 +122,23 @@ func (s *linkService) execute(ctx context.Context, op *operation, store, phone s
 		op.phase = phaseLinked
 	} else {
 		op.phase = phaseFailed
+		op.failureCode = safeLinkFailure(err)
+	}
+}
+
+// Only fixed categories cross the bridge; raw errors may contain credentials.
+func safeLinkFailure(err error) string {
+	message := err.Error()
+	switch {
+	case strings.HasPrefix(message, "WhatsApp requires passkey verification"),
+		strings.HasPrefix(message, "WhatsApp requires passkey confirmation"):
+		return "verification_required"
+	case strings.HasPrefix(message, "QR code timed out"):
+		return "code_expired"
+	case strings.HasPrefix(message, "WhatsApp client outdated"):
+		return "client_outdated"
+	default:
+		return "pairing_failed"
 	}
 }
 
@@ -165,6 +185,9 @@ func (s *linkService) snapshot(op *operation, includeCode bool) publicOperation 
 
 func (s *linkService) snapshotLocked(op *operation, includeCode bool) publicOperation {
 	result := publicOperation{OperationID: op.id, Phase: op.phase}
+	if op.phase == phaseFailed {
+		result.FailureCode = op.failureCode
+	}
 	if includeCode && op.phase == phaseCodeReady {
 		result.PairCode = op.pairCode
 	}

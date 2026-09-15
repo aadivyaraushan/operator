@@ -82,6 +82,152 @@ final class LocalOpenClawChatGatewayTests: XCTestCase {
         XCTAssertEqual(deliveredUpdates, [.accepted, .working, .reply("Hello")])
     }
 
+    func testDeliveryIgnoresStaleRunEventsBeforeCurrentRequestAcknowledgement() async throws {
+        let transport = TimingChatTransport(includeStream: true, includeStaleEventsBeforeAck: true)
+        let updates = TimingDeliveryUpdates()
+        let gateway = LocalOpenClawChatGateway(connectionFactory: {
+            OpenClawGatewayConnection(
+                transport: transport, token: "test", identity: GatewayDeviceIdentity(),
+                metadata: .init(appVersion: "test", platform: "test", instanceID: "test"))
+        })
+        let id = UUID()
+
+        try await gateway.deliver(
+            .init(id: id, messageID: id, text: "test", idempotencyKey: "test", state: .waiting)
+        ) { await updates.record($0) }
+
+        let deliveredUpdates = await updates.values
+        XCTAssertEqual(deliveredUpdates, [.accepted, .working, .stream("Hello"), .reply("Hello")])
+    }
+
+    func testTerminalOKRecoversOnlyExactRunReplyWithoutSendingChatAgain() async throws {
+        let transport = TimingChatTransport(
+            includeStream: false,
+            terminalStatus: "ok",
+            historyMessages: [
+                #"{"role":"assistant","content":[{"type":"text","text":"Unrelated latest"}],"__openclaw":{"idempotencyKey":"other-run"}}"#,
+                #"{"role":"assistant","content":[{"type":"text","text":"Recovered exact reply"}],"__openclaw":{"idempotencyKey":"run"}}"#,
+            ])
+        let updates = TimingDeliveryUpdates()
+        let gateway = LocalOpenClawChatGateway(connectionFactory: {
+            OpenClawGatewayConnection(
+                transport: transport, token: "test", identity: GatewayDeviceIdentity(),
+                metadata: .init(appVersion: "test", platform: "test", instanceID: "test"))
+        })
+        let id = UUID()
+
+        try await gateway.deliver(
+            .init(id: id, messageID: id, text: "test", idempotencyKey: "run", state: .waiting)
+        ) { await updates.record($0) }
+
+        let recordedUpdates = await updates.values
+        let chatSendCount = await transport.chatSendCount
+        let methods = await transport.methods
+        XCTAssertEqual(recordedUpdates, [.accepted, .reply("Recovered exact reply")])
+        XCTAssertEqual(chatSendCount, 1)
+        XCTAssertEqual(methods, ["connect", "chat.history", "chat.send", "chat.history"])
+    }
+
+    func testReopeningRecoversSavedCompletionBeforeSendingRequestAgain() async throws {
+        let transport = TimingChatTransport(
+            includeStream: false,
+            historyMessages: [
+                #"{"role":"assistant","stopReason":"stop","content":[{"type":"text","text":"Already opened"}],"__openclaw":{"runId":"run"}}"#,
+            ],
+            historyAvailableBeforeSend: true)
+        let updates = TimingDeliveryUpdates()
+        let gateway = LocalOpenClawChatGateway(connectionFactory: {
+            OpenClawGatewayConnection(
+                transport: transport, token: "test", identity: GatewayDeviceIdentity(),
+                metadata: .init(appVersion: "test", platform: "test", instanceID: "test"))
+        })
+        let id = UUID()
+        try await gateway.deliver(
+            .init(id: id, messageID: id, text: "Open website", idempotencyKey: "run", state: .waiting)
+        ) { await updates.record($0) }
+        let values = await updates.values
+        let methods = await transport.methods
+        XCTAssertEqual(values, [.accepted, .reply("Already opened")])
+        XCTAssertEqual(methods, ["connect", "chat.history"])
+    }
+
+    func testNativeRecoveryPendingKeepsRequestRetryableBeforeSendAndAfterEarlyFailure() async throws {
+        for beforeSend in [true, false] {
+            let transport = TimingChatTransport(
+                includeStream: false, outcome: .failed,
+                historyAvailableBeforeSend: beforeSend, recoverySourceRunID: "run")
+            let updates = TimingDeliveryUpdates()
+            let gateway = LocalOpenClawChatGateway(connectionFactory: {
+                OpenClawGatewayConnection(
+                    transport: transport, token: "test", identity: GatewayDeviceIdentity(),
+                    metadata: .init(appVersion: "test", platform: "test", instanceID: "test"))
+            })
+            let id = UUID()
+            do {
+                try await gateway.deliver(
+                    .init(id: id, messageID: id, text: "Read only", idempotencyKey: "run", state: .waiting)
+                ) { await updates.record($0) }
+                XCTFail("Pending native recovery must retain the request for retry")
+            } catch {
+                guard case ChatGatewayError.gateway("Operator is restoring this request.") = error else {
+                    return XCTFail("Expected a recoverable native-recovery status, got \(error)")
+                }
+            }
+            let values = await updates.values
+            XCTAssertFalse(values.contains { if case .failed = $0 { return true }; return false })
+            let sendCount = await transport.chatSendCount
+            XCTAssertEqual(sendCount, beforeSend ? 0 : 1)
+        }
+    }
+
+    func testTerminalOKWithUnknownOrEmptyExactHistoryDoesNotUseUnrelatedReply() async throws {
+        for messages in [
+            [#"{"role":"assistant","content":[{"type":"text","text":"Wrong"}],"__openclaw":{"idempotencyKey":"other-run"}}"#],
+            [#"{"role":"assistant","content":[],"__openclaw":{"idempotencyKey":"run"}}"#],
+        ] {
+            let transport = TimingChatTransport(
+                includeStream: false, terminalStatus: "ok", historyMessages: messages)
+            let updates = TimingDeliveryUpdates()
+            let gateway = LocalOpenClawChatGateway(connectionFactory: {
+                OpenClawGatewayConnection(
+                    transport: transport, token: "test", identity: GatewayDeviceIdentity(),
+                    metadata: .init(appVersion: "test", platform: "test", instanceID: "test"))
+            })
+            let id = UUID()
+            try await gateway.deliver(
+                .init(id: id, messageID: id, text: "test", idempotencyKey: "run", state: .waiting)
+            ) { await updates.record($0) }
+            let recordedUpdates = await updates.values
+            let chatSendCount = await transport.chatSendCount
+            XCTAssertEqual(
+                recordedUpdates,
+                [.accepted, .failed("Operator finished, but its exact reply could not be recovered.")])
+            XCTAssertEqual(chatSendCount, 1)
+        }
+    }
+
+    func testTerminalErrorAndTimeoutFinishWithoutHistoryOrDuplicateSend() async throws {
+        for status in ["error", "timeout"] {
+            let transport = TimingChatTransport(includeStream: false, terminalStatus: status)
+            let updates = TimingDeliveryUpdates()
+            let gateway = LocalOpenClawChatGateway(connectionFactory: {
+                OpenClawGatewayConnection(
+                    transport: transport, token: "test", identity: GatewayDeviceIdentity(),
+                    metadata: .init(appVersion: "test", platform: "test", instanceID: "test"))
+            })
+            let id = UUID()
+            try await gateway.deliver(
+                .init(id: id, messageID: id, text: "test", idempotencyKey: "run", state: .waiting)
+            ) { await updates.record($0) }
+            let recordedUpdates = await updates.values
+            let chatSendCount = await transport.chatSendCount
+            let methods = await transport.methods
+            XCTAssertEqual(recordedUpdates, [.accepted, .failed("Operator could not complete this request.")])
+            XCTAssertEqual(chatSendCount, 1)
+            XCTAssertEqual(methods, ["connect", "chat.history", "chat.send"])
+        }
+    }
+
     func testFailedStoppedAndTransportErrorRecordFixedTerminalOutcomes() async throws {
         for expected in [
             (TimingChatTransport.Outcome.failed, LocalChatDeliveryTimingEvent.Outcome.failed),
@@ -339,15 +485,32 @@ private actor TimingChatTransport: GatewayTransport {
     private var queue: [Data] = []
 
     private let omitResponseRunID: Bool
+    private let includeStaleEventsBeforeAck: Bool
+    private let terminalStatus: String?
+    private let historyMessages: [String]
+    private let historyAvailableBeforeSend: Bool
+    private let recoverySourceRunID: String?
+    private(set) var methods: [String] = []
+    private(set) var chatSendCount = 0
 
     init(
         includeStream: Bool,
         outcome: Outcome = .reply,
-        omitResponseRunID: Bool = false)
+        omitResponseRunID: Bool = false,
+        includeStaleEventsBeforeAck: Bool = false,
+        terminalStatus: String? = nil,
+        historyMessages: [String] = [],
+        historyAvailableBeforeSend: Bool = false,
+        recoverySourceRunID: String? = nil)
     {
         self.includeStream = includeStream
         self.outcome = outcome
         self.omitResponseRunID = omitResponseRunID
+        self.includeStaleEventsBeforeAck = includeStaleEventsBeforeAck
+        self.terminalStatus = terminalStatus
+        self.historyMessages = historyMessages
+        self.historyAvailableBeforeSend = historyAvailableBeforeSend
+        self.recoverySourceRunID = recoverySourceRunID
     }
 
     func open() {
@@ -357,15 +520,24 @@ private actor TimingChatTransport: GatewayTransport {
     func send(_ data: Data) throws {
         let frame = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let id = frame?["id"] as? String ?? "missing"
-        switch frame?["method"] as? String {
+        let method = frame?["method"] as? String ?? "missing"
+        self.methods.append(method)
+        switch method {
         case "connect":
             self.queue.append(Data(#"{"type":"res","id":"\#(id)","ok":true,"payload":{}}"#.utf8))
         case "chat.send":
+            self.chatSendCount += 1
             self.queue.append(Data(#"{"type":"res","id":"unrelated","ok":true,"payload":{}}"#.utf8))
+            if self.includeStaleEventsBeforeAck {
+                self.queue.append(Data(#"{"type":"event","event":"chat","payload":{"runId":"old-run","sessionKey":"agent:main:main","seq":1,"state":"delta","deltaText":"Stale"}}"#.utf8))
+                self.queue.append(Data(#"{"type":"event","event":"chat","payload":{"runId":"old-run","sessionKey":"agent:main:main","seq":2,"state":"final","message":"Stale interrupted reply"}}"#.utf8))
+            }
+            let responseStatus = self.terminalStatus ?? "started"
             let responsePayload = self.omitResponseRunID
-                ? #"{"status":"started"}"#
-                : #"{"runId":"run","status":"started"}"#
+                ? #"{"status":"\#(responseStatus)"}"#
+                : #"{"runId":"run","status":"\#(responseStatus)"}"#
             self.queue.append(Data(#"{"type":"res","id":"\#(id)","ok":true,"payload":\#(responsePayload)}"#.utf8))
+            if self.terminalStatus != nil { return }
             if self.outcome == .transportError {
                 return
             } else if self.outcome == .failed {
@@ -373,11 +545,20 @@ private actor TimingChatTransport: GatewayTransport {
             } else if self.outcome == .stopped {
                 self.queue.append(Data(#"{"type":"event","event":"chat","payload":{"runId":"run","sessionKey":"agent:main:main","seq":1,"state":"aborted"}}"#.utf8))
             } else if self.includeStream {
-                self.queue.append(Data(#"{"type":"event","event":"chat","payload":{"runId":"run","sessionKey":"agent:main:main","seq":1,"state":"delta","deltaText":"Hello"}}"#.utf8))
-                self.queue.append(Data(#"{"type":"event","event":"chat","payload":{"runId":"run","sessionKey":"agent:main:main","seq":2,"state":"final","message":"Hello"}}"#.utf8))
+                let runID = self.omitResponseRunID ? "test" : "run"
+                self.queue.append(Data(#"{"type":"event","event":"chat","payload":{"runId":"\#(runID)","sessionKey":"agent:main:main","seq":1,"state":"delta","deltaText":"Hello"}}"#.utf8))
+                self.queue.append(Data(#"{"type":"event","event":"chat","payload":{"runId":"\#(runID)","sessionKey":"agent:main:main","seq":2,"state":"final","message":"Hello"}}"#.utf8))
             } else {
-                self.queue.append(Data(#"{"type":"event","event":"chat","payload":{"runId":"run","sessionKey":"agent:main:main","seq":1,"state":"final","message":"Hello"}}"#.utf8))
+                let runID = self.omitResponseRunID ? "test" : "run"
+                self.queue.append(Data(#"{"type":"event","event":"chat","payload":{"runId":"\#(runID)","sessionKey":"agent:main:main","seq":1,"state":"final","message":"Hello"}}"#.utf8))
             }
+        case "chat.history":
+            let messages = (self.historyAvailableBeforeSend || self.chatSendCount > 0
+                ? self.historyMessages : []).joined(separator: ",")
+            let recovery = (self.historyAvailableBeforeSend || self.chatSendCount > 0)
+                ? self.recoverySourceRunID.map { #","operatorRecovery":{"sourceRunId":"\#($0)","runId":"recovery"}"# } ?? ""
+                : ""
+            self.queue.append(Data(#"{"type":"res","id":"\#(id)","ok":true,"payload":{"messages":[\#(messages)]\#(recovery)}}"#.utf8))
         default:
             throw NSError(domain: "Unexpected RPC", code: 1)
         }
@@ -429,6 +610,8 @@ private actor TerminalApprovalTransport: GatewayTransport {
             response = #"{"type":"res","id":"\#(id)","ok":true,"payload":{}}"#
         case "sessions.messages.subscribe":
             response = #"{"type":"res","id":"\#(id)","ok":true,"payload":{"subscribed":true,"key":"agent:main:main","approvalReplay":{"sessionKey":"agent:main:main","updatedAtMs":1,"approvals":[],"truncated":false}}}"#
+        case "chat.history":
+            response = #"{"type":"res","id":"\#(id)","ok":true,"payload":{"messages":[]}}"#
         case "chat.send":
             response = #"{"type":"res","id":"\#(id)","ok":true,"payload":{"runId":"run","status":"started"}}"#
             self.enqueue(Self.approvalEvent(phase: "pending", status: "pending"))

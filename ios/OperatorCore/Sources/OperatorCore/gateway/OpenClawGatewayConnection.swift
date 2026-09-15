@@ -24,6 +24,7 @@ public enum OpenClawGatewayError: Error, Equatable, Sendable {
     case invalidChallenge
     case invalidFrame
     case notConnected
+    case recoveryPending
     case rejected(code: String, message: String)
     case transport(String)
 }
@@ -208,6 +209,21 @@ public actor OpenClawGatewayConnection {
         }
         self.logger.info("[approval] subscribed pendingCount=\(replay.approvals.count)")
         return replay
+    }
+
+    public func recoverReply(runID: String) async throws -> String? {
+        let result: GatewayChatHistoryResult = try await self.request(
+            method: "chat.history",
+            params: GatewayChatHistoryParams(sessionKey: self.sessionKey))
+        let reply = result.exactAssistantReply(runID: runID)
+        if reply == nil, let recovery = result.operatorRecovery,
+           recovery.sourceRunId == runID, !recovery.runId.isEmpty {
+            self.logger.info("[gateway] exact request has native recovery pending")
+            throw OpenClawGatewayError.recoveryPending
+        }
+        self.logger.info(
+            "[gateway] exact terminal reply recovery runID=\(runID, privacy: .public) found=\(reply != nil)")
+        return reply
     }
 
     public func resolveApproval(

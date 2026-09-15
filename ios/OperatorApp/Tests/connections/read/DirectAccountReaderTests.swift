@@ -48,6 +48,67 @@ final class DirectAccountReaderTests: XCTestCase {
         await XCTAssertThrowsErrorAsync(try await calendar.read(.init(operation: .googleCalendarEvents, query: nil, channel: nil, timeMin: "2026-09-10", timeMax: "2026-09-09", limit: 1, cursor: nil)))
     }
 
+    // --- Drive / Spotify tolerant free-text query -------------------------
+    // A user's request is natural language, not a prescribed format. The reader
+    // must accept spaces and punctuation; only a query that is empty once
+    // trimmed (i.e. no query at all) is refused. These prove the whole path
+    // from request to built URL, so a future strict-format regression is caught.
+
+    func testGoogleDriveAcceptsAMultiWordQueryWithSpaces() async throws {
+        let transport = ReadFixtureTransport(body: #"{"files":[]}"#)
+        let reader = DirectAccountReader(transport: transport, bearer: { _ in "token" })
+
+        _ = try await reader.read(.init(operation: .googleDriveFiles, query: "budget report q1", channel: nil, timeMin: nil, timeMax: nil, limit: 5, cursor: nil))
+
+        let captured = await transport.request
+        let request = try XCTUnwrap(captured)
+        let items = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)?.queryItems
+        // Spaces survive untouched into the Drive query-language clause.
+        XCTAssertEqual(items?.value(for: "q"), "name contains 'budget report q1' and trashed = false")
+    }
+
+    func testGoogleDriveEscapesApostropheAndBackslashRatherThanRejecting() async throws {
+        let transport = ReadFixtureTransport(body: #"{"files":[]}"#)
+        let reader = DirectAccountReader(transport: transport, bearer: { _ in "token" })
+
+        _ = try await reader.read(.init(operation: .googleDriveFiles, query: #"o'brien\notes"#, channel: nil, timeMin: nil, timeMax: nil, limit: 5, cursor: nil))
+
+        let captured = await transport.request
+        let request = try XCTUnwrap(captured)
+        let items = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)?.queryItems
+        // Drive metacharacters are escaped (\\ and \'), not grounds for refusal.
+        XCTAssertEqual(items?.value(for: "q"), #"name contains 'o\'brien\\notes' and trashed = false"#)
+    }
+
+    func testSpotifySearchRoundTripsAMultiWordQueryLosslessly() async throws {
+        let transport = ReadFixtureTransport(body: #"{"tracks":{"items":[]}}"#)
+        let reader = DirectAccountReader(transport: transport, bearer: { _ in "token" })
+
+        _ = try await reader.read(.init(operation: .spotifySearch, query: "bohemian rhapsody queen", channel: nil, timeMin: nil, timeMax: nil, limit: 5, cursor: nil))
+
+        let captured = await transport.request
+        let request = try XCTUnwrap(captured)
+        let items = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)?.queryItems
+        // Percent-encoding on the wire decodes back to the exact words typed.
+        XCTAssertEqual(items?.value(for: "q"), "bohemian rhapsody queen")
+    }
+
+    func testDriveAndSpotifyRefuseAWhitespaceOnlyQueryWithoutCallingOut() async {
+        for operation in [AccountReadOperation.googleDriveFiles, .spotifySearch] {
+            let transport = ReadFixtureTransport(body: "{}")
+            let calls = TokenCalls()
+            let reader = DirectAccountReader(transport: transport, bearer: { _ in await calls.called(); return "token" })
+
+            await XCTAssertThrowsErrorAsync(try await reader.read(.init(operation: operation, query: "   ", channel: nil, timeMin: nil, timeMax: nil, limit: 5, cursor: nil))) { error in
+                XCTAssertEqual(error as? AccountReadError, .invalidRequest, "operation=\(operation)")
+            }
+            let callCount = await calls.value
+            let request = await transport.request
+            XCTAssertEqual(callCount, 0, "operation=\(operation): a refused request must never mint a token")
+            XCTAssertNil(request, "operation=\(operation): a refused request must never reach the network")
+        }
+    }
+
     // --- outlookCalendarEvents -------------------------------------------
 
     func testOutlookCalendarUsesCalendarViewSoRecurringSeriesAreExpanded() async throws {
@@ -285,40 +346,7 @@ final class DirectAccountReaderTests: XCTestCase {
     }
 
     private static let threeGmailIDs = #"{"messages":[{"id":"m1"},{"id":"m2"},{"id":"m3"}],"nextPageToken":"page-2"}"#
-}
 
-private actor GmailFixtureTransport: PhoneHTTPTransport {
-    private(set) var urls: [URL] = []
-    private let listBody: String
-    private let messageStatus: Int
-
-    init(listBody: String, messageStatus: Int = 200) {
-        self.listBody = listBody
-        self.messageStatus = messageStatus
-    }
-
-    var listCalls: Int { self.urls.filter { $0.path == "/gmail/v1/users/me/messages" }.count }
-    var metadataCalls: Int { self.urls.filter { $0.path.hasPrefix("/gmail/v1/users/me/messages/") }.count }
-
-    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
-        let url = request.url!
-        self.urls.append(url)
-        if url.path == "/gmail/v1/users/me/messages" {
-            return (Data(self.listBody.utf8), HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!)
-        }
-        let id = url.lastPathComponent
-        // Answered out of order relative to the list, on purpose.
-        try? await Task.sleep(nanoseconds: UInt64.random(in: 1_000 ... 200_000))
-        let body = """
-        {"id":"\(id)","threadId":"T\(id)","snippet":"preview of \(id)",
-         "payload":{"headers":[{"name":"From","value":"a@example.com"},
-                               {"name":"subject","value":"Subject \(id)"},
-                               {"name":"Date","value":"Tue, 2 Sep 2026 09:00:00 +0000"},
-                               {"name":"Bcc","value":"private@example.com"}]},
-         "internalDate":"1756800000000","labelIds":["INBOX"]}
-        """
-        return (Data(body.utf8), HTTPURLResponse(url: url, statusCode: self.messageStatus, httpVersion: nil, headerFields: nil)!)
-    }
     // --- googleTasks ------------------------------------------------------
 
     func testGoogleTasksDefaultsToTheDefaultListAndHidesCompletedWork() async throws {
@@ -375,13 +403,6 @@ private actor GmailFixtureTransport: PhoneHTTPTransport {
         XCTAssertEqual(path, "/tasks/v1/lists/MTIzNDU2/tasks")
     }
 
-
-
-
-
-
-
-
     // Tasks omits items entirely when the list is empty. That is an empty
     // result, not a broken one.
     func testAbsentItemsReadAsAnEmptyResult() async throws {
@@ -411,6 +432,40 @@ private actor GmailFixtureTransport: PhoneHTTPTransport {
             XCTAssertFalse(OAuthProvider.google.scopes.contains("https://www.googleapis.com/auth/\(scope)"), scope)
         }
         XCTAssertFalse(OAuthProvider.google.scopes.contains { $0.contains("/chat.") || $0.contains("/contacts") })
+    }
+}
+
+private actor GmailFixtureTransport: PhoneHTTPTransport {
+    private(set) var urls: [URL] = []
+    private let listBody: String
+    private let messageStatus: Int
+
+    init(listBody: String, messageStatus: Int = 200) {
+        self.listBody = listBody
+        self.messageStatus = messageStatus
+    }
+
+    var listCalls: Int { self.urls.filter { $0.path == "/gmail/v1/users/me/messages" }.count }
+    var metadataCalls: Int { self.urls.filter { $0.path.hasPrefix("/gmail/v1/users/me/messages/") }.count }
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        let url = request.url!
+        self.urls.append(url)
+        if url.path == "/gmail/v1/users/me/messages" {
+            return (Data(self.listBody.utf8), HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        }
+        let id = url.lastPathComponent
+        // Answered out of order relative to the list, on purpose.
+        try? await Task.sleep(nanoseconds: UInt64.random(in: 1_000 ... 200_000))
+        let body = """
+        {"id":"\(id)","threadId":"T\(id)","snippet":"preview of \(id)",
+         "payload":{"headers":[{"name":"From","value":"a@example.com"},
+                               {"name":"subject","value":"Subject \(id)"},
+                               {"name":"Date","value":"Tue, 2 Sep 2026 09:00:00 +0000"},
+                               {"name":"Bcc","value":"private@example.com"}]},
+         "internalDate":"1756800000000","labelIds":["INBOX"]}
+        """
+        return (Data(body.utf8), HTTPURLResponse(url: url, statusCode: self.messageStatus, httpVersion: nil, headerFields: nil)!)
     }
 }
 

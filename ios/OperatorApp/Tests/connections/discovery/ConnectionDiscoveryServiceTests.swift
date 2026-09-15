@@ -27,6 +27,18 @@ final class ConnectionDiscoveryServiceTests: XCTestCase {
             "slackHistory", "spotifySearch", "spotifyPlayback",
         ]))
         XCTAssertEqual(Set(account["write"] as? [String] ?? []), Set(AccountWriteOperation.allCases.map(\.rawValue)))
+        XCTAssertEqual(account["readParameters"] as? [String: [String]], [
+            "googleCalendarEvents": ["timeMin", "timeMax", "limit", "query?", "cursor?"],
+            "googleDriveFiles": ["query", "limit", "cursor?"],
+            "gmailMessages": ["limit", "query?", "cursor?"],
+            "googleTasks": ["limit", "channel?", "cursor?"],
+            "outlookInbox": ["limit", "query?", "cursor?"],
+            "outlookCalendarEvents": ["timeMin", "timeMax", "limit", "cursor?"],
+            "slackChannels": ["limit", "cursor?"],
+            "slackHistory": ["channel", "limit", "cursor?"],
+            "spotifySearch": ["query", "limit", "cursor?"],
+            "spotifyPlayback": ["limit", "cursor?"],
+        ])
 
         let details = try XCTUnwrap(object["commandDetails"] as? [[String: Any]])
         let names = Set(details.compactMap { $0["name"] as? String })

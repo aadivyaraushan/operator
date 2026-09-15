@@ -5,6 +5,45 @@ import OperatorCore
 
 @MainActor
 final class WhatsAppLinkFlowTests: XCTestCase {
+    func testSafeFailureReasonReachesScreenWithoutRawDetails() async throws {
+        for (code, text) in [
+            ("verification_required", "WhatsApp requires extra verification that this connection cannot complete yet."),
+            ("code_expired", "This link code expired. Try again to request a new one."),
+            ("client_outdated", "The WhatsApp connection needs an update before it can link."),
+            ("private-token", "WhatsApp could not finish linking. Try again or check your connection."),
+        ] {
+            let value = try JSONDecoder().decode(WhatsAppLinkStatus.self, from: Data(
+                "{\"operationId\":\"op-1\",\"phase\":\"failed\",\"failureCode\":\"\(code)\"}".utf8))
+            let gateway = WhatsAppLinkGatewayStub(starts: [operation(.waitingForCode)], statuses: [value])
+            let model = WhatsAppLinkFlowModel(gateway: gateway)
+            await model.start(phone: "+15551234567")
+            await model.refresh()
+            XCTAssertEqual(model.state, .failed)
+            XCTAssertEqual(model.failureMessage, text)
+            XCTAssertNil(model.pairCode)
+        }
+    }
+    func testFormattedNumbersReachGatewayAsInternationalDigits() async throws {
+        for phone in [" +1 (555) 123-4567 ", "+1.555.123.4567", "+1\u{00a0}555\u{202f}123‑4567"] {
+            let gateway = WhatsAppLinkGatewayStub(starts: [operation(.waitingForCode)])
+            let model = WhatsAppLinkFlowModel(gateway: gateway)
+            await model.start(phone: phone)
+            let sent = await gateway.startedPhones()
+            XCTAssertEqual(sent, ["+15551234567"])
+        }
+    }
+
+    func testInvalidOrAmbiguousNumbersNeverReachGateway() async throws {
+        for phone in ["555 123 4567", "+1 555 CALL NOW", "+1 555 123 4567 ext 2", "++15551234567", "+0123456789", "+123", "+1234567890123456"] {
+            let gateway = WhatsAppLinkGatewayStub(starts: [operation(.waitingForCode)])
+            let model = WhatsAppLinkFlowModel(gateway: gateway)
+            await model.start(phone: phone)
+            let sent = await gateway.startedPhones()
+            XCTAssertTrue(sent.isEmpty, "Invalid or ambiguous input must not start pairing")
+            XCTAssertEqual(model.state, .idle)
+        }
+    }
+
     func testStartSendsPhoneWithoutRetainingItAndWaitsForCode() async throws {
         let gateway = WhatsAppLinkGatewayStub(starts: [operation(.waitingForCode)])
         let model = WhatsAppLinkFlowModel(gateway: gateway)

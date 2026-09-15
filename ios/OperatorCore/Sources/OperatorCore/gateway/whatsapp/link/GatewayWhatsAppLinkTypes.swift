@@ -41,11 +41,13 @@ public struct WhatsAppLinkStatus: Decodable, Equatable, Sendable {
     public let operationID: String
     public let phase: WhatsAppLinkPhase
     public let pairCode: String?
+    public let failureCode: String?
 
     private enum CodingKeys: String, CodingKey {
         case operationID = "operationId"
         case phase
         case pairCode
+        case failureCode
     }
 
     public init(from decoder: Decoder) throws {
@@ -64,6 +66,8 @@ public struct WhatsAppLinkStatus: Decodable, Equatable, Sendable {
         self.operationID = operationID
         self.phase = phase
         self.pairCode = pairCode
+        let failureCode = try container.decodeIfPresent(String.self, forKey: .failureCode)
+        self.failureCode = phase == .failed && ["verification_required", "code_expired", "client_outdated", "pairing_failed"].contains(failureCode ?? "") ? failureCode : nil
     }
 }
 

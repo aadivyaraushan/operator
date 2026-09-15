@@ -2,43 +2,101 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {randomBytes} from 'node:crypto';
 
+function hasWorkspaceData(directory) {
+  try { return fs.statSync(directory).isDirectory() && fs.readdirSync(directory).length > 0; }
+  catch { return false; }
+}
+
+function relocateManagedWorkspace(state, configPath) {
+  const source = fs.readFileSync(configPath, 'utf8');
+  let config;
+  try { config = JSON.parse(source); }
+  catch { return; }
+  const configured = config?.agents?.defaults?.workspace;
+  const workspace = path.join(state, 'workspace');
+  const managedWorkspace = typeof configured === 'string' && path.isAbsolute(configured) && path.basename(configured) === 'workspace' && path.basename(path.dirname(configured)) === 'openclaw' && path.basename(path.dirname(path.dirname(configured))) === 'Operator';
+  if (!managedWorkspace || configured === workspace) return;
+  // iOS moves the data container on every install, and the move carries the
+  // workspace with it, so the recorded absolute path is stale while the data
+  // is already at the new default location. When the old location still has
+  // data and the new one has none, copy it across, preserving the old copy
+  // until the owner chooses to remove it. When neither has data there is
+  // nothing to recover and nobody can restore a directory inside an iOS
+  // container, so dropping the key and letting OpenClaw seed a fresh
+  // workspace beats refusing to start forever.
+  if (!hasWorkspaceData(workspace) && hasWorkspaceData(configured)) {
+    fs.cpSync(configured, workspace, {recursive: true, errorOnExist: true, force: false});
+  }
+  delete config.agents.defaults.workspace;
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), {mode: 0o600});
+}
+
+function addAutomaticFastModeDefault(configPath) {
+  let config;
+  try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')); }
+  catch (error) { if (error instanceof SyntaxError) return; throw error; }
+  const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (!isObject(config) || (config.agents !== undefined && !isObject(config.agents))) return;
+  if (config.agents?.defaults !== undefined && !isObject(config.agents.defaults)) return;
+  if (config.agents?.defaults?.fastModeDefault !== undefined) return;
+  config.agents ??= {};
+  config.agents.defaults ??= {};
+  config.agents.defaults.fastModeDefault = 'auto';
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), {mode: 0o600});
+}
+
+function addNativeSearchDefaults(configPath) {
+  let config;
+  try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')); }
+  catch (error) { if (error instanceof SyntaxError) return; throw error; }
+  const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (!isObject(config)) return;
+  let current = config;
+  for (const key of ['tools', 'web', 'search', 'openaiCodex']) {
+    if (current[key] !== undefined && !isObject(current[key])) return;
+    current = current[key] ?? {};
+  }
+  const search = config.tools?.web?.search;
+  // Never replace a chosen provider, disable, mode or search restriction.
+  if (search?.enabled === false || search?.provider !== undefined || search?.openaiCodex?.enabled === false) return;
+  if (current.enabled !== undefined && current.mode !== undefined) return;
+  config.tools ??= {};
+  config.tools.web ??= {};
+  config.tools.web.search ??= {};
+  config.tools.web.search.openaiCodex ??= {};
+  const native = config.tools.web.search.openaiCodex;
+  if (native.enabled === undefined) native.enabled = true;
+  if (native.mode === undefined) native.mode = 'live';
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), {mode: 0o600});
+}
+
 export function prepareState(state) {
   fs.mkdirSync(state, {recursive: true, mode: 0o700});
   const workspace = path.join(state, 'workspace');
-  fs.mkdirSync(workspace, {recursive: true, mode: 0o700});
   const configPath = path.join(state, 'openclaw.json');
   const config = {
     gateway: {mode: 'local', bind: 'loopback', auth: {mode: 'token', token: randomBytes(32).toString('hex')}, controlUi: {enabled: false}},
-    agents: {defaults: {workspace}}
+    // OpenClaw resolves the default workspace from OPENCLAW_STATE_DIR/workspace.
+    // Keeping it out of the file survives an iOS app-container relocation.
+    agents: {defaults: {fastModeDefault: 'auto'}},
+    tools: {web: {search: {openaiCodex: {enabled: true, mode: 'live'}}}}
   };
   try {
     // Exclusive creation: reopening must never replace settings or saved sign-in.
     fs.writeFileSync(configPath, JSON.stringify(config), {flag: 'wx', mode: 0o600});
+    fs.mkdirSync(workspace, {recursive: true, mode: 0o700});
     return {configPath, created: true};
   } catch (error) {
     if (error.code !== 'EEXIST') throw error;
-    // OpenClaw owns parsing and validating existing configuration, including JSON5.
-    return {configPath, created: false, workspaceRepointed: repointVanishedWorkspace(configPath, workspace)};
+    // Only migrate the app's former workspace location after its contents survive.
+    // Other JSON5 configuration remains OpenClaw-owned and is left untouched.
+    relocateManagedWorkspace(state, configPath);
+    // A saved default keeps ordinary chat free of restart-unsafe message overrides.
+    // Preserve explicit preferences and leave non-JSON configuration untouched.
+    addAutomaticFastModeDefault(configPath);
+    addNativeSearchDefaults(configPath);
+    fs.mkdirSync(workspace, {recursive: true, mode: 0o700});
+    return {configPath, created: false};
   }
 }
 
-// iOS gives the app a new data container on every install, so the absolute
-// workspace path OpenClaw stored at first launch stops existing and every turn
-// fails with WorkspaceVanishedError. Repoint that one key, and only when the
-// recorded directory is really gone; anything else in the file, and any file
-// that is not plain JSON, is left exactly as OpenClaw wrote it.
-function repointVanishedWorkspace(configPath, workspace) {
-  let config;
-  try {
-    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  } catch {
-    return false;
-  }
-  const recorded = config?.agents?.defaults?.workspace;
-  if (typeof recorded !== 'string' || recorded === workspace || fs.existsSync(recorded)) return false;
-  config.agents.defaults.workspace = workspace;
-  const staged = `${configPath}.repoint`;
-  fs.writeFileSync(staged, JSON.stringify(config, null, 2), {mode: 0o600});
-  fs.renameSync(staged, configPath);
-  return true;
-}

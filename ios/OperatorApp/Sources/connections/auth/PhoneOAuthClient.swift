@@ -83,7 +83,14 @@ actor PhoneOAuthClient {
         connection.pending = nil
         try await self.saveConnection(connection)
         guard query["error"] == nil else {
-            self.logger.info("[phone-oauth] authorization denied provider=\(self.provider.rawValue, privacy: .public)")
+            // Log only standard error names and Microsoft's numeric support code,
+            // never the callback, description, account details or credentials.
+            let standardErrors = ["access_denied", "invalid_request", "unauthorized_client", "unsupported_response_type", "invalid_scope", "server_error", "temporarily_unavailable", "login_required", "interaction_required", "consent_required"]
+            let reason = standardErrors.first(where: { $0 == query["error"] }) ?? "other"
+            let description = query["error_description"] ?? ""
+            let codeRange = description.range(of: "AADSTS[0-9]{4,12}", options: .regularExpression)
+            let supportCode = codeRange.map { String(description[$0]) } ?? "none"
+            self.logger.info("[phone-oauth] authorization denied provider=\(self.provider.rawValue, privacy: .public) reason=\(reason, privacy: .public) supportCode=\(supportCode, privacy: .public)")
             throw PhoneOAuthError.authorizationDenied
         }
         guard let code = query["code"], !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -116,6 +123,10 @@ actor PhoneOAuthClient {
     func accessToken() async throws -> String {
         try self.validateSetup()
         guard let tokens = try await self.loadConnection()?.tokens else { throw PhoneOAuthError.notConnected }
+        guard Set(self.provider.requiredAccessTokenScopes).isSubset(of: Set(tokens.grantedScopes)) else {
+            self.logger.info("[phone-oauth] saved authorization needs renewal provider=\(self.provider.rawValue, privacy: .public) errorCode=\(PhoneOAuthError.reauthorizationRequired.rawValue, privacy: .public)")
+            throw PhoneOAuthError.reauthorizationRequired
+        }
         guard tokens.expiresAt > self.now().addingTimeInterval(Self.refreshLeeway) else {
             return try await self.refresh().accessToken
         }
@@ -175,8 +186,15 @@ actor PhoneOAuthClient {
               expected.password == actual.password,
               expected.host == actual.host,
               expected.port == actual.port,
-              expected.path == actual.path
+              (expected.path == actual.path
+                || (self.provider == .microsoftOutlook && expected.host != nil
+                    && expected.path.isEmpty && actual.path == "/"))
         else { throw PhoneOAuthError.callbackRedirectMismatch }
+        // Microsoft appends a slash to redirects with no path in query/fragment
+        // responses. Keep the originally registered URI for the token exchange.
+        if expected.path != actual.path {
+            self.logger.info("[phone-oauth] accepted documented root slash provider=\(self.provider.rawValue, privacy: .public)")
+        }
         let expectedItems = expected.queryItems ?? []
         let actualItems = actual.queryItems ?? []
         for item in expectedItems where !actualItems.contains(item) {

@@ -5,15 +5,13 @@ import XCTest
 
 @MainActor final class NotionNodeTests: XCTestCase {
     func testSetupMissingRedirectUsesLocalCallbackBeforeDiscovery() async {
-        let transport = CountingTransport(); let store = NodeMemoryStore(); let oauth = FakeOAuthPresenter()
+        let transport = CountingTransport(); let store = NodeMemoryStore(loadDelay: .milliseconds(20)); let oauth = FakeOAuthPresenter()
         let client = NotionMCPClient(store: store, transport: transport)
         let setup = NativeNotionSetupCoordinator(client: client, presenter: oauth)
         XCTAssertEqual(setup.state, .idle)
         setup.connect()
-        for _ in 0..<100 {
-            if await transport.count() > 0 { break }
-            await Task.yield()
-        }
+        defer { setup.cancel() }
+        await fulfillment(of: [transport.requested], timeout: 3)
         let count = await transport.count()
         XCTAssertEqual(count, 1)
         XCTAssertEqual(oauth.calls, 0)
@@ -68,7 +66,7 @@ import XCTest
         await store.set(#"{"clientID":"client","accessToken":"expired","refreshToken":"refresh","expiresAt":0}"#)
         let setup = NativeNotionSetupCoordinator(client: NotionMCPClient(store: store, transport: transport), presenter: oauth)
         let check = Task { await setup.checkConnection() }
-        while !(await transport.isWaiting) { await Task.yield() }
+        await fulfillment(of: [transport.started], timeout: 3)
 
         setup.cancel()
         await transport.release()
@@ -115,7 +113,38 @@ import XCTest
 private actor FakeNotionAPI: NotionNodeClient { var log:[String]=[]; func listTools() async throws -> [NotionTool] { log.append("list"); return [.init(name:"search",description:nil)] }; func callTool(name:String,arguments:[String:NotionJSONValue]) async throws -> NotionJSONValue { log.append("call"); return .object(["ok":.bool(true)]) }; func calls()->[String]{log}; func callCount()->Int{log.filter{$0=="call"}.count} }
 @MainActor private final class FakeNotionPresenter: NotionToolConfirmationPresenting { var decision:NotionToolDecision = .denied; var hang=false; func confirm(_ request:NotionToolConfirmationRequest) async -> NotionToolDecision { if hang { try? await Task.sleep(for:.seconds(60)) }; return decision }; func cancel(){} }
 @MainActor private final class FakeOAuthPresenter: OAuthSessionPresenting { var calls=0; func authenticate(url:URL,callbackScheme:String?) async throws->URL{calls += 1;throw CancellationError()};func cancel(){} }
-private actor NodeMemoryStore: CredentialDataStore { var value:Data?;func load()async throws->Data?{value};func save(_ data:Data)async throws{value=data};func set(_ value:String){self.value=Data(value.utf8)};func data()->Data?{value} }
-private actor CountingTransport: PhoneHTTPTransport { var requests:[URLRequest]=[];func data(for request:URLRequest)async throws->(Data,URLResponse){requests.append(request);throw URLError(.notConnectedToInternet)};func count()->Int{requests.count} }
-private actor SuspendingTransport: PhoneHTTPTransport { private var continuation:CheckedContinuation<Void,Never>?;var isWaiting:Bool{continuation != nil};func release(){continuation?.resume();continuation=nil};func data(for request:URLRequest)async throws->(Data,URLResponse){await withCheckedContinuation{continuation=$0};throw URLError(.notConnectedToInternet)} }
+private actor NodeMemoryStore: CredentialDataStore {
+    var value: Data?
+    private let loadDelay: Duration
+    init(loadDelay: Duration = .zero) { self.loadDelay = loadDelay }
+    func load() async throws -> Data? {
+        if loadDelay > .zero { try await Task.sleep(for: loadDelay) }
+        return value
+    }
+    func save(_ data: Data) async throws { value = data }
+    func set(_ value: String) { self.value = Data(value.utf8) }
+    func data() -> Data? { value }
+}
+private actor CountingTransport: PhoneHTTPTransport {
+    nonisolated let requested = XCTestExpectation(description: "Notion discovery requested")
+    var requests: [URLRequest] = []
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        requests.append(request)
+        requested.fulfill()
+        throw URLError(.notConnectedToInternet)
+    }
+    func count() -> Int { requests.count }
+}
+private actor SuspendingTransport: PhoneHTTPTransport {
+    nonisolated let started = XCTestExpectation(description: "Notion refresh suspended")
+    private var continuation: CheckedContinuation<Void, Never>?
+    func release() { continuation?.resume(); continuation = nil }
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        await withCheckedContinuation {
+            continuation = $0
+            started.fulfill()
+        }
+        throw URLError(.notConnectedToInternet)
+    }
+}
 @MainActor private final class RecordingHandler: GatewayNodeCommandHandler { var commands:[String]=[];func handleNodeCommand(_ command:String,paramsJSON:String?,timeoutMilliseconds:Int?)async->GatewayNodeCommandResult{commands.append(command);return .success(payloadJSON:"{}")}}

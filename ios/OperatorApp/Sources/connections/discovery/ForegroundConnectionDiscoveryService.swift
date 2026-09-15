@@ -174,16 +174,16 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
     }
 
     private static let readOperationParameters: [String: [String]] = [
-        "googleCalendarEvents": ["timeMin?", "timeMax?", "limit?", "cursor?"],
-        "googleDriveFiles": ["query?", "limit?", "cursor?"],
-        "gmailMessages": ["query?", "limit?", "cursor?"],
-        "googleTasks": ["channel?", "limit?", "cursor?"],
-        "outlookInbox": ["query?", "limit?", "cursor?"],
-        "outlookCalendarEvents": ["timeMin", "timeMax", "limit?", "cursor?"],
-        "slackChannels": ["limit?", "cursor?"],
-        "slackHistory": ["channel", "limit?", "cursor?"],
-        "spotifySearch": ["query", "limit?"],
-        "spotifyPlayback": [],
+        "googleCalendarEvents": ["timeMin", "timeMax", "limit", "query?", "cursor?"],
+        "googleDriveFiles": ["query", "limit", "cursor?"],
+        "gmailMessages": ["limit", "query?", "cursor?"],
+        "googleTasks": ["limit", "channel?", "cursor?"],
+        "outlookInbox": ["limit", "query?", "cursor?"],
+        "outlookCalendarEvents": ["timeMin", "timeMax", "limit", "cursor?"],
+        "slackChannels": ["limit", "cursor?"],
+        "slackHistory": ["channel", "limit", "cursor?"],
+        "spotifySearch": ["query", "limit", "cursor?"],
+        "spotifyPlayback": ["limit", "cursor?"],
     ]
 
     private static let writeOperationParameters: [String: [String]] = [

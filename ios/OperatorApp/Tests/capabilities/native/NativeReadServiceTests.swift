@@ -145,7 +145,7 @@ final class ForegroundWeatherServiceTests: XCTestCase {
     func testCarriesAttributionAndValidatesTheCoordinate() async throws {
         let service = ForegroundWeatherService(source: StubWeatherSource(reading: .init(
             temperatureCelsius: 18.5, apparentCelsius: 17.0, condition: "Partly Cloudy",
-            humidity: 0.62, windKilometresPerHour: 11.2, highCelsius: 21, lowCelsius: 12)))
+            humidity: 0.62, windKilometresPerHour: 11.2, highCelsius: 21, lowCelsius: 12, attribution: weatherAttribution)), recordCard: { _ in })
 
         let result = await service.handleNodeCommand(
             "weather.forecast", paramsJSON: #"{"latitude":41.88,"longitude":-87.63}"#, timeoutMilliseconds: nil)
@@ -175,13 +175,41 @@ final class ForegroundWeatherServiceTests: XCTestCase {
     }
 
     func testDoesNotForwardBackendErrorText() async {
-        let result = await ForegroundWeatherService(source: StubWeatherSource(reading: nil))
+        let result = await ForegroundWeatherService(source: StubWeatherSource(reading: nil), recordCard: { _ in })
             .handleNodeCommand("weather.forecast", paramsJSON: #"{"latitude":0,"longitude":0}"#, timeoutMilliseconds: nil)
 
         XCTAssertEqual(result, .failure(code: "WEATHER_UNAVAILABLE", message: "Operator could not read the forecast"))
         if case .failure(_, let message) = result {
             XCTAssertFalse(message.contains("stub-backend-detail"), "a backend's own message is not for the agent")
         }
+    }
+
+    func testSuccessRecordsTheExactWeatherCardBeforeReturningSuccess() async throws {
+        let recorder = WeatherCardRecorder()
+        let reading = WeatherReading(temperatureCelsius: 18.5, apparentCelsius: 17, condition: "Partly Cloudy", humidity: 0.62, windKilometresPerHour: 11.2, highCelsius: 21, lowCelsius: 12, attribution: weatherAttribution)
+        let service = ForegroundWeatherService(source: StubWeatherSource(reading: reading), recordCard: { try await recorder.record($0) })
+
+        let result = await service.handleNodeCommand("weather.forecast", paramsJSON: #"{"latitude":1,"longitude":2}"#, timeoutMilliseconds: 1_000)
+
+        guard case .success = result else { return XCTFail("Expected success") }
+        let cards = await recorder.cards()
+        XCTAssertEqual(cards, [.init(temperatureCelsius: reading.temperatureCelsius, apparentCelsius: reading.apparentCelsius, condition: reading.condition, humidity: reading.humidity, windKilometresPerHour: reading.windKilometresPerHour, highCelsius: reading.highCelsius, lowCelsius: reading.lowCelsius, attribution: weatherAttribution)])
+    }
+
+    func testFailureTimeoutAndPersistenceErrorDoNotClaimARecordedForecast() async {
+        let recorder = WeatherCardRecorder()
+        let unavailable = ForegroundWeatherService(source: StubWeatherSource(reading: nil), recordCard: { try await recorder.record($0) })
+        let unavailableResult = await unavailable.handleNodeCommand("weather.forecast", paramsJSON: #"{"latitude":1,"longitude":2}"#, timeoutMilliseconds: 1_000)
+        XCTAssertEqual(unavailableResult, .failure(code: "WEATHER_UNAVAILABLE", message: "Operator could not read the forecast"))
+        let failing = WeatherCardRecorder(fails: true)
+        let reading = WeatherReading(temperatureCelsius: 1, apparentCelsius: nil, condition: "Clear", humidity: nil, windKilometresPerHour: nil, highCelsius: nil, lowCelsius: nil, attribution: weatherAttribution)
+        let persistence = ForegroundWeatherService(source: StubWeatherSource(reading: reading), recordCard: { try await failing.record($0) })
+        let persistenceResult = await persistence.handleNodeCommand("weather.forecast", paramsJSON: #"{"latitude":1,"longitude":2}"#, timeoutMilliseconds: 1_000)
+        XCTAssertEqual(persistenceResult, .failure(code: "INTERNAL_ERROR", message: "Operator could not save the forecast"))
+        let recorded = await recorder.cards()
+        let failedCards = await failing.cards()
+        XCTAssertTrue(recorded.isEmpty)
+        XCTAssertTrue(failedCards.isEmpty)
     }
 }
 
@@ -271,14 +299,14 @@ final class NativeReadDeadlineTests: XCTestCase {
     func testWeatherDistinguishesATimeoutFromAFailure() async {
         var slow = StubWeatherSource(reading: .init(
             temperatureCelsius: 1, apparentCelsius: nil, condition: "Clear",
-            humidity: nil, windKilometresPerHour: nil, highCelsius: nil, lowCelsius: nil))
+            humidity: nil, windKilometresPerHour: nil, highCelsius: nil, lowCelsius: nil, attribution: weatherAttribution))
         slow.delayNanoseconds = 2_000_000_000
 
-        let timedOut = await ForegroundWeatherService(source: slow).handleNodeCommand(
+        let timedOut = await ForegroundWeatherService(source: slow, recordCard: { _ in }).handleNodeCommand(
             "weather.forecast", paramsJSON: #"{"latitude":0,"longitude":0}"#, timeoutMilliseconds: 50)
         XCTAssertEqual(timedOut, .failure(code: "TIMEOUT", message: "The forecast took too long to arrive"))
 
-        let failed = await ForegroundWeatherService(source: StubWeatherSource(reading: nil)).handleNodeCommand(
+        let failed = await ForegroundWeatherService(source: StubWeatherSource(reading: nil), recordCard: { _ in }).handleNodeCommand(
             "weather.forecast", paramsJSON: #"{"latitude":0,"longitude":0}"#, timeoutMilliseconds: 5_000)
         XCTAssertEqual(failed, .failure(code: "WEATHER_UNAVAILABLE", message: "Operator could not read the forecast"))
     }
@@ -383,6 +411,8 @@ private final class StubMusicLibrary: MusicLibrary {
     }
 }
 
+private let weatherAttribution = WeatherCardAttribution(legalPageURL: URL(string: "https://weather.example/legal")!, combinedMarkLightURL: URL(string: "https://weather.example/light")!, combinedMarkDarkURL: URL(string: "https://weather.example/dark")!)
+
 private struct StubWeatherSource: WeatherSource {
     let reading: WeatherReading?
     var delayNanoseconds: UInt64 = 0
@@ -391,6 +421,14 @@ private struct StubWeatherSource: WeatherSource {
         guard let reading else { throw NSError(domain: "stub-backend-detail", code: 42) }
         return reading
     }
+}
+
+private actor WeatherCardRecorder {
+    private var value: [WeatherCard] = []; private let fails: Bool
+    init(fails: Bool = false) { self.fails = fails }
+    func record(_ card: WeatherCard) throws { if fails { throw FixtureFailure.failed }; value.append(card) }
+    func cards() -> [WeatherCard] { value }
+    private enum FixtureFailure: Error { case failed }
 }
 
 @MainActor

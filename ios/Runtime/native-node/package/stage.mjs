@@ -5,6 +5,13 @@ import {patchNativeOwnershipAdmission} from '../compat/sqlite/ownership.mjs';
 import {patchNativeGatewayLoopExport} from '../compat/lifecycle/export.mjs';
 import {patchNativeLockRuntimeDirectory} from '../compat/locks/runtime-directory.mjs';
 import {OPERATOR_WORKSPACE_GUIDANCE} from './workspace-guidance.mjs';
+import {patchNativeSearchDiagnostics} from '../compat/search/diagnostics.mjs';
+import {
+  patchNativeChatHistoryRecovery,
+  patchNativeIOSRestartSafeAdmission,
+  patchNativeRecoveryRegistration,
+  patchNativeTranscriptRecoverySource,
+} from '../compat/recovery/source-run.mjs';
 
 export function stageRuntime(packageRoot, output) {
   packageRoot = fs.realpathSync(packageRoot);
@@ -19,6 +26,16 @@ export function stageRuntime(packageRoot, output) {
   const lifecycle = patchNativeGatewayLoopExport(fs.readFileSync(path.join(packageRoot, lifecycleModule), 'utf8'));
   const locksModule = 'dist/state-database-coordinator-DKD8Uulb.js';
   const locks = patchNativeLockRuntimeDirectory(fs.readFileSync(path.join(packageRoot, locksModule), 'utf8'));
+  const recoveryModule = 'dist/main-session-restart-recovery--2blnuu5.js';
+  const recovery = patchNativeRecoveryRegistration(fs.readFileSync(path.join(packageRoot, recoveryModule), 'utf8'));
+  const transcriptModule = 'dist/transcript-events-BMaG3A_w.js';
+  const transcript = patchNativeTranscriptRecoverySource(fs.readFileSync(path.join(packageRoot, transcriptModule), 'utf8'));
+  const chatModule = 'dist/chat-D3QlhTHk.js';
+  const chat = patchNativeChatHistoryRecovery(fs.readFileSync(path.join(packageRoot, chatModule), 'utf8'));
+  const chatSendModule = 'dist/chat-send-handler-DBjXcn_1.js';
+  const chatSend = patchNativeIOSRestartSafeAdmission(fs.readFileSync(path.join(packageRoot, chatSendModule), 'utf8'));
+  const searchModule = 'node_modules/@openclaw/ai/dist/openai-chatgpt-responses-BAJ4gq3i.mjs';
+  const search = patchNativeSearchDiagnostics(fs.readFileSync(path.join(packageRoot, searchModule), 'utf8'));
   const sourceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   fs.mkdirSync(output, {recursive: true});
   const copy = (source, target) => fs.cpSync(source, target, {
@@ -52,8 +69,14 @@ export function stageRuntime(packageRoot, output) {
   fs.writeFileSync(path.join(output, 'openclaw', ownershipModule), patched);
   fs.writeFileSync(path.join(output, 'openclaw', lifecycleModule), lifecycle);
   fs.writeFileSync(path.join(output, 'openclaw', locksModule), locks);
+  fs.writeFileSync(path.join(output, 'openclaw', recoveryModule), recovery);
+  fs.writeFileSync(path.join(output, 'openclaw', transcriptModule), transcript);
+  fs.writeFileSync(path.join(output, 'openclaw', chatModule), chat);
+  fs.writeFileSync(path.join(output, 'openclaw', chatSendModule), chatSend);
+  fs.writeFileSync(path.join(output, 'openclaw', searchModule), search);
+  copy(path.join(sourceRoot, 'compat/recovery/source-run.mjs'), path.join(output, 'openclaw/dist/native-recovery-source-run.mjs'));
   fs.writeFileSync(path.join(output, 'manifest.json'), JSON.stringify({
     openclawVersion: metadata.version, gatewayModule: `dist/${modules[0]}`,
-    lifecycleModule, patches: ['native-sqlite-ownership', 'native-gateway-loop-export', 'native-lock-directory']
+    lifecycleModule, patches: ['native-sqlite-ownership', 'native-gateway-loop-export', 'native-lock-directory', 'native-recovery-source-run', 'native-ios-restart-safe-admission', 'native-search-completion-log']
   }, null, 2));
 }

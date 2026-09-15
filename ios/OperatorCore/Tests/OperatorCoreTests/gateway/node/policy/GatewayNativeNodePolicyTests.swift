@@ -54,6 +54,27 @@ final class GatewayNativeNodePolicyTests: XCTestCase {
         }
     }
 
+    func testPolicyRequiresEveryAdvertisedCommandMissingFromRuntimeDefaults() async throws {
+        let runtimeDefaultAllow = [
+            "weather.forecast", "device.status", "sms.compose", "maps.search", "maps.directions",
+            "apps.open", "whatsapp.chats", "whatsapp.messages", "whatsapp.sync", "whatsapp.compose",
+            "connections.read", "connections.write", "connections.describe", "notion.tools", "notion.call",
+            "youtube.search", "youtube.open", "podcasts.search", "podcasts.open",
+        ]
+        let payload = try JSONSerialization.data(withJSONObject: [
+            "valid": true,
+            "hash": "raw-1",
+            "configRevisionHash": "rev-1",
+            "appliedConfigHash": "rev-1",
+            "config": ["gateway": ["nodes": ["commands": ["allow": runtimeDefaultAllow]]]],
+        ])
+        let fixture = try await PolicyFixture.make(payloads: [String(decoding: payload, as: UTF8.self)])
+
+        let state = try await fixture.connection.nativeNodePolicyState()
+
+        XCTAssertEqual(state, .missing(baseHash: "raw-1", existingAllow: runtimeDefaultAllow))
+    }
+
     func testInstallsMissingCommandsWithExactBaseHashWithoutDroppingOtherAllows() async throws {
         let fixture = try await PolicyFixture.make(payloads: [#"{"ok":true,"hash":"new"}"#])
         try await fixture.connection.installNativeNodeAllowPolicy(baseHash: "raw-1", existingAllow: ["other", "sms.compose"])

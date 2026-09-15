@@ -4,6 +4,21 @@ import XCTest
 
 @MainActor
 final class ChatSessionModelTests: XCTestCase {
+    func testWeatherCardAccessibilityIncludesActualConditions() {
+        let card = WeatherCard(
+            temperatureCelsius: 18.5, apparentCelsius: nil, condition: "Cloudy",
+            humidity: nil, windKilometresPerHour: nil, highCelsius: nil, lowCelsius: nil,
+            attribution: .init(
+                legalPageURL: URL(string: "https://weather.example/legal")!,
+                combinedMarkLightURL: URL(string: "https://weather.example/light")!,
+                combinedMarkDarkURL: URL(string: "https://weather.example/dark")!))
+        let message = ChatMessage(role: .system, text: "Weather forecast", attachment: .weather(card))
+        let label = ChatMessageText.accessibilityLabel(for: message)
+        XCTAssertTrue(label.contains("Cloudy"))
+        XCTAssertTrue(label.contains("18.5"))
+        XCTAssertTrue(label.contains("Celsius"))
+    }
+
     func testAccessibleMessageIncludesSpeakerReadableTextAndDelivery() {
         XCTAssertEqual(
             ChatMessageText.accessibilityLabel(for: ChatMessage(role: .assistant, text: "**Hello**")),
@@ -495,6 +510,11 @@ private actor RecordingPersistence: ChatPersistence {
 
     func appendAssistant(_ text: String) async throws -> ConversationSnapshot {
         self.snapshot.messages.append(ChatMessage(role: .assistant, text: text))
+        return self.snapshot
+    }
+
+    func appendWeatherCard(_ card: WeatherCard) async throws -> ConversationSnapshot {
+        self.snapshot.messages.append(ChatMessage(role: .system, text: "Weather forecast", attachment: .weather(card)))
         return self.snapshot
     }
 }

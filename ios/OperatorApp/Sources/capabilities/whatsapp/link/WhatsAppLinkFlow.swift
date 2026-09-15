@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import OperatorCore
+import OSLog
 
 protocol WhatsAppLinkFlowGateway: Sendable {
     func start(phone: String) async throws -> WhatsAppLinkOperation
@@ -46,6 +47,10 @@ final class WhatsAppLinkFlowModel: ObservableObject {
     @Published private(set) var isPresented = false
     @Published private(set) var pairCode: String?
     @Published private(set) var operationID: String?
+    @Published private(set) var phoneError: String?
+    @Published private(set) var failureMessage: String?
+
+    private static let logger = Logger(subsystem: "app.operator.ios", category: "whatsapp-link")
 
     private let gateway: any WhatsAppLinkFlowGateway
     private let pollInterval: Duration
@@ -72,10 +77,17 @@ final class WhatsAppLinkFlowModel: ObservableObject {
     }
 
     func start(phone: String) async {
-        guard !phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            self.state = .failed
+        let separators = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "().-‐‑–—"))
+        let normalized = String(phone.unicodeScalars.filter { !separators.contains($0) })
+        guard normalized.range(of: #"^\+[1-9][0-9]{7,14}$"#, options: .regularExpression) != nil else {
+            self.phoneError = "Include + and your country code. Spaces, parentheses and dashes are fine; leave out extensions."
+            self.state = .idle
+            Self.logger.info("[whatsapp-link] phone input rejected: invalid international format")
             return
         }
+        self.phoneError = nil
+        self.failureMessage = nil
+        Self.logger.info("[whatsapp-link] phone format accepted; requesting pairing")
         self.responseGeneration &+= 1
         let generation = self.responseGeneration
         self.startID &+= 1
@@ -88,7 +100,7 @@ final class WhatsAppLinkFlowModel: ObservableObject {
         self.state = .starting
         self.isPresented = true
         do {
-            let operation = try await self.gateway.start(phone: phone)
+            let operation = try await self.gateway.start(phone: normalized)
             if self.isClosed {
                 if self.cancelAfterStartID == startID {
                     self.cancelAfterStartID = nil
@@ -119,6 +131,19 @@ final class WhatsAppLinkFlowModel: ObservableObject {
                   status.operationID == operationID
             else { return }
             self.apply(phase: status.phase, pairCode: status.pairCode)
+            if status.phase == .failed {
+                switch status.failureCode {
+                case "verification_required":
+                    self.failureMessage = "WhatsApp requires extra verification that this connection cannot complete yet."
+                case "code_expired":
+                    self.failureMessage = "This link code expired. Try again to request a new one."
+                case "client_outdated":
+                    self.failureMessage = "The WhatsApp connection needs an update before it can link."
+                default:
+                    self.failureMessage = "WhatsApp could not finish linking. Try again or check your connection."
+                }
+                Self.logger.error("[whatsapp-link] pairing failed category=\(status.failureCode ?? "pairing_failed", privacy: .public)")
+            }
             self.schedulePollIfNeeded()
         } catch {
             guard !self.isClosed,

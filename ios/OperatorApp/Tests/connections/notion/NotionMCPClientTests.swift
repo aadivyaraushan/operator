@@ -4,6 +4,51 @@ import XCTest
 @testable import OperatorApp
 
 final class NotionMCPClientTests: XCTestCase {
+    func testRefreshLogsSuccessOnlyAfterCredentialsAreSaved() async throws {
+        let store = SaveObservingStore(initial: #"{"clientID":"c","accessToken":"old","refreshToken":"r"}"#)
+        let events = RenewalEventRecorder()
+        let transport = FixtureTransport(responses: [("https://mcp.notion.com/token", #"{"access_token":"fresh","refresh_token":"r2","expires_in":60}"#)])
+        let client = NotionMCPClient(store: store, transport: transport, renewalDiagnostic: { event in
+            Task { await events.record(event, savedAtEmission: await store.didSave) }
+        })
+
+        try await client.refresh(metadata: notionMetadata)
+        let recorded = await events.waitForCount(1)
+
+        XCTAssertEqual(recorded.map(\.event), [.success])
+        XCTAssertEqual(recorded.map(\.savedAtEmission), [true])
+    }
+
+    func testRefreshLogsSafeFailureWithoutSuccessWhenResponseLacksAccessToken() async {
+        let events = RenewalEventRecorder()
+        let store = SaveObservingStore(initial: #"{"clientID":"c","accessToken":"old","refreshToken":"r"}"#)
+        let transport = FixtureTransport(responses: [("https://mcp.notion.com/token", #"{"access_token":"","refresh_token":"do-not-log"}"#)])
+        let client = NotionMCPClient(store: store, transport: transport, renewalDiagnostic: { event in
+            Task { await events.record(event, savedAtEmission: await store.didSave) }
+        })
+
+        await XCTAssertThrowsErrorAsync(try await client.refresh(metadata: notionMetadata)) {
+            XCTAssertEqual($0 as? NotionMCPError, .missingTokens)
+        }
+
+        let recorded = await events.waitForCount(1)
+        XCTAssertEqual(recorded.map(\.event), [.failure(.missingAccessToken)])
+    }
+
+    func testRefreshLogsSafeFailureWithoutSuccessWhenCredentialSaveFails() async {
+        let events = RenewalEventRecorder()
+        let store = SaveObservingStore(initial: #"{"clientID":"c","accessToken":"old","refreshToken":"r"}"#, failSave: true)
+        let transport = FixtureTransport(responses: [("https://mcp.notion.com/token", #"{"access_token":"fresh","refresh_token":"r2"}"#)])
+        let client = NotionMCPClient(store: store, transport: transport, renewalDiagnostic: { event in
+            Task { await events.record(event, savedAtEmission: await store.didSave) }
+        })
+
+        await XCTAssertThrowsErrorAsync(try await client.refresh(metadata: notionMetadata)) { _ in }
+
+        let recorded = await events.waitForCount(1)
+        XCTAssertEqual(recorded.map(\.event), [.failure(.credentialSave)])
+    }
+
     func testPhoneTransportDoesNotFollowRedirects() async {
         URLProtocol.registerClass(RedirectProtocol.self)
         defer { URLProtocol.unregisterClass(RedirectProtocol.self) }
@@ -92,7 +137,11 @@ data: {"jsonrpc":"2.0","id":1,"result":{"ok":true}}
         let stream = "data: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"ok\":true}}\n\ndata: {\"jsonrpc\":\"2.0\",\"id\":99,\"result\":{}}\n"
         let transport = FixtureTransport(responses: [("https://mcp.notion.com/mcp", stream), ("https://mcp.notion.com/mcp", "{}"), ("https://mcp.notion.com/mcp", "data: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[]}}\n")], contentType: "text/event-stream")
         let client = NotionMCPClient(store: store, transport: transport)
-        _ = try await client.initialize(); _ = try await client.listTools()
+        // `NotionMCPClient` has two `listTools()` overloads (the raw MCP one
+        // here, plus the `NotionNodeClient` `[NotionTool]` one). Name the
+        // return type so the discarded call is not ambiguous.
+        _ = try await client.initialize()
+        let _: NotionJSONValue = try await client.listTools()
         let bodies = await transport.requests.compactMap { $0.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String:Any] } }
         XCTAssertEqual(bodies[0]["id"] as? Int, 1); XCTAssertEqual(bodies[1]["method"] as? String, "notifications/initialized"); XCTAssertNil(bodies[1]["id"]); XCTAssertEqual(bodies[2]["id"] as? Int, 2)
     }
@@ -132,6 +181,27 @@ data: {"jsonrpc":"2.0","id":1,"result":{"ok":true}}
         XCTAssertTrue(saved.contains("authorized-access"))
         XCTAssertTrue(saved.contains("authorized-refresh"))
         XCTAssertFalse(saved.contains("refreshed-access"))
+    }
+
+    func testStaleConcurrentRefreshLogsIgnoredFailureWithoutSuccess() async throws {
+        let store = MemoryStore()
+        await store.set(#"{"clientID":"client","accessToken":"old-access","refreshToken":"old-refresh","expiresAt":0,"redirectURI":"http://127.0.0.1:49152/notion/callback"}"#)
+        let transport = DelayedRefreshTransport()
+        let events = RenewalEventRecorder()
+        let client = NotionMCPClient(store: store, transport: transport, renewalDiagnostic: { event in
+            Task { await events.record(event, savedAtEmission: true) }
+        })
+
+        let restoration = Task { try await client.restore() }
+        while !(await transport.isRefreshWaiting) { await Task.yield() }
+        let request = try await client.makeAuthorizationRequest(metadata: notionMetadata)
+        let callback = URL(string: "http://127.0.0.1:49152/notion/callback?code=authorization-code&state=\(request.state)")!
+        try await client.completeAuthorizationCallback(callback, metadata: notionMetadata)
+        await transport.releaseRefresh()
+        try await restoration.value
+
+        let recorded = await events.waitForCount(1)
+        XCTAssertEqual(recorded.map(\.event), [.failure(.staleResult)])
     }
 
     func testAuthorizationCodePlusIsPercentEncodedAndOversizedResponseRejected() async throws {
@@ -177,6 +247,35 @@ data: {"jsonrpc":"2.0","id":1,"result":{"ok":true}}
         }
         let persisted = try await client.registeredRedirectURI()
         XCTAssertEqual(persisted, "http://127.0.0.1:49152/notion/callback")
+    }
+}
+
+private let notionMetadata = NotionOAuthMetadata(
+    authorizationEndpoint: URL(string: "https://mcp.notion.com/authorize")!,
+    tokenEndpoint: URL(string: "https://mcp.notion.com/token")!,
+    registrationEndpoint: nil)
+
+private actor RenewalEventRecorder {
+    struct Entry: Sendable { let event: NotionRenewalDiagnostic; let savedAtEmission: Bool }
+    private var entries: [Entry] = []
+    func record(_ event: NotionRenewalDiagnostic, savedAtEmission: Bool) { entries.append(.init(event: event, savedAtEmission: savedAtEmission)) }
+    func waitForCount(_ count: Int) async -> [Entry] {
+        while entries.count < count { await Task.yield() }
+        return entries
+    }
+}
+
+private actor SaveObservingStore: CredentialDataStore {
+    enum Failure: Error { case refused }
+    private var value: Data?
+    private let failSave: Bool
+    private(set) var didSave = false
+    init(initial: String, failSave: Bool = false) { value = Data(initial.utf8); self.failSave = failSave }
+    func load() async throws -> Data? { value }
+    func save(_ data: Data) async throws {
+        if failSave { throw Failure.refused }
+        value = data
+        didSave = true
     }
 }
 

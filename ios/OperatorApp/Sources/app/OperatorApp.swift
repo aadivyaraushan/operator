@@ -43,11 +43,13 @@ final class ForegroundRuntimeCoordinator {
 @MainActor
 struct OperatorApp: App {
     @Environment(\.scenePhase) private var scenePhase
+    @State private var runtimeIsForeground = false
     @StateObject private var chat: ChatSessionModel
     @StateObject private var setup: ModelSetupModel
     @StateObject private var whatsapp: WhatsAppLinkFlowModel
     @StateObject private var accounts: NativeAccountSetupCoordinator
     @StateObject private var notion: NativeNotionSetupCoordinator
+    @StateObject private var youtube: YouTubeAPIKeySetupModel
     private let locationNode: LocalLocationNodeGateway
     private let foregroundRuntime: ForegroundRuntimeCoordinator
     private let embeddedRuntime: EmbeddedRuntimeHost
@@ -77,6 +79,9 @@ struct OperatorApp: App {
             vault: vault,
             appVersion: version,
             platform: platform)
+        let chat = ChatSessionModel(
+            store: persistence,
+            gateway: gateway)
         let accountSetup = NativeAccountSetupCoordinator(
             bundle: .main,
             presenter: SystemOAuthSessionPresenter())
@@ -97,12 +102,13 @@ struct OperatorApp: App {
             client: notionSetup.client,
             presenter: SystemNotionToolConfirmationPresenter(),
             isAppActive: { UIApplication.shared.applicationState == .active })
-        // Owner provisioning contract: generic-password service
-        // app.operator.ios.media, account youtube-api-key, raw UTF-8 key bytes.
-        // This app version reads at most 4 KiB and does not provide a key-entry UI.
         let youtubeKeyStore = KeychainCredentialStore(
             service: "app.operator.ios.media",
             account: "youtube-api-key")
+        let youtubeSetup = YouTubeAPIKeySetupModel(storage: .init(
+            load: { try await youtubeKeyStore.load() },
+            save: { try await youtubeKeyStore.save($0) },
+            clear: { try await youtubeKeyStore.remove() }))
         let mediaService = ForegroundMediaNodeService(
             apiKey: {
                 guard let data = try await youtubeKeyStore.load(),
@@ -158,7 +164,9 @@ struct OperatorApp: App {
                 contacts: ForegroundContactsService(),
                 photos: ForegroundPhotosService(),
                 music: ForegroundMusicService(),
-                weather: ForegroundWeatherService(),
+                weather: ForegroundWeatherService(recordCard: { card in
+                    try await chat.recordWeatherCard(card)
+                }),
                 device: ForegroundDeviceService(),
                 messages: ForegroundMessageComposeService(
                     presenter: SystemMessageComposer(),
@@ -175,9 +183,6 @@ struct OperatorApp: App {
                 discovery: discovery,
                 media: mediaService,
                 notion: notionService))
-        let chat = ChatSessionModel(
-            store: persistence,
-            gateway: gateway)
         self.locationNode = locationNode
         self.foregroundRuntime = ForegroundRuntimeCoordinator(
             waitForChatGateway: { [weak chat] in
@@ -190,13 +195,22 @@ struct OperatorApp: App {
         _setup = StateObject(wrappedValue: ModelSetupModel(gateway: setupGateway))
         _accounts = StateObject(wrappedValue: accountSetup)
         _notion = StateObject(wrappedValue: notionSetup)
+        _youtube = StateObject(wrappedValue: youtubeSetup)
         _whatsapp = StateObject(wrappedValue: WhatsAppLinkFlowModel(
             gateway: NativeWhatsAppLinkClient(supportDirectory: supportDirectory)))
     }
 
     var body: some Scene {
         WindowGroup {
-            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion)
+            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube)
+                .onChange(of: self.scenePhase, initial: true) { _, phase in
+                    // Permission alerts temporarily interrupt interaction; they do not leave the app.
+                    if phase == .active {
+                        self.runtimeIsForeground = true
+                    } else if phase == .background {
+                        self.runtimeIsForeground = false
+                    }
+                }
                 .task(id: self.scenePhase) {
                     guard self.scenePhase == .active else { return }
                     // Restore account status independently so network refresh never delays chat startup.
@@ -204,8 +218,8 @@ struct OperatorApp: App {
                     async let notionStatus: Void = self.notion.checkConnection()
                     _ = await (accountStatus, notionStatus)
                 }
-                .task(id: self.scenePhase) {
-                    if self.scenePhase == .active {
+                .task(id: self.runtimeIsForeground) {
+                    if self.runtimeIsForeground {
                         self.chat.runtimeIsStarting()
                         self.chat.setForegroundActive(true)
                         do {

@@ -52,6 +52,10 @@ struct WhatsAppLinkSheet: View {
                         .textContentType(.telephoneNumber)
                         .keyboardType(.phonePad)
                         .textFieldStyle(.roundedBorder)
+                    Text(self.model.phoneError ?? "Include + and country code. Spaces and dashes are welcome.")
+                        .font(.caption)
+                        .foregroundStyle(self.model.phoneError == nil ? Color.secondary : Color.red)
+                        .accessibilityIdentifier("whatsapp-phone-guidance")
                 }
                 Button("Get link code") {
                     Task { await self.model.start(phone: self.phone) }
@@ -103,6 +107,12 @@ struct WhatsAppLinkSheet: View {
                     .foregroundStyle(.secondary)
                 Text("WhatsApp link could not continue")
                     .font(.title2.weight(.semibold))
+                if let message = self.model.failureMessage {
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
                 Button("Try again") {
                     Task { await self.model.retry(phone: self.phone) }
                 }

@@ -3,6 +3,40 @@ import XCTest
 @testable import OperatorCore
 
 final class ConversationStoreTests: XCTestCase {
+    func testSnapshotFromBeforeWeatherCardsStillDecodesWithoutChangingDraftOrOutbox() throws {
+        let legacy = Data(#"{"messages":[{"id":"11111111-2222-3333-4444-555555555555","role":"user","text":"queued request","createdAt":0,"delivery":"waiting"}],"draft":"keep this draft","outbox":[{"id":"11111111-2222-3333-4444-555555555555","messageID":"11111111-2222-3333-4444-555555555555","text":"queued request","idempotencyKey":"keep-this-send-id","state":"waiting"}]}"#.utf8)
+        let snapshot = try JSONDecoder().decode(ConversationSnapshot.self, from: legacy)
+        XCTAssertNil(snapshot.messages.first?.attachment)
+        XCTAssertEqual(snapshot.messages.first?.text, "queued request")
+        XCTAssertEqual(snapshot.draft, "keep this draft")
+        XCTAssertEqual(snapshot.outbox.first?.idempotencyKey, "keep-this-send-id")
+        XCTAssertEqual(snapshot.outbox.first?.state, .waiting)
+    }
+
+    func testWeatherCardPersistsAsAnIndependentSystemMessageAcrossRelaunch() async throws {
+        let fileURL = temporaryFileURL()
+        let store = ConversationStore(fileURL: fileURL)
+        let before = try await store.stageUserMessage(text: "queued request")
+        _ = try await store.updateDraft("keep this draft")
+        let card = WeatherCard(
+            temperatureCelsius: 18.5, apparentCelsius: 17, condition: "Partly Cloudy",
+            humidity: 0.62, windKilometresPerHour: 11.2, highCelsius: 21, lowCelsius: 12,
+            attribution: .init(
+                legalPageURL: URL(string: "https://weather.example/legal")!,
+                combinedMarkLightURL: URL(string: "https://weather.example/light")!,
+                combinedMarkDarkURL: URL(string: "https://weather.example/dark")!))
+
+        _ = try await ConversationStore(fileURL: fileURL).appendWeatherCard(card)
+        let restored = try await ConversationStore(fileURL: fileURL).load()
+
+        XCTAssertEqual(restored.messages.last?.role, .system)
+        XCTAssertEqual(restored.messages.last?.attachment, .weather(card))
+        XCTAssertEqual(restored.messages.last?.text, "Weather forecast")
+        XCTAssertEqual(restored.messages.first, before.messages.first)
+        XCTAssertEqual(restored.outbox, before.outbox)
+        XCTAssertEqual(restored.draft, "keep this draft")
+        XCTAssertEqual(restored.messages.count, 2)
+    }
     func testStageUserMessagePersistsMessageDraftAndStableOutboxIdentity() async throws {
         let fileURL = temporaryFileURL()
         let store = ConversationStore(fileURL: fileURL)

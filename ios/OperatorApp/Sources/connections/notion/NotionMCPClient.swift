@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import OperatorCore
+import OSLog
 import Security
 
 struct NotionOAuthMetadata: Codable, Sendable, Equatable {
@@ -46,6 +47,20 @@ enum NotionJSONValue: Codable, Equatable, Sendable {
 
 struct NotionTool: Codable, Equatable, Sendable { let name: String; let description: String? }
 
+enum NotionRenewalDiagnostic: Equatable, Sendable {
+    enum FailureCategory: String, Equatable, Sendable {
+        case credentialLoad = "credential_load"
+        case missingCredentials = "missing_credentials"
+        case tokenRequest = "token_request"
+        case missingAccessToken = "missing_access_token"
+        case staleResult = "stale_result"
+        case credentialSave = "credential_save"
+    }
+
+    case success
+    case failure(FailureCategory)
+}
+
 actor NotionMCPClient {
     private struct Stored: Codable { var clientID: String?; var clientSecret: String?; var accessToken: String?; var refreshToken: String?; var expiresAt: Date?; var state: String?; var verifier: String?; var redirectURI: String? }
     private struct ProtectedResource: Codable { let authorizationServers: [URL]; enum CodingKeys: String, CodingKey { case authorizationServers = "authorization_servers" } }
@@ -59,11 +74,13 @@ actor NotionMCPClient {
     private let transport: any PhoneHTTPTransport
     private let randomBytes: @Sendable (Int) throws -> Data
     private let now: @Sendable () -> Date
+    private let renewalDiagnostic: @Sendable (NotionRenewalDiagnostic) -> Void
+    private let logger = Logger(subsystem: "app.operator.ios", category: "notion-renewal")
     private var sessionID: String?
     private var refreshInFlight: Task<Void, Error>?
     private var nextRequestID = 1
 
-    init(accountID: String = "default", store: any CredentialDataStore, transport: any PhoneHTTPTransport, randomBytes: @escaping @Sendable (Int) throws -> Data = { count in var b = [UInt8](repeating: 0, count: count); guard SecRandomCopyBytes(kSecRandomDefault, count, &b) == errSecSuccess else { throw NotionMCPError.missingTokens }; return Data(b) }, now: @escaping @Sendable () -> Date = Date.init) { self.accountID = accountID; self.store = store; self.transport = transport; self.randomBytes = randomBytes; self.now = now }
+    init(accountID: String = "default", store: any CredentialDataStore, transport: any PhoneHTTPTransport, randomBytes: @escaping @Sendable (Int) throws -> Data = { count in var b = [UInt8](repeating: 0, count: count); guard SecRandomCopyBytes(kSecRandomDefault, count, &b) == errSecSuccess else { throw NotionMCPError.missingTokens }; return Data(b) }, now: @escaping @Sendable () -> Date = Date.init, renewalDiagnostic: @escaping @Sendable (NotionRenewalDiagnostic) -> Void = { _ in }) { self.accountID = accountID; self.store = store; self.transport = transport; self.randomBytes = randomBytes; self.now = now; self.renewalDiagnostic = renewalDiagnostic }
 
     func registeredRedirectURI() async throws -> String? { try await load().redirectURI }
     func configureLoopbackRedirectURI(_ value: String) async throws {
@@ -125,7 +142,38 @@ actor NotionMCPClient {
     }
 
     private func performRefresh(metadata: NotionOAuthMetadata) async throws {
-        let saved = try await load(); guard let refresh = saved.refreshToken, let clientID = saved.clientID else { throw NotionMCPError.missingTokens }; var request = URLRequest(url: metadata.tokenEndpoint); request.httpMethod = "POST"; request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type"); request.httpBody = form(["grant_type":"refresh_token", "refresh_token":refresh, "client_id":clientID]); let token: TokenResponse = try await send(request, as: TokenResponse.self); guard !token.accessToken.isEmpty else { throw NotionMCPError.missingTokens }; var latest = try await load(); guard latest.refreshToken == refresh, latest.accessToken == saved.accessToken else { return }; latest.accessToken = token.accessToken; latest.refreshToken = token.refreshToken ?? refresh; latest.expiresAt = now().addingTimeInterval(Double(token.expiresIn ?? 3600)); try await save(latest)
+        let saved: Stored
+        do { saved = try await load() }
+        catch { emitRenewalFailure(.credentialLoad); throw error }
+        guard let refresh = saved.refreshToken, let clientID = saved.clientID else {
+            emitRenewalFailure(.missingCredentials)
+            throw NotionMCPError.missingTokens
+        }
+        var request = URLRequest(url: metadata.tokenEndpoint); request.httpMethod = "POST"; request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type"); request.httpBody = form(["grant_type":"refresh_token", "refresh_token":refresh, "client_id":clientID])
+        let token: TokenResponse
+        do { token = try await send(request, as: TokenResponse.self) }
+        catch { emitRenewalFailure(.tokenRequest); throw error }
+        guard !token.accessToken.isEmpty else {
+            emitRenewalFailure(.missingAccessToken)
+            throw NotionMCPError.missingTokens
+        }
+        var latest: Stored
+        do { latest = try await load() }
+        catch { emitRenewalFailure(.credentialLoad); throw error }
+        guard latest.refreshToken == refresh, latest.accessToken == saved.accessToken else {
+            emitRenewalFailure(.staleResult)
+            return
+        }
+        latest.accessToken = token.accessToken; latest.refreshToken = token.refreshToken ?? refresh; latest.expiresAt = now().addingTimeInterval(Double(token.expiresIn ?? 3600))
+        do { try await save(latest) }
+        catch { emitRenewalFailure(.credentialSave); throw error }
+        logger.info("[notion-renewal] outcome=success category=saved")
+        renewalDiagnostic(.success)
+    }
+
+    private func emitRenewalFailure(_ category: NotionRenewalDiagnostic.FailureCategory) {
+        logger.error("[notion-renewal] outcome=failure category=\(category.rawValue, privacy: .public)")
+        renewalDiagnostic(.failure(category))
     }
 
     func initialize() async throws -> NotionJSONValue { let result = try await rpc(method: "initialize", params: .object(["protocolVersion": .string("2025-03-26"), "capabilities": .object([:]), "clientInfo": .object(["name": .string("Operator"), "version": .string("1.0")])])); try await notification(method: "notifications/initialized"); return result }

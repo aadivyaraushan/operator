@@ -31,6 +31,9 @@ test('bootstrap passes preserved state to the gateway on each app launch', t => 
     const result = JSON.parse(fs.readFileSync(path.join(directory, 'openclaw-result.json')));
     assert.equal(result.status, 'pass');
     assert.equal(result.run, run);
-    assert.equal(fs.readFileSync(path.join(state, 'observed.json'), 'utf8'), saved);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(state, 'observed.json'))), {
+      ...JSON.parse(saved), agents: {defaults: {fastModeDefault: 'auto'}},
+      tools: {web: {search: {openaiCodex: {enabled: true, mode: 'live'}}}}
+    });
   }
 });

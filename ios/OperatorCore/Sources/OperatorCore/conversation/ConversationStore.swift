@@ -145,6 +145,15 @@ public actor ConversationStore {
         return snapshot
     }
 
+    @discardableResult
+    public func appendWeatherCard(_ card: WeatherCard, now: Date = Date()) throws -> ConversationSnapshot {
+        var snapshot = try self.load()
+        snapshot.messages.append(ChatMessage(role: .system, text: "Weather forecast", createdAt: now, attachment: .weather(card)))
+        try self.save(snapshot)
+        self.logger.info("[conversation] appended weather card")
+        return snapshot
+    }
+
     private func setDelivery(
         _ delivery: MessageDelivery,
         messageID: UUID,

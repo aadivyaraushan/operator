@@ -11,7 +11,12 @@ private extension ModelSetupState {
 enum ChatMessageText {
     static func accessibilityLabel(for message: ChatMessage) -> String {
         let speaker = message.role == .user ? "You" : "Operator"
-        let text = String(displayText(for: message).characters)
+        let text: String
+        if case let .weather(card) = message.attachment {
+            text = "Weather, \(card.condition), \(card.temperatureCelsius) degrees Celsius"
+        } else {
+            text = String(displayText(for: message).characters)
+        }
         var label = "\(speaker), \(text)"
         if message.role == .user, message.delivery != .accepted {
             label += message.delivery == .sending ? ", Sending" : ", Waiting"
@@ -40,6 +45,7 @@ struct ChatScreen: View {
     @ObservedObject var whatsapp: WhatsAppLinkFlowModel
     @ObservedObject var accounts: NativeAccountSetupCoordinator
     @ObservedObject var notion: NativeNotionSetupCoordinator
+    @ObservedObject var youtube: YouTubeAPIKeySetupModel
     @State private var isConnectionsPresented = false
 
     var body: some View {
@@ -67,7 +73,7 @@ struct ChatScreen: View {
                     WhatsAppLinkSheet(model: self.whatsapp)
                 }
                 .sheet(isPresented: self.$isConnectionsPresented) {
-                    NativeAccountConnectionSheet(model: self.accounts)
+                    NativeAccountConnectionSheet(model: self.accounts, youtube: self.youtube)
                 }
             }
                 .padding(.horizontal, 18)
@@ -254,15 +260,15 @@ private struct MessageBubble: View {
 
     var body: some View {
         VStack(alignment: self.message.role == .user ? .trailing : .leading, spacing: 4) {
-            Text(ChatMessageText.displayText(for: self.message))
-                .textSelection(.enabled)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    self.message.role == .user
-                        ? Color.accentColor.opacity(0.16)
-                        : Color(uiColor: .secondarySystemBackground),
-                    in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            if case let .weather(card) = self.message.attachment {
+                WeatherResultCard(card: card)
+            } else {
+                Text(ChatMessageText.displayText(for: self.message))
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(self.message.role == .user ? Color.accentColor.opacity(0.16) : Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
             if self.message.role == .user, self.message.delivery != .accepted {
                 Text(self.message.delivery == .sending ? "Sending" : "Waiting")
                     .font(.caption2)
@@ -274,6 +280,23 @@ private struct MessageBubble: View {
             alignment: self.message.role == .user ? .trailing : .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(ChatMessageText.accessibilityLabel(for: self.message))
+    }
+}
+
+private struct WeatherResultCard: View {
+    let card: WeatherCard
+    @Environment(\.colorScheme) private var colorScheme
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Weather").font(.headline)
+            Text(self.card.condition).font(.subheadline)
+            Text("\(self.card.temperatureCelsius, format: .number.precision(.fractionLength(0)))°C").font(.title2.weight(.semibold))
+            if let apparent = self.card.apparentCelsius { Text("Feels like \(apparent, format: .number.precision(.fractionLength(0)))°C").font(.footnote).foregroundStyle(.secondary) }
+            if let high = self.card.highCelsius, let low = self.card.lowCelsius { Text("High \(high, format: .number.precision(.fractionLength(0)))° · Low \(low, format: .number.precision(.fractionLength(0)))°").font(.footnote).foregroundStyle(.secondary) }
+            HStack { AsyncImage(url: self.colorScheme == .dark ? self.card.attribution.combinedMarkDarkURL : self.card.attribution.combinedMarkLightURL) { $0.resizable().scaledToFit() } placeholder: { ProgressView() }.frame(height: 20).accessibilityLabel("Apple Weather"); Spacer(); Link("Legal", destination: self.card.attribution.legalPageURL).font(.footnote) }
+        }
+        .padding(14)
+        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 
@@ -374,6 +397,7 @@ private struct Composer: View {
                         Color(uiColor: .secondarySystemBackground),
                         in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .accessibilityLabel("Message Operator")
+                    .accessibilityIdentifier("chat-composer")
 
                 Button(action: self.toggleDictation) {
                     Image(systemName: self.dictation.state == .recording ? "stop.fill" : "mic.fill")

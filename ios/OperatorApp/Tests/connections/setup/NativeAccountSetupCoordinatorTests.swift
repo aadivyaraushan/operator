@@ -1,3 +1,4 @@
+import AuthenticationServices
 import XCTest
 @testable import OperatorApp
 
@@ -88,6 +89,14 @@ import XCTest
         }
         model.connect(.slack); await fulfillment(of: [presenter.presented], timeout: 1); model.cancel(); await Task.yield()
         let values = await counter.values(); XCTAssertEqual(presenter.cancels, 1); XCTAssertEqual(values, [1, 0]); XCTAssertEqual(model.state(for: .slack), .cancelled)
+    }
+
+    func testBrowserCancelledLoginNormalizesToCancellation() {
+        let error = NSError(
+            domain: ASWebAuthenticationSessionError.errorDomain,
+            code: ASWebAuthenticationSessionError.canceledLogin.rawValue)
+
+        XCTAssertTrue(OAuthSessionCancellation.normalized(error) is CancellationError)
     }
     func testCachesOneClientPerProviderAndKeepsProviderTokensSeparate() async throws {
         let presenter = SetupPresenter(); let factories = Counter()

@@ -59,7 +59,7 @@ extension InAppMediaOpener {
               let host = ForegroundPresentationHost.topmost()
         else { return false }
 
-        let browser = SFSafariViewController(url: url)
+        let browser = SFSafariViewController.operatorBrowser(url: url)
         return await withCheckedContinuation { continuation in
             host.present(browser, animated: true) {
                 continuation.resume(returning: host.presentedViewController === browser)

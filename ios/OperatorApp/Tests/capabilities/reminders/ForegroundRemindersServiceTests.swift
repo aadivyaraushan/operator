@@ -5,6 +5,27 @@ import XCTest
 
 @MainActor
 final class ForegroundRemindersServiceTests: XCTestCase {
+    // EventKit invokes this completion on a background queue. This checks the
+    // concrete adapter's boundary, which the protocol-only stub cannot reach.
+    func testEventKitFetchCallbackIsSendableAndMapsWithoutTheMainActor() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/OperatorApp/ForegroundRemindersService.swift")
+        // This checks the shape of the source, so it can run only where the
+        // source is on disk — the scratch SwiftPM package the run.sh harness
+        // builds. In the on-device OperatorAppTests bundle the source is not
+        // shipped, so skip rather than fail.
+        guard let source = try? String(contentsOf: sourceURL, encoding: .utf8) else {
+            throw XCTSkip("source-shape check runs only in the scratch SwiftPM package layout")
+        }
+
+        XCTAssertTrue(source.contains("requestFullAccessToReminders { @Sendable granted, _ in"))
+        XCTAssertTrue(source.contains("fetchReminders(matching: predicate) { @Sendable reminders in"))
+        XCTAssertTrue(source.contains("nonisolated private static func map("))
+    }
+
     func testReturnsIncompleteRemindersAsSortedJSON() async throws {
         let store = StubReminderStore(access: .fullAccess, reminders: [
             Reminder(title: "Book flights", due: Date(timeIntervalSince1970: 1_700_000_000), listName: "Travel"),

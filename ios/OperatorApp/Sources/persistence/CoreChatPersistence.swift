@@ -35,4 +35,8 @@ actor CoreChatPersistence: ChatPersistence {
     func appendAssistant(_ text: String) async throws -> ConversationSnapshot {
         try await self.store.appendAssistant(text: text)
     }
+
+    func appendWeatherCard(_ card: WeatherCard) async throws -> ConversationSnapshot {
+        try await self.store.appendWeatherCard(card)
+    }
 }

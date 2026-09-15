@@ -29,6 +29,8 @@ struct WeatherReading: Sendable, Equatable {
     let windKilometresPerHour: Double?
     let highCelsius: Double?
     let lowCelsius: Double?
+    let attribution: WeatherCardAttribution
+    init(temperatureCelsius: Double, apparentCelsius: Double?, condition: String, humidity: Double?, windKilometresPerHour: Double?, highCelsius: Double?, lowCelsius: Double?, attribution: WeatherCardAttribution) { self.temperatureCelsius = temperatureCelsius; self.apparentCelsius = apparentCelsius; self.condition = condition; self.humidity = humidity; self.windKilometresPerHour = windKilometresPerHour; self.highCelsius = highCelsius; self.lowCelsius = lowCelsius; self.attribution = attribution }
 }
 
 protocol WeatherSource: Sendable {
@@ -54,8 +56,9 @@ final class ForegroundWeatherService: GatewayNodeCommandHandler {
 
     private let source: any WeatherSource
     private let logger = Logger(subsystem: "app.operator.ios", category: "foreground-weather")
+    private let recordCard: @MainActor @Sendable (WeatherCard) async throws -> Void
 
-    init(source: any WeatherSource) { self.source = source }
+    init(source: any WeatherSource, recordCard: @escaping @MainActor @Sendable (WeatherCard) async throws -> Void) { self.source = source; self.recordCard = recordCard }
 
     func handleNodeCommand(
         _ command: String,
@@ -108,6 +111,12 @@ final class ForegroundWeatherService: GatewayNodeCommandHandler {
             return .failure(code: "INTERNAL_ERROR", message: "Operator could not read the forecast")
         }
         self.logger.info("[weather] returned condition_length=\(reading.condition.count)")
+        let card = WeatherCard(temperatureCelsius: reading.temperatureCelsius, apparentCelsius: reading.apparentCelsius, condition: reading.condition, humidity: reading.humidity, windKilometresPerHour: reading.windKilometresPerHour, highCelsius: reading.highCelsius, lowCelsius: reading.lowCelsius, attribution: reading.attribution)
+        do { try await self.recordCard(card) }
+        catch {
+            self.logger.error("[weather] failed branch=card_persistence")
+            return .failure(code: "INTERNAL_ERROR", message: "Operator could not save the forecast")
+        }
         return .success(payloadJSON: payloadJSON)
     }
 
@@ -129,6 +138,7 @@ struct SystemWeatherSource: WeatherSource {
     func reading(latitude: Double, longitude: Double) async throws -> WeatherReading {
         let location = CLLocation(latitude: latitude, longitude: longitude)
         let weather = try await WeatherService.shared.weather(for: location)
+        let attribution = try await WeatherService.shared.attribution
         let today = weather.dailyForecast.forecast.first
         return WeatherReading(
             temperatureCelsius: weather.currentWeather.temperature.converted(to: .celsius).value,
@@ -138,11 +148,12 @@ struct SystemWeatherSource: WeatherSource {
             windKilometresPerHour: weather.currentWeather.wind.speed
                 .converted(to: .kilometersPerHour).value,
             highCelsius: today?.highTemperature.converted(to: .celsius).value,
-            lowCelsius: today?.lowTemperature.converted(to: .celsius).value)
+            lowCelsius: today?.lowTemperature.converted(to: .celsius).value,
+            attribution: .init(legalPageURL: attribution.legalPageURL, combinedMarkLightURL: attribution.combinedMarkLightURL, combinedMarkDarkURL: attribution.combinedMarkDarkURL))
     }
 }
 
 extension ForegroundWeatherService {
-    convenience init() { self.init(source: SystemWeatherSource()) }
+    convenience init(recordCard: @escaping @MainActor @Sendable (WeatherCard) async throws -> Void) { self.init(source: SystemWeatherSource(), recordCard: recordCard) }
 }
 #endif

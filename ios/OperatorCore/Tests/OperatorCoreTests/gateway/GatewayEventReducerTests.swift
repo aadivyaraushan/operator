@@ -2,6 +2,41 @@ import XCTest
 @testable import OperatorCore
 
 final class GatewayEventReducerTests: XCTestCase {
+    func testHistoryRecoveryUsesExplicitSourceIdentityNotMessageOrder() throws {
+        let data = Data(#"{"messages":[{"role":"assistant","stopReason":"stop","content":"Recovered reply","__openclaw":{"runId":"recovery-run","sourceRunId":"original-run"}},{"role":"assistant","stopReason":"error","content":"Recovery error","__openclaw":{"runId":"recovery-run","sourceRunId":"original-run"}},{"role":"assistant","stopReason":"stop","content":"Unrelated later reply","__openclaw":{"runId":"other-run","sourceRunId":"other-source"}}]}"#.utf8)
+        let history = try JSONDecoder().decode(GatewayChatHistoryResult.self, from: data)
+        XCTAssertEqual(history.exactAssistantReply(runID: "original-run"), "Recovered reply")
+        XCTAssertEqual(history.exactAssistantReply(runID: "recovery-run"), "Recovered reply")
+        XCTAssertNil(history.exactAssistantReply(runID: "unknown"))
+    }
+
+    func testHistoryRecoveryAcceptsPlainTextAlongsideContentBlocks() throws {
+        let data = Data(#"{"messages":[{"role":"user","content":"Open website"},{"role":"assistant","content":"Opened","stopReason":"stop","__openclaw":{"runId":"run"}}]}"#.utf8)
+        let history = try JSONDecoder().decode(GatewayChatHistoryResult.self, from: data)
+        XCTAssertEqual(history.exactAssistantReply(runID: "run"), "Opened")
+    }
+
+    func testHistoryRecoveryReadsNativeRunIDAndSkipsToolStepsAndErrors() throws {
+        let data = Data(#"{"messages":[{"role":"assistant","stopReason":"stop","content":[{"type":"text","text":"Website opened"}],"__openclaw":{"runId":"run"}},{"role":"assistant","stopReason":"toolUse","content":[{"type":"text","text":"Opening"}],"__openclaw":{"runId":"run"}},{"role":"assistant","stopReason":"error","content":[{"type":"text","text":"Retry failed"}],"__openclaw":{"runId":"run"}},{"role":"assistant","stopReason":"stop","content":[{"type":"text","text":"Other reply"}],"__openclaw":{"runId":"other","idempotencyKey":"run"}}]}"#.utf8)
+        let history = try JSONDecoder().decode(GatewayChatHistoryResult.self, from: data)
+        XCTAssertEqual(history.exactAssistantReply(runID: "run"), "Website opened")
+        XCTAssertNil(history.exactAssistantReply(runID: "missing"))
+    }
+
+    func testHistoryRecoverySelectsOnlyReadableAssistantForExactRun() throws {
+        let data = Data(#"{"messages":[{"role":"assistant","content":[{"type":"text","text":"unrelated"}],"__openclaw":{"idempotencyKey":"other"}},{"role":"user","content":[{"type":"text","text":"same key user"}],"__openclaw":{"idempotencyKey":"run"}},{"role":"assistant","content":[{"type":"text","text":"Exact reply"}],"__openclaw":{"idempotencyKey":"run"}}]}"#.utf8)
+        let history = try JSONDecoder().decode(GatewayChatHistoryResult.self, from: data)
+
+        XCTAssertEqual(history.exactAssistantReply(runID: "run"), "Exact reply")
+        XCTAssertNil(history.exactAssistantReply(runID: "missing"))
+    }
+
+    func testHistoryRecoveryRejectsEmptyExactReplyInsteadOfUsingLatestUnrelatedText() throws {
+        let data = Data(#"{"messages":[{"role":"assistant","content":[],"__openclaw":{"idempotencyKey":"run"}},{"role":"assistant","content":[{"type":"text","text":"latest unrelated"}],"__openclaw":{"idempotencyKey":"other"}}]}"#.utf8)
+        let history = try JSONDecoder().decode(GatewayChatHistoryResult.self, from: data)
+
+        XCTAssertNil(history.exactAssistantReply(runID: "run"))
+    }
     func testChatSendEncodesCurrentOpenClawWireContract() throws {
         let request = GatewayRequestFactory.chatSend(
             requestID: "send-1",
@@ -18,7 +53,7 @@ final class GatewayEventReducerTests: XCTestCase {
         XCTAssertEqual(object["method"] as? String, "chat.send")
         XCTAssertEqual(params["sessionKey"] as? String, "agent:main:main")
         XCTAssertEqual(params["message"] as? String, "hello")
-        XCTAssertEqual(params["fastMode"] as? String, "auto")
+        XCTAssertNil(params["fastMode"], "Per-message overrides bypass OpenClaw restart-safe admission")
         XCTAssertEqual(params["idempotencyKey"] as? String, "message-1")
     }
 

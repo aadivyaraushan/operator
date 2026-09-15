@@ -9,6 +9,7 @@ protocol ChatPersistence: Sendable {
     func markAccepted(id: UUID) async throws -> ConversationSnapshot
     func markWaiting(id: UUID) async throws -> ConversationSnapshot
     func appendAssistant(_ text: String) async throws -> ConversationSnapshot
+    func appendWeatherCard(_ card: WeatherCard) async throws -> ConversationSnapshot
 }
 
 enum ChatDeliveryUpdate: Equatable, Sendable {

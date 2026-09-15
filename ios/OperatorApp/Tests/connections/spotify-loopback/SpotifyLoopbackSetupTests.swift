@@ -155,7 +155,11 @@ import XCTest
     }
 
     private func waitUntil(_ condition: @escaping @MainActor () -> Bool) async {
-        for _ in 0..<200 {
+        // A real loopback HTTP round trip. A passing run satisfies the
+        // condition almost immediately; the ceiling only bounds a genuine
+        // hang. 1s was too tight on a Simulator running the whole suite at
+        // once (the round trip lost to scheduling and flaked), so allow 3s.
+        for _ in 0..<600 {
             if condition() { return }
             try? await Task.sleep(for: .milliseconds(5))
         }

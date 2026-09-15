@@ -122,3 +122,29 @@ func TestFailuresAreSanitized(t *testing.T) {
 		t.Fatalf("unexpected invalid request: %+v", invalid)
 	}
 }
+
+func TestFailureStatusKeepsOnlySafeCategory(t *testing.T) {
+	cases := []struct{ message, code string }{
+		{"WhatsApp requires passkey verification, which wacli cannot safely complete yet; secret", "verification_required"},
+		{"WhatsApp requires passkey confirmation, which wacli cannot safely complete yet; secret", "verification_required"},
+		{"QR code timed out; run wacli auth again", "code_expired"},
+		{"WhatsApp client outdated; update wacli and try again", "client_outdated"},
+		{"private secret token and phone", "pairing_failed"},
+	}
+	for _, tc := range cases {
+		svc := newLinkService(func(context.Context, string, string, linkCallbacks) error { return errors.New(tc.message) })
+		started := decodeResponse(t, svc.start("/private/store", "+14155550123"))
+		waitForPhase(t, svc, started.Data.OperationID, phaseFailed)
+		raw := svc.status(started.Data.OperationID)
+		var result struct{ Data struct{ FailureCode string } }
+		if err := json.Unmarshal([]byte(raw), &result); err != nil {
+			t.Fatal(err)
+		}
+		if result.Data.FailureCode != tc.code {
+			t.Errorf("got category %q, want %q", result.Data.FailureCode, tc.code)
+		}
+		if strings.Contains(raw, "secret") || strings.Contains(raw, "14155550123") {
+			t.Fatal("status leaked private details")
+		}
+	}
+}

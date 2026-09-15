@@ -89,13 +89,86 @@ public struct GatewayConnectParams: Codable, Sendable {
 public struct GatewayChatSendParams: Codable, Sendable {
     public let sessionKey: String
     public let message: String
-    public let fastMode: String?
     public let idempotencyKey: String
 }
 
 public struct GatewayChatAbortParams: Codable, Sendable {
     public let sessionKey: String
     public let runId: String?
+}
+
+public struct GatewayChatHistoryParams: Encodable, Sendable {
+    public let sessionKey: String
+    public let limit: Int
+    public let maxChars: Int
+
+    public init(sessionKey: String, limit: Int = 100, maxChars: Int = 32_000) {
+        self.sessionKey = sessionKey
+        self.limit = limit
+        self.maxChars = maxChars
+    }
+}
+
+public struct GatewayChatHistoryResult: Decodable, Sendable {
+    public struct Recovery: Decodable, Sendable {
+        public let sourceRunId: String
+        public let runId: String
+    }
+    public struct Message: Decodable, Sendable {
+        public struct Metadata: Decodable, Sendable {
+            public let idempotencyKey: String?
+            public let runId: String?
+            public let sourceRunId: String?
+        }
+
+        public struct ContentBlock: Decodable, Sendable {
+            public let type: String
+            public let text: String?
+        }
+
+        public let role: String
+        public let content: [ContentBlock]
+        public let metadata: Metadata?
+        public let stopReason: String?
+
+        private enum CodingKeys: String, CodingKey {
+            case role
+            case content
+            case stopReason
+            case metadata = "__openclaw"
+        }
+
+        public init(from decoder: Decoder) throws {
+            let values = try decoder.container(keyedBy: CodingKeys.self)
+            self.role = try values.decode(String.self, forKey: .role)
+            self.metadata = try values.decodeIfPresent(Metadata.self, forKey: .metadata)
+            self.stopReason = try values.decodeIfPresent(String.self, forKey: .stopReason)
+            if let text = try? values.decode(String.self, forKey: .content) {
+                self.content = [ContentBlock(type: "text", text: text)]
+            } else {
+                self.content = try values.decode([ContentBlock].self, forKey: .content)
+            }
+        }
+
+        public func readableText() -> String? {
+            let text = self.content.compactMap { block in
+                block.type == "text" ? block.text : nil
+            }.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.isEmpty ? nil : text
+        }
+    }
+
+    public let messages: [Message]
+    public let operatorRecovery: Recovery?
+
+    public func exactAssistantReply(runID: String) -> String? {
+        self.messages.reversed().first { message in
+            message.role == "assistant"
+                && ((message.metadata?.runId ?? message.metadata?.idempotencyKey) == runID
+                    || (message.metadata?.runId != nil && message.metadata?.sourceRunId == runID))
+                && (message.stopReason == nil || message.stopReason == "stop")
+        }?.readableText()
+    }
 }
 
 public enum GatewayRequestFactory {
@@ -142,8 +215,7 @@ public enum GatewayRequestFactory {
         requestID: String,
         sessionKey: String,
         message: String,
-        idempotencyKey: String,
-        fastMode: String? = "auto") -> GatewayRequest<GatewayChatSendParams>
+        idempotencyKey: String) -> GatewayRequest<GatewayChatSendParams>
     {
         GatewayRequest(
             id: requestID,
@@ -151,7 +223,6 @@ public enum GatewayRequestFactory {
             params: GatewayChatSendParams(
                 sessionKey: sessionKey,
                 message: message,
-                fastMode: fastMode,
                 idempotencyKey: idempotencyKey))
     }
 

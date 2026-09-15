@@ -1,5 +1,6 @@
 import Foundation
 import OperatorCore
+import SafariServices
 import XCTest
 @testable import OperatorApp
 
@@ -63,6 +64,33 @@ final class ForegroundAppHandoffServiceTests: XCTestCase {
             XCTAssertThrowsError(try AppHandoffCatalog.decode(Data(json.utf8)))
         }
         XCTAssertEqual(try AppHandoffCatalog.decode(Data(#"[{"id":"example","url":"https://example.com/","displayName":"Example"}]"#.utf8)).count, 1)
+    }
+
+    // Regression guard for the "stuck on the website" bug: an in-app browser
+    // built without a delegate makes "Done" a no-op, so the browser covers
+    // chat forever. Both openers now build through `operatorBrowser(url:)`, so
+    // asserting the factory always wires the shared return delegate guards
+    // every caller at once. `safariViewControllerDidFinish` then dismisses.
+    func testOperatorBrowserAlwaysWiresTheReturnDelegateSoDoneReturnsToChat() {
+        let browser = SFSafariViewController.operatorBrowser(url: URL(string: "https://example.com/")!)
+        XCTAssertTrue(browser.delegate === SafariReturnDelegate.shared)
+
+        // And the delegate's contract is to dismiss on Done, not sit there.
+        let host = UIViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        window.rootViewController = host
+        window.isHidden = false
+        host.present(browser, animated: false)
+        XCTAssertTrue(host.presentedViewController === browser)
+        SafariReturnDelegate.shared.safariViewControllerDidFinish(browser)
+        // dismiss(animated:true) resolves on the next run-loop turns; poll for it.
+        let dismissed = expectation(description: "browser dismissed on Done")
+        func poll() {
+            if host.presentedViewController == nil { dismissed.fulfill() }
+            else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: poll) }
+        }
+        poll()
+        wait(for: [dismissed], timeout: 3)
     }
 }
 

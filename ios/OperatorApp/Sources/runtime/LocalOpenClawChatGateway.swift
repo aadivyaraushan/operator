@@ -72,6 +72,16 @@ private struct LocalChatDeliveryTimer {
     }
 }
 
+private extension GatewayConversationEvent {
+    var runID: String {
+        switch self {
+        case let .working(runID), let .stream(runID, _), let .reply(runID, _),
+             let .failed(runID, _), let .stopped(runID):
+            return runID
+        }
+    }
+}
+
 actor LocalOpenClawChatGateway: ChatGateway {
     private let connectionFactory: @Sendable () async throws -> OpenClawGatewayConnection
     private let monotonicMilliseconds: @Sendable () -> Double
@@ -120,63 +130,72 @@ actor LocalOpenClawChatGateway: ChatGateway {
         let connection = try await self.readyConnection()
         var timing = LocalChatDeliveryTimer(startedAtMilliseconds: self.monotonicMilliseconds())
         do {
+            // A previous process may have finished after the UI disconnected.
+            // Recover its exact saved reply before asking the agent to run again.
+            if let reply = try await connection.recoverReply(runID: entry.idempotencyKey) {
+                let now = self.monotonicMilliseconds()
+                if let event = timing.accepted(at: now) { self.recordTiming(event) }
+                if let event = timing.firstText(in: reply, at: now) { self.recordTiming(event) }
+                if let event = timing.terminal(outcome: .reply, at: now) { self.recordTiming(event) }
+                self.logger.info("[gateway] recovered saved completion before send")
+                await update(.accepted)
+                await update(.reply(reply))
+                return
+            }
             let requestID = try await connection.sendMessage(
                 entry.text,
                 idempotencyKey: entry.idempotencyKey)
+            var acceptedRunID: String?
+            var eventsBeforeAcknowledgement: [GatewayConversationEvent] = []
             while true {
+                var conversationEvents: [GatewayConversationEvent] = []
                 switch try await connection.receive() {
-                case let .response(id, ok, _, _, error) where id == requestID:
+                case let .response(id, ok, runID, status, error) where id == requestID:
                     guard ok else {
                         throw ChatGatewayError.gateway(error?.message ?? "Operator could not start this request")
                     }
+                    let responseRunID = runID?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    acceptedRunID = responseRunID?.isEmpty == false
+                        ? responseRunID
+                        : entry.idempotencyKey
                     if let event = timing.accepted(at: self.monotonicMilliseconds()) {
                         self.recordTiming(event)
                     }
                     await update(.accepted)
-                case let .conversation(events):
-                    for event in events {
-                        switch event {
-                        case let .working(runID):
-                            self.activeRunID = runID
-                            await update(.working)
-                        case let .stream(runID, text):
-                            self.activeRunID = runID
-                            if let event = timing.firstText(in: text, at: self.monotonicMilliseconds()) {
-                                self.recordTiming(event)
-                            }
-                            await update(.stream(text))
-                        case let .reply(_, text):
-                            self.activeRunID = nil
-                            let now = self.monotonicMilliseconds()
-                            if let event = timing.firstText(in: text, at: now) {
-                                self.recordTiming(event)
-                            }
-                            if let event = timing.terminal(outcome: .reply, at: now) {
-                                self.recordTiming(event)
-                            }
-                            await update(.reply(text))
-                            return
-                        case let .failed(runID, message):
-                            self.activeRunID = nil
-                            self.logger.error("[gateway] run failed id=\(runID, privacy: .public)")
-                            if let event = timing.terminal(
-                                outcome: .failed, at: self.monotonicMilliseconds())
-                            {
-                                self.recordTiming(event)
-                            }
-                            await update(.failed(message))
-                            return
-                        case .stopped:
-                            self.activeRunID = nil
-                            if let event = timing.terminal(
-                                outcome: .stopped, at: self.monotonicMilliseconds())
-                            {
-                                self.recordTiming(event)
-                            }
-                            await update(.stopped)
+                    switch status?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+                    case "ok":
+                        guard let reply = try await connection.recoverReply(runID: acceptedRunID!) else {
+                            self.logger.error(
+                                "[gateway] exact terminal reply missing runID=\(acceptedRunID!, privacy: .public)")
+                            await update(.failed("Operator finished, but its exact reply could not be recovered."))
                             return
                         }
+                        let now = self.monotonicMilliseconds()
+                        if let event = timing.firstText(in: reply, at: now) { self.recordTiming(event) }
+                        if let event = timing.terminal(outcome: .reply, at: now) { self.recordTiming(event) }
+                        await update(.reply(reply))
+                        return
+                    case "timeout", "error":
+                        self.logger.error(
+                            "[gateway] terminal chat acknowledgement status=\(status!, privacy: .public) runID=\(acceptedRunID!, privacy: .public)")
+                        if let event = timing.terminal(
+                            outcome: .failed, at: self.monotonicMilliseconds())
+                        {
+                            self.recordTiming(event)
+                        }
+                        await update(.failed("Operator could not complete this request."))
+                        return
+                    default:
+                        break
                     }
+                    conversationEvents = eventsBeforeAcknowledgement
+                    eventsBeforeAcknowledgement.removeAll(keepingCapacity: false)
+                case let .conversation(events):
+                    guard acceptedRunID != nil else {
+                        eventsBeforeAcknowledgement.append(contentsOf: events)
+                        continue
+                    }
+                    conversationEvents = events
                 case let .approval(event):
                     switch event.phase {
                     case .pending:
@@ -194,6 +213,65 @@ actor LocalOpenClawChatGateway: ChatGateway {
                 case .response, .ignored:
                     continue
                 }
+                guard let acceptedRunID else { continue }
+                for event in conversationEvents {
+                    guard event.runID == acceptedRunID else {
+                        self.logger.info(
+                            "[gateway] ignored event for non-current run eventRun=\(event.runID, privacy: .public) currentRun=\(acceptedRunID, privacy: .public)")
+                        continue
+                    }
+                    switch event {
+                    case let .working(runID):
+                        self.activeRunID = runID
+                        await update(.working)
+                    case let .stream(runID, text):
+                        self.activeRunID = runID
+                        if let event = timing.firstText(in: text, at: self.monotonicMilliseconds()) {
+                            self.recordTiming(event)
+                        }
+                        await update(.stream(text))
+                    case let .reply(_, text):
+                        self.activeRunID = nil
+                        let now = self.monotonicMilliseconds()
+                        if let event = timing.firstText(in: text, at: now) {
+                            self.recordTiming(event)
+                        }
+                        if let event = timing.terminal(outcome: .reply, at: now) {
+                            self.recordTiming(event)
+                        }
+                        await update(.reply(text))
+                        return
+                    case let .failed(runID, message):
+                        // A restart can emit failure for the old run while native
+                        // recovery owns its continuation. Reconcile before clearing it.
+                        if let reply = try await connection.recoverReply(runID: runID) {
+                            self.activeRunID = nil
+                            let now = self.monotonicMilliseconds()
+                            if let event = timing.firstText(in: reply, at: now) { self.recordTiming(event) }
+                            if let event = timing.terminal(outcome: .reply, at: now) { self.recordTiming(event) }
+                            await update(.reply(reply))
+                            return
+                        }
+                        self.activeRunID = nil
+                        self.logger.error("[gateway] run failed id=\(runID, privacy: .public)")
+                        if let event = timing.terminal(
+                            outcome: .failed, at: self.monotonicMilliseconds())
+                        {
+                            self.recordTiming(event)
+                        }
+                        await update(.failed(message))
+                        return
+                    case .stopped:
+                        self.activeRunID = nil
+                        if let event = timing.terminal(
+                            outcome: .stopped, at: self.monotonicMilliseconds())
+                        {
+                            self.recordTiming(event)
+                        }
+                        await update(.stopped)
+                        return
+                    }
+                }
             }
         } catch {
             if let event = timing.terminal(outcome: .error, at: self.monotonicMilliseconds()) {
@@ -201,6 +279,10 @@ actor LocalOpenClawChatGateway: ChatGateway {
             }
             await connection.disconnect()
             self.connection = nil
+            if error as? OpenClawGatewayError == .recoveryPending {
+                self.logger.info("[gateway] retaining request until native recovery settles")
+                throw ChatGatewayError.gateway("Operator is restoring this request.")
+            }
             if let gatewayError = error as? ChatGatewayError {
                 throw gatewayError
             }

@@ -23,7 +23,17 @@ final class ForegroundAccountReadService: GatewayNodeCommandHandler {
         guard !Task.isCancelled else { return .failure(code: "CANCELLED", message: "Connection read was cancelled") }
         guard command == "connections.read" else { return .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)") }
         guard self.isAppActive() else { return .failure(code: "APP_NOT_ACTIVE", message: "Open Operator to read connected accounts") }
-        guard let input = Self.input(paramsJSON) else { return .failure(code: "INVALID_REQUEST", message: "Connection read parameters were invalid") }
+        let input: AccountReadRequest
+        do {
+            guard let parsed = try Self.input(paramsJSON) else {
+                self.logger.info("[account-read-service] rejected result=invalid-input")
+                return .failure(code: "INVALID_REQUEST", message: "Connection read parameters were invalid")
+            }
+            input = parsed
+        } catch {
+            self.logger.info("[account-read-service] rejected result=missing-limit")
+            return .failure(code: "INVALID_REQUEST", message: "Missing required parameter: limit. Retry with an integer limit and the required parameters from connections.describe.")
+        }
         // Every account read is a network call, and gmailMessages is up to
         // eleven of them. Without a deadline here the caller's only bound was
         // URLSession's own per-request default, which is a minute and applies
@@ -52,8 +62,12 @@ final class ForegroundAccountReadService: GatewayNodeCommandHandler {
         } catch { return .failure(code:"ACCOUNT_UNAVAILABLE",message:"This account could not complete the read request") }
     }
 
-    private static func input(_ json: String?) -> AccountReadRequest? {
-        guard let json, Data(json.utf8).count <= 16_384, let raw = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any], Set(raw.keys).isSubset(of:["operation","query","channel","timeMin","timeMax","limit","cursor"]), let opText=raw["operation"] as? String, let op=AccountReadOperation(rawValue:opText), let limitNumber = raw["limit"] as? NSNumber, String(cString: limitNumber.objCType) != "c", limitNumber.doubleValue.rounded() == limitNumber.doubleValue else { return nil }
+    private enum InputError: Error { case missingLimit }
+
+    private static func input(_ json: String?) throws -> AccountReadRequest? {
+        guard let json, Data(json.utf8).count <= 16_384, let raw = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any], Set(raw.keys).isSubset(of:["operation","query","channel","timeMin","timeMax","limit","cursor"]), let opText=raw["operation"] as? String, let op=AccountReadOperation(rawValue:opText) else { return nil }
+        guard raw["limit"] != nil else { throw InputError.missingLimit }
+        guard let limitNumber = raw["limit"] as? NSNumber, String(cString: limitNumber.objCType) != "c", limitNumber.doubleValue.rounded() == limitNumber.doubleValue else { return nil }
         let limit = limitNumber.intValue
         guard ["query", "channel", "timeMin", "timeMax", "cursor"].allSatisfy({ key in
             raw[key] == nil || raw[key] is String
