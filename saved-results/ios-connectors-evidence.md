@@ -1614,3 +1614,21 @@ scenario banks, three recorded gmail runs). This side: ten commits
 `xcodebuild test` OperatorApp scheme: 387 tests, 0 failures, 22 skipped
 (live). `swift test` OperatorCore: 104/104. Free launch smoke UI test:
 pass. `OperatorAppQA` build-for-testing: success.
+
+## 2026-09-15, later: calendar update + invites; WhatsApp send reported working
+
+- **WhatsApp `whatsapp.compose`**: the owner reports a live send worked on
+  the device through the acknowledged write grant (owner-reported in chat;
+  no log captured here, so the row stays "owner says it works" until a
+  logged run records `outcome`).
+- **`googleCalendarUpdateEvent`** (new, 12b8489): PATCH of one event,
+  fields-given-only, `sendUpdates=all`. **`googleCalendarCreateEvent`**
+  gains `attendees` with invitations sent. Unit-tested (writer,
+  confirmation parser, preview, permissions), not yet proven live: run
+  `LiveConnectorWriteTests/testGoogleCalendarUpdateEventToSelf` under the
+  OperatorAppLive scheme with `TEST_RUNNER_OPERATOR_LIVE_GOOGLE_EMAIL` set to
+  the signed-in Google address (the only guest it invites is that address).
+- Known flake noticed while verifying: `SpotifyLoopbackSetupTests
+  .testSpotifyUsesExactLocalCallbackAndCompletesExistingClient` failed 2 of 4
+  full-suite runs on this Mac with the loopback callback never arriving;
+  unrelated to the calendar change and not investigated.
