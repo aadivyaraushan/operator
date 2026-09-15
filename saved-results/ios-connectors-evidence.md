@@ -1578,3 +1578,39 @@ Shortcuts app on the developer's Mac; sharing it again renews the link.
 - **App switch drops the node.** Returning from Shortcuts shows "Starting
   Operator" while the node reconnects; the x-callback still landed 30s
   later. Harmless today, worth smoothing.
+
+---
+
+## 2026-09-15: qa/connector-workflow merged into codex/ios-connectors
+
+Merge base ea2e929. QA side: one commit (runner, XCUITest driver, 22
+scenario banks, three recorded gmail runs). This side: ten commits
+(permission gate, sent-for-you text, WhatsApp send guard). Only
+`project.pbxproj` conflicted; regenerated with xcodegen 2.46 from the merged
+`project.yml`, existing schemes kept byte-for-byte. Merge commit 0aadf33.
+
+### Bugs found and fixed on the merged tree
+
+| Where | What | Fix | Verified |
+| --- | --- | --- | --- |
+| Embedded runtime | App dies with SIGSEGV in `JSSegments::Create` on the first reply OpenClaw segments (4 crashes across the recorded gmail runs). The pinned NodeMobile's ICU data has `brkitr/res_index.res` only, no break-iterator rules; V8 only DCHECKs the null iterator. | `compat/intl/segmenter.mjs`, a UAX #29 `Intl.Segmenter` in JavaScript, installed by `entry.mjs` before OpenClaw imports; staged by `stage.mjs` (f2cdd5a) | 8/8 against desktop full-ICU Segmenter on the crashing reply, ZWJ, skin tones, flags, jamo, CRLF; native suite 38/38 here. **Not yet run inside NodeMobile**: needs a model turn on the QA Simulator (other machine). |
+| QA driver | Blind to the permission layer: first-launch Permissions cover makes the composer untappable; ungranted connectors show a grant banner it never taps, so every step scores as a connector fail. | Driver taps Continue/Done on the page, allows the grant banner during a step, dismisses it in the leftover pass, always declines a write acknowledgement (c8839cb) | Driver on this Mac's iPhone 16 Plus (no model signed in): found the cover, tapped it, reached chat, stopped at `blocked:model-not-signed-in`, zero turns. Run `saved-results/connector-qa/runs/20260915T160858-driver-check`. |
+| QA checks | A `[permissions] denied` step was a `fail`; `sms.send` was not a forbidden write for clarify/decline | `grant-missing` scores `blocked` except on decline scenarios; `sms.send` added | 34/34 QA unit tests |
+| QA runner | `run.mjs` crashed on a fresh install with no `conversation.json` | snapshot via `readConversation`, which tolerates a missing store | reproduced, then passed on the same Simulator |
+
+### Still open from the recorded runs
+
+- **Runtime hang** (3 of 18 turns in `20260915T053520-gmail3`: gateway
+  `phase=accepted`, then nothing for 240 s). Not root-caused; not touched here.
+- **First read rejected `invalidRequest`, retry fine** (gmail-typo#1). The
+  rejected request is not logged; candidate follow-up in
+  `saved-results/connector-qa/implementation-notes.md`.
+- The QA Simulator `49A153C3…` and the `ssdear@gmail.com` ChatGPT account
+  are on the other Mac. The next live QA pass there is the on-device proof
+  for the Segmenter fix and the banner/acknowledgement driver paths.
+
+### What else ran green on the merged tree
+
+`xcodebuild test` OperatorApp scheme: 387 tests, 0 failures, 22 skipped
+(live). `swift test` OperatorCore: 104/104. Free launch smoke UI test:
+pass. `OperatorAppQA` build-for-testing: success.
