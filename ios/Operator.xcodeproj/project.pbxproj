@@ -91,6 +91,7 @@
         E30500000000000000000001 /* WhatsAppLinkFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E30600000000000000000001 /* WhatsAppLinkFlowTests.swift */; };
         E30700000000000000000001 /* ForegroundMessageComposeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E30800000000000000000001 /* ForegroundMessageComposeService.swift */; };
         66C6F0160F4E93E519B60517 /* SystemMessageComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31000000000000000000001 /* SystemMessageComposer.swift */; };
+        66C6F0160F4E93E519B60518 /* ForegroundPresentationHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31000000000000000000002 /* ForegroundPresentationHost.swift */; };
         E31100000000000000000001 /* NativeNodePolicySetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = E31200000000000000000001 /* NativeNodePolicySetup.swift */; };
 /* End PBXBuildFile section */
 /* Additional native action sources are built in the standalone target too. */
@@ -192,6 +193,7 @@
         E30600000000000000000001 /* WhatsAppLinkFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorApp/Tests/capabilities/whatsapp/link/WhatsAppLinkFlowTests.swift; sourceTree = SOURCE_ROOT; };
         E30800000000000000000001 /* ForegroundMessageComposeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorApp/Sources/capabilities/messages/ForegroundMessageComposeService.swift; sourceTree = SOURCE_ROOT; };
         E31000000000000000000001 /* SystemMessageComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorApp/Sources/capabilities/messages/SystemMessageComposer.swift; sourceTree = SOURCE_ROOT; };
+        E31000000000000000000002 /* ForegroundPresentationHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorApp/Sources/capabilities/presentation/ForegroundPresentationHost.swift; sourceTree = SOURCE_ROOT; };
         E31200000000000000000001 /* NativeNodePolicySetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorApp/Sources/capabilities/node/policy/NativeNodePolicySetup.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -401,6 +403,7 @@
                 A90200000000000000000004 /* NodeMobile.xcframework */,
                 E30800000000000000000001 /* ForegroundMessageComposeService.swift */,
                 E31000000000000000000001 /* SystemMessageComposer.swift */,
+                E31000000000000000000002 /* ForegroundPresentationHost.swift */,
                 E31200000000000000000001 /* NativeNodePolicySetup.swift */,
                 E30200000000000000000001 /* WhatsAppLinkFlow.swift */,
                 E30400000000000000000001 /* WhatsAppLinkSheet.swift */,
@@ -685,6 +688,7 @@
                 A90100000000000000000002 /* EmbeddedNodeBridge.mm in Sources */,
                 E30700000000000000000001 /* ForegroundMessageComposeService.swift in Sources */,
                 66C6F0160F4E93E519B60517 /* SystemMessageComposer.swift in Sources */,
+                66C6F0160F4E93E519B60518 /* ForegroundPresentationHost.swift in Sources */,
                 E31100000000000000000001 /* NativeNodePolicySetup.swift in Sources */,
                 E30100000000000000000001 /* WhatsAppLinkFlow.swift in Sources */,
                 E30300000000000000000001 /* WhatsAppLinkSheet.swift in Sources */,

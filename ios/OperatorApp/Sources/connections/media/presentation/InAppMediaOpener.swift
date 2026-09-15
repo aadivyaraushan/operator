@@ -56,19 +56,13 @@ extension InAppMediaOpener {
 
     private static func presentInOperator(_ url: URL) async -> Bool {
         guard UIApplication.shared.applicationState == .active,
-              let root = UIApplication.shared.connectedScenes
-                .compactMap({ $0 as? UIWindowScene })
-                .filter({ $0.activationState == .foregroundActive })
-                .flatMap(\.windows)
-                .first(where: \.isKeyWindow)?
-                .rootViewController,
-              root.presentedViewController == nil
+              let host = ForegroundPresentationHost.topmost()
         else { return false }
 
         let browser = SFSafariViewController(url: url)
         return await withCheckedContinuation { continuation in
-            root.present(browser, animated: true) {
-                continuation.resume(returning: root.presentedViewController === browser)
+            host.present(browser, animated: true) {
+                continuation.resume(returning: host.presentedViewController === browser)
             }
         }
     }

@@ -21,11 +21,6 @@ import UIKit
     func cancel() { alert?.dismiss(animated: true); finish(.denied) }
     @objc private func didEnterBackground() { cancel() }
     private func finish(_ decision: WhatsAppComposeDecision) { alert = nil; let saved = continuation; continuation = nil; saved?.resume(returning: decision) }
-    private static func hostViewController() -> UIViewController? {
-        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first { $0.activationState == .foregroundActive }
-        var controller = scene?.windows.first(where: \.isKeyWindow)?.rootViewController
-        while let presented = controller?.presentedViewController { controller = presented }
-        return controller
-    }
+    private static func hostViewController() -> UIViewController? { ForegroundPresentationHost.topmost() }
 }
 #endif

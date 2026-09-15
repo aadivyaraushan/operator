@@ -4,26 +4,28 @@ import UIKit
 
 @MainActor
 final class SystemMessageComposer: NSObject, MessageComposePresenter, @preconcurrency MFMessageComposeViewControllerDelegate {
-    private let application: UIApplication
+    // Resolved on every call, never stored. This object is created inside
+    // OperatorApp.init(), and on an iPhone 17 running iOS 26 a UIApplication
+    // captured that early was not the one UIKit went on to run: it reported
+    // applicationState .active (the zero default) with no delegate, no
+    // sessions and no connected scenes, so sms.compose failed with
+    // PRESENTATION_UNAVAILABLE in the foreground, every time. The launch-time
+    // probe that found it is recorded in ios-connectors-evidence.md.
+    private var application: UIApplication { .shared }
     private let logger = Logger(subsystem: "app.operator.ios", category: "message-compose")
     private var composer: MFMessageComposeViewController?
-
-    init(application: UIApplication = .shared) {
-        self.application = application
-        super.init()
-    }
 
     var isAvailable: Bool {
         MFMessageComposeViewController.canSendText()
     }
 
     func present(recipients: [String], body: String) -> Bool {
-        guard self.application.applicationState == .active,
-              self.composer == nil,
-              let root = self.activeRootViewController(),
-              root.presentedViewController == nil
-        else {
+        guard self.application.applicationState == .active, self.composer == nil else {
             self.logger.info("[message-compose] system composer presentation blocked active=\(self.application.applicationState == .active) busy=\(self.composer != nil)")
+            return false
+        }
+        guard let host = ForegroundPresentationHost.topmost(in: self.application) else {
+            self.logger.info("[message-compose] system composer presentation blocked: no host view controller")
             return false
         }
 
@@ -32,7 +34,7 @@ final class SystemMessageComposer: NSObject, MessageComposePresenter, @preconcur
         composer.recipients = recipients
         composer.body = body
         self.composer = composer
-        root.present(composer, animated: true)
+        host.present(composer, animated: true)
         self.logger.info("[message-compose] system composer presentation requested recipients=\(recipients.count)")
         return true
     }
@@ -53,14 +55,5 @@ final class SystemMessageComposer: NSObject, MessageComposePresenter, @preconcur
             guard let self, self.composer === controller else { return }
             self.composer = nil
         }
-    }
-
-    private func activeRootViewController() -> UIViewController? {
-        self.application.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .filter { $0.activationState == .foregroundActive }
-            .flatMap(\.windows)
-            .first(where: \.isKeyWindow)?
-            .rootViewController
     }
 }

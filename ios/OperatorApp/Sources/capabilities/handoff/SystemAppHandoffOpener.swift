@@ -8,18 +8,14 @@ final class SystemAppHandoffOpener: AppHandoffOpener {
     func open(_ url: URL) async -> Bool {
         guard AppHandoffCatalog.isSafeDestination(url),
               UIApplication.shared.applicationState == .active,
-              let root = UIApplication.shared.connectedScenes
-                .compactMap({ $0 as? UIWindowScene })
-                .filter({ $0.activationState == .foregroundActive })
-                .flatMap(\.windows).first(where: \.isKeyWindow)?.rootViewController,
-              root.presentedViewController == nil
+              let host = ForegroundPresentationHost.topmost()
         else { return false }
         // Keep the node connection alive while reporting the opened page.
         // Leaving Operator for the Safari app disconnects it before its result.
         let browser = SFSafariViewController(url: url)
         return await withCheckedContinuation { continuation in
-            root.present(browser, animated: true) {
-                continuation.resume(returning: root.presentedViewController === browser)
+            host.present(browser, animated: true) {
+                continuation.resume(returning: host.presentedViewController === browser)
             }
         }
     }

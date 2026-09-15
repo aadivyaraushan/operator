@@ -20,6 +20,6 @@ import UIKit
 
     func cancel() { generation += 1; alert?.dismiss(animated: true); let saved = continuation; continuation = nil; alert = nil; saved?.resume(returning: .denied) }
     private func finish(_ value: AccountWriteDecision, run: Int) { guard generation == run else { return }; let saved = continuation; continuation = nil; alert = nil; saved?.resume(returning: value) }
-    private static func host() -> UIViewController? { let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first { $0.activationState == .foregroundActive }; var view = scene?.windows.first(where: \.isKeyWindow)?.rootViewController; while let shown = view?.presentedViewController { view = shown }; return view }
+    private static func host() -> UIViewController? { ForegroundPresentationHost.topmost() }
 }
 #endif
