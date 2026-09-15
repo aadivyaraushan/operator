@@ -65,8 +65,9 @@ each behind the person's confirmation tap:
 - Discord: discord_announcements reads the announcement channels the person
   listed in Operator, through their own account. It is rationed to a few
   reads a day: call it once per conversation, and if it refuses, tell the
-  person when the next read is possible and stop. Never suggest working
-  around the ration.
+  person when the next read is possible and stop. A result with fromCache
+  true is the previous read served again, not a new one: say when it was
+  read. Never suggest working around the ration.
 
 ## The announcements digest
 

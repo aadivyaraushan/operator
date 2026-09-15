@@ -24,6 +24,7 @@
 		22E137E3B47A5603349F4B21 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 53019819A86F6569529CEBF1 /* libresolv.tbd */; };
 		24341752AAD7E050880843F2 /* SpotifyLoopbackSetupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35439154071AFAE24D4B2B2E /* SpotifyLoopbackSetupTests.swift */; };
 		252756A97D7DF7DC0A6E14D2 /* ForegroundMessageComposeServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D30E9FCFEEAAFDF887AC2C /* ForegroundMessageComposeServiceTests.swift */; };
+		2B9ABE01714D46D128E4468E /* DiscordReadCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B5996E42CE6B56B761AAF24 /* DiscordReadCache.swift */; };
 		2BBBBD53D2E15F345936198C /* ForegroundAccountWriteConfirmationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBF593087E71EFAACE01A32C /* ForegroundAccountWriteConfirmationService.swift */; };
 		2E2EF72ADE9E372C54589C20 /* InAppMediaOpener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15F0E99008A7C89E6F2AF6D6 /* InAppMediaOpener.swift */; };
 		3827FBBDFCB20B0289CC027E /* NativeWhatsAppLinkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF730BF4D6B886A2B60A3D1 /* NativeWhatsAppLinkClient.swift */; };
@@ -244,6 +245,7 @@
 		51BDA4CB9ABC87C383F66FBC /* EmbeddedRuntimeHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddedRuntimeHost.swift; sourceTree = "<group>"; };
 		53019819A86F6569529CEBF1 /* libresolv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.tbd; path = usr/lib/libresolv.tbd; sourceTree = SDKROOT; };
 		56D61196FCC160ABACEA5517 /* PublicMediaURLPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicMediaURLPolicy.swift; sourceTree = "<group>"; };
+		5B5996E42CE6B56B761AAF24 /* DiscordReadCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordReadCache.swift; sourceTree = "<group>"; };
 		5C13CFDD2D788E106F260D4B /* LocalModelSetupGateway.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelSetupGateway.swift; sourceTree = "<group>"; };
 		5E260410CCF3BEE7038F1C3C /* ForegroundMediaNodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMediaNodeService.swift; sourceTree = "<group>"; };
 		5F5454686119833200D7DBB5 /* ForegroundContactsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundContactsService.swift; sourceTree = "<group>"; };
@@ -709,6 +711,7 @@
 			isa = PBXGroup;
 			children = (
 				41E545828CE4648B09996963 /* DiscordAccountSetup.swift */,
+				5B5996E42CE6B56B761AAF24 /* DiscordReadCache.swift */,
 				BCE70C0845DA0C0556AF0F86 /* DiscordReadPace.swift */,
 				96968C6A248ADD05BE80FE86 /* DiscordUserClient.swift */,
 				44CA41C5411FB21868D6398C /* ForegroundDiscordAnnouncementsService.swift */,
@@ -1245,18 +1248,18 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_D44555F8-58DA-46D3-9208-CA63E5971D85" /* embedded */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = embedded;
-			sourceTree = "<group>";
-		};
-		"TEMP_D8E7CCFB-47A6-4A36-A46E-9C7D3050EC9E" /* runtime */ = {
+		"TEMP_8796D7D3-2889-4282-8743-E201265E9B66" /* runtime */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			path = runtime;
+			sourceTree = "<group>";
+		};
+		"TEMP_A7E1C0E2-9398-41F4-8F29-A2AB92E720CF" /* embedded */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = embedded;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1464,6 +1467,7 @@
 				7C1396A6AB48DB5C2765FA5C /* DirectAccountReader.swift in Sources */,
 				86356378289DD18125034702 /* DirectAccountWriter.swift in Sources */,
 				E1C5CF6D0363B1E18B6DE0F5 /* DiscordAccountSetup.swift in Sources */,
+				2B9ABE01714D46D128E4468E /* DiscordReadCache.swift in Sources */,
 				12A9E93ADE3E8BBCD132B5D7 /* DiscordReadPace.swift in Sources */,
 				89D055D2916B2971C0A8CDBF /* DiscordUserClient.swift in Sources */,
 				52EE676125D9AE8A4C2C7739 /* EmbeddedNodeBridge.mm in Sources */,

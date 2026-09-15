@@ -142,7 +142,8 @@ struct OperatorApp: App {
                 return value
             }),
             channels: { discordChannels.load() },
-            pace: DiscordReadPace(history: UserDefaultsDiscordReadHistoryStore()))
+            pace: DiscordReadPace(history: UserDefaultsDiscordReadHistoryStore()),
+            cache: FileDiscordReadCacheStore(supportDirectory: supportDirectory))
         let handoffCatalogData = Bundle.main.url(
             forResource: "android-handoff-catalog", withExtension: "json")
             .flatMap { try? Data(contentsOf: $0) } ?? Data("[]".utf8)
