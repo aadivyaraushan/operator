@@ -1655,7 +1655,7 @@ scenarios). Unit tests: 14 Discord, OperatorApp 411/0, OperatorCore
 
 | Connector | Command | Live result |
 | --- | --- | --- |
-| Discord (your account) | `discord.announcements` | **unproven** - needs a second account's token and channel links entered on the phone, then one read watched by the owner |
+| Discord (your account) | `discord.announcements` | **proven live 2026-09-15** - see "first live Discord reads" below |
 
 Owner setup for the first live read: on a second Discord account that has
 joined the servers, copy its token; in Operator, Connect accounts > Discord
@@ -1685,3 +1685,27 @@ before a device or Simulator build carries it.
 Owner had by then saved the second account's token and added channels on
 the previous build; the first live `discord.announcements` read is still
 to be watched.
+
+## 2026-09-15, 16:30 to 18:22: first live Discord reads
+
+Second account's token saved and verified (`Signed in as …`), three
+channels added from pasted links (one PokeNexus, two Trail Mix), read
+grant turned on through the acknowledgement. Reads, from the conversation
+store and the phone log:
+
+| Time | Build | Ask | What happened |
+| --- | --- | --- | --- |
+| 16:30 | fc998cc | "what did I miss" (approx.) | Read; reply "Nothing new in PokeNexus → announcements since September 14" |
+| 16:31 | fc998cc | "give me a tldr of the last 5 announcements" | Second read in the conversation, refused by the old 2 h gap; the model said the next was in 119 minutes and stopped |
+| 17:36 | fc998cc | "now?" | Sat in the outbox 18 minutes; answered at 17:54 right after the first relaunch with 12b100a: a full five-item digest with links |
+| 18:13 | 12b100a (re-staged) | "give me a TLDR of trail mix" | Sat in the outbox as Waiting: the runtime reported `gateway-ready` but the chat websocket never came back after the 17:58 reinstall. Relaunched at 18:21 with `devicectl process launch --terminate-existing`; reconnected in 8 s, sent the queued message. `pass started due=3 listed=3`, PokeNexus 200 (83,888 bytes, 25 messages), both Trail Mix channels **403**. Reply said plainly that both are not visible to the connected account. 16.5 s end to end |
+
+So: the read path, the acknowledgement, the old ration's refusal, the new
+per-channel pass, a partial pass with 403s, and the model's handling of
+each are all proven on the phone. Not yet seen: a second ask inside the
+ten-minute cooldown served from the last read, and a 429.
+
+Open: the two Trail Mix 403s are the second account's membership or a
+role gate, not Operator's. Twice today a message sat in the outbox until
+a relaunch; the runtime status file said ready both times, so it is the
+chat connection, not the runtime. No log of the stuck period was captured.
