@@ -157,6 +157,9 @@ struct OperatorApp: App {
         // reaches a connector, and the model is offered only the tools those
         // grants allow. A fresh install grants nothing.
         let permissions = ConnectorPermissionCenter(store: UserDefaultsConnectorGrantStore())
+        let messageSend = ForegroundMessageSendService(
+            runner: SystemShortcutRunner(),
+            isAppActive: { UIApplication.shared.applicationState == .active })
         let locationNode = LocalLocationNodeGateway(
             url: gatewayURL,
             vault: vault,
@@ -173,12 +176,16 @@ struct OperatorApp: App {
                     try await chat.recordWeatherCard(card)
                 }),
                 device: ForegroundDeviceService(),
-                messages: ForegroundMessageComposeService(
-                    presenter: SystemMessageComposer(),
-                    isAppActive: { UIApplication.shared.applicationState == .active }),
-                messageSend: ForegroundMessageSendService(
-                    runner: SystemShortcutRunner(),
-                    isAppActive: { UIApplication.shared.applicationState == .active }),
+                messages: ForegroundMessageDispatchService(
+                    compose: ForegroundMessageComposeService(
+                        presenter: SystemMessageComposer(),
+                        isAppActive: { UIApplication.shared.applicationState == .active }),
+                    send: messageSend,
+                    autosendAllowed: { permissions.grants.permits(.messagesAutosend, .write) },
+                    recordAutosend: { command in
+                        permissions.recordExternalOutcome(connector: .messagesAutosend, access: .write, command: command, succeeded: true)
+                    }),
+                messageSend: messageSend,
                 maps: ForegroundMapsService(),
                 handoff: ForegroundAppHandoffService(),
                 whatsapp: ForegroundWhatsAppReadService(client: NativeWhatsAppReadClient(supportDirectory: supportDirectory)),

@@ -27,6 +27,7 @@
 		2E2EF72ADE9E372C54589C20 /* InAppMediaOpener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15F0E99008A7C89E6F2AF6D6 /* InAppMediaOpener.swift */; };
 		3827FBBDFCB20B0289CC027E /* NativeWhatsAppLinkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF730BF4D6B886A2B60A3D1 /* NativeWhatsAppLinkClient.swift */; };
 		395D50541DEC9FDE178F3E26 /* DirectAccountWriterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 059336F82AB0485220F98599 /* DirectAccountWriterTests.swift */; };
+		39AD65223430118178128CB2 /* ForegroundMessageDispatchServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C542C3D9A7B154880733C45 /* ForegroundMessageDispatchServiceTests.swift */; };
 		3F680050580F83091B261118 /* OAuthTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFF1BFA1B93A23124BC4821 /* OAuthTypes.swift */; };
 		4036FD59E9CB0DA5D132A387 /* NativeNodePolicySetupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25BDE90F997ECD07CE4399EE /* NativeNodePolicySetupTests.swift */; };
 		490CBF62A70354B3465B6877 /* PublicMediaHTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89EB2C82406EDE96BC896863 /* PublicMediaHTTPTransport.swift */; };
@@ -35,6 +36,7 @@
 		51CA3CEBD2D01EEDDDE59361 /* NativeNodePolicySetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC48EC3F7F6A86D929580925 /* NativeNodePolicySetup.swift */; };
 		5261B89CDC4B182A3DD354CD /* OperatorChatAppIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0BE63C783B303D5917456BF /* OperatorChatAppIntent.swift */; };
 		52EE676125D9AE8A4C2C7739 /* EmbeddedNodeBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = D95163B738996C27B0B31D3E /* EmbeddedNodeBridge.mm */; };
+		53B4DE4EF165DB133FA8D2EC /* ForegroundMessageDispatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BECAAB613F39B7900BC7D5 /* ForegroundMessageDispatchService.swift */; };
 		5B273A5F80E03A1E0ADEB811 /* PublicMediaURLPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D61196FCC160ABACEA5517 /* PublicMediaURLPolicy.swift */; };
 		5D17545DF1BCF1F05DC12AC3 /* EmbeddedRuntimeHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51BDA4CB9ABC87C383F66FBC /* EmbeddedRuntimeHost.swift */; };
 		5F8D5118B87FA4BADFB5C490 /* ModelSetupContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421FA479133137B163DDDE9C /* ModelSetupContracts.swift */; };
@@ -195,6 +197,7 @@
 		19CABBF8C5516FFD8ECDFA3E /* ForegroundMessageSendServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMessageSendServiceTests.swift; sourceTree = "<group>"; };
 		1ABE8E24F2E4D5ECA767C7B3 /* LiveNotionSpotifyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveNotionSpotifyTests.swift; sourceTree = "<group>"; };
 		1AE5460B988CFB89F203E229 /* OperatorAppUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OperatorAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1C542C3D9A7B154880733C45 /* ForegroundMessageDispatchServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMessageDispatchServiceTests.swift; sourceTree = "<group>"; };
 		1D0A121D6D416362695FBAFB /* ForegroundMapsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMapsService.swift; sourceTree = "<group>"; };
 		1DF224F395BA8CA84CDE93F7 /* OfflineDictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineDictation.swift; sourceTree = "<group>"; };
 		1EF691B8528973A5181E5FD0 /* NodeMobile.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = NodeMobile.xcframework; path = "build/native-node/NodeMobile.xcframework"; sourceTree = "<group>"; };
@@ -285,6 +288,7 @@
 		D442566C1D40BDCD8DCD8459 /* ForegroundAppHandoffService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundAppHandoffService.swift; sourceTree = "<group>"; };
 		D490F4DB23A72D1FB9731241 /* NativeNotionSetupCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNotionSetupCoordinator.swift; sourceTree = "<group>"; };
 		D5BBE65B3C8115DF59F3CA4E /* OperatorWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorWidget.swift; sourceTree = "<group>"; };
+		D6BECAAB613F39B7900BC7D5 /* ForegroundMessageDispatchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMessageDispatchService.swift; sourceTree = "<group>"; };
 		D95163B738996C27B0B31D3E /* EmbeddedNodeBridge.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = EmbeddedNodeBridge.mm; sourceTree = "<group>"; };
 		DC6FA1D906E8FD16F6275EB4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DDB2224A771339FACE9D92A1 /* ConnectorPermissionsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorPermissionsScreen.swift; sourceTree = "<group>"; };
@@ -843,6 +847,7 @@
 			isa = PBXGroup;
 			children = (
 				C9D30E9FCFEEAAFDF887AC2C /* ForegroundMessageComposeServiceTests.swift */,
+				1C542C3D9A7B154880733C45 /* ForegroundMessageDispatchServiceTests.swift */,
 				19CABBF8C5516FFD8ECDFA3E /* ForegroundMessageSendServiceTests.swift */,
 			);
 			path = messages;
@@ -1123,6 +1128,7 @@
 			isa = PBXGroup;
 			children = (
 				CE395A0D665898A3DEE8B501 /* ForegroundMessageComposeService.swift */,
+				D6BECAAB613F39B7900BC7D5 /* ForegroundMessageDispatchService.swift */,
 				ACA417B76B5DE642B37CAF40 /* ForegroundMessageSendService.swift */,
 				CFD68089BBBF22747CF5D120 /* SystemMessageComposer.swift */,
 			);
@@ -1191,18 +1197,18 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_6B573DB2-FCA3-4603-88E7-39B297273D7A" /* runtime */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = runtime;
-			sourceTree = "<group>";
-		};
-		"TEMP_C3CA161E-B5BF-4B99-B021-65474D4CFC42" /* embedded */ = {
+		"TEMP_12C36752-7F03-4982-A315-F6F213DFD5F9" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			path = embedded;
+			sourceTree = "<group>";
+		};
+		"TEMP_31702C6F-1EF0-4DC3-820D-77D1A6F5E001" /* runtime */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = runtime;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1370,6 +1376,7 @@
 				C016266ACFDCD5A85D125BD3 /* ForegroundLocationServiceTests.swift in Sources */,
 				EC69797A1889EF16C0F86508 /* ForegroundMapsServiceTests.swift in Sources */,
 				252756A97D7DF7DC0A6E14D2 /* ForegroundMessageComposeServiceTests.swift in Sources */,
+				39AD65223430118178128CB2 /* ForegroundMessageDispatchServiceTests.swift in Sources */,
 				AD20A16BB271664E168AC63C /* ForegroundMessageSendServiceTests.swift in Sources */,
 				E205AB20591B7E22AF0D49D3 /* ForegroundRemindersServiceTests.swift in Sources */,
 				BC5AEB0A44E7AC11D8E001D1 /* LiveConnectorTests.swift in Sources */,
@@ -1418,6 +1425,7 @@
 				6551EE48C76C89D0F9603C76 /* ForegroundMapsService.swift in Sources */,
 				6B15C5E70ADCEF61435BF35F /* ForegroundMediaNodeService.swift in Sources */,
 				EF8A19A21AEE4D77855C5035 /* ForegroundMessageComposeService.swift in Sources */,
+				53B4DE4EF165DB133FA8D2EC /* ForegroundMessageDispatchService.swift in Sources */,
 				7F1752F178E72B5279E02700 /* ForegroundMessageSendService.swift in Sources */,
 				E244AD2317C9B577FF81C571 /* ForegroundMusicService.swift in Sources */,
 				BFE86801FE1F2D4954F0C351 /* ForegroundNodeCommandRouter.swift in Sources */,

@@ -116,7 +116,7 @@ public enum ConnectorCatalog {
               systemPermission: nil, requiresAccount: false),
         .init(id: .messagesAutosend, title: "Messages, sent for you",
               readSummary: nil,
-              writeSummary: "Send a text or iMessage with no confirmation tap, through a shortcut you build once. Operator cannot see whether it was delivered. A message the agent was tricked into writing goes out the same way.",
+              writeSummary: "When the agent texts one person, send it with no confirmation tap through a shortcut you install once, instead of opening the composer. Also needs Messages > Act. Operator cannot see whether it was delivered, and a message the agent was tricked into writing goes out the same way.",
               readCommands: [], writeCommands: ["sms.send"],
               systemPermission: nil, requiresAccount: false,
               setupInstructions: """
