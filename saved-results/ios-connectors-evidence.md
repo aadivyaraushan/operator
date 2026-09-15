@@ -1705,7 +1705,7 @@ per-channel pass, a partial pass with 403s, and the model's handling of
 each are all proven on the phone. Not yet seen: a second ask inside the
 ten-minute cooldown served from the last read, and a 429.
 
-Open: the two Trail Mix 403s are the second account's membership or a
-role gate, not Operator's. Twice today a message sat in the outbox until
+The two Trail Mix 403s: the owner had left that server with the second
+account, so they are correct, not a fault. Twice today a message sat in the outbox until
 a relaunch; the runtime status file said ready both times, so it is the
 chat connection, not the runtime. No log of the stuck period was captured.
