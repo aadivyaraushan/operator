@@ -56,6 +56,39 @@ import XCTest
         let calls = await writer.callCount(); XCTAssertEqual(calls, 0)
     }
 
+    func testOptionalKeysMayBeAbsentOrNullButNeverTheWrongType() async {
+        let presenter = FakePresenter(); let writer = FakeWriter()
+        let service = ForegroundAccountWriteConfirmationService(writer: writer, presenter: presenter, isAppActive: { true })
+        let accepted = [
+            #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1","summary":"Moved"}"#,
+            #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1","summary":null,"attendees":["a@example.com"]}"#,
+            #"{"operation":"googleCalendarCreateEvent","summary":"Plan","description":"","startRFC3339":"2026-01-01T10:00:00Z","endRFC3339":"2026-01-01T11:00:00Z","attendees":["a@example.com"]}"#,
+        ]
+        for value in accepted {
+            let result = await service.handleNodeCommand("connections.write", paramsJSON: value, timeoutMilliseconds: 1000)
+            guard case .success = result else { return XCTFail("\(value) -> \(result)") }
+        }
+        XCTAssertEqual(presenter.requests.map(\.preview), [
+            "Update calendar event ev1\nSummary: Moved",
+            "Update calendar event ev1\nGuest list becomes: a@example.com",
+            "Calendar event\nSummary: Plan\nStarts: 2026-01-01T10:00:00Z\nEnds: 2026-01-01T11:00:00Z\nDescription: \nInvites sent to: a@example.com",
+        ])
+        let rejected = [
+            #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1","summary":7}"#,
+            #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1","attendees":"a@example.com"}"#,
+            #"{"operation":"googleCalendarUpdateEvent","eventID":"ev1"}"#,
+            #"{"operation":"googleCalendarUpdateEvent","summary":"Moved"}"#,
+            #"{"operation":"googleCalendarCreateEvent","summary":"Plan","description":"","startRFC3339":"2026-01-01T10:00:00Z","endRFC3339":"2026-01-01T11:00:00Z","attendees":[1]}"#,
+        ]
+        let before = await writer.callCount()
+        for value in rejected {
+            let result = await service.handleNodeCommand("connections.write", paramsJSON: value, timeoutMilliseconds: nil)
+            XCTAssertEqual(result, .failure(code: "INVALID_REQUEST", message: "Connection write parameters were invalid"), value)
+        }
+        let after = await writer.callCount()
+        XCTAssertEqual(after, before)
+    }
+
     func testInvalidTypedRequestIsRejectedBeforePrompt() async {
         let presenter = FakePresenter(); let writer = FakeWriter()
         let service = ForegroundAccountWriteConfirmationService(writer: writer, presenter: presenter, isAppActive: { true })

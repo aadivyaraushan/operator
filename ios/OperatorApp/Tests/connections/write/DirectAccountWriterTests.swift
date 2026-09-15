@@ -32,6 +32,57 @@ final class DirectAccountWriterTests: XCTestCase {
         XCTAssertEqual(Set(body.keys), ["summary", "description", "start", "end"])
     }
 
+    func testGoogleCalendarCreateEventWithGuestsSendsInvitations() async throws {
+        let transport = WriteFixtureTransport(status: 200, body: #"{"id":"event-2"}"#)
+        let writer = DirectAccountWriter(transport: transport, bearer: { _ in "token" })
+
+        let receipt = try await writer.writeAfterOwnerConfirmation(.googleCalendarCreateEvent(.init(
+            summary: "Planning", description: "", startRFC3339: "2026-09-09T14:00:00Z", endRFC3339: "2026-09-09T14:30:00Z",
+            attendees: ["ann@example.com", "bob@example.com"])))
+
+        XCTAssertEqual(receipt, .googleCalendarEvent(id: "event-2"))
+        let captured = await transport.onlyRequest()
+        let request = try XCTUnwrap(captured)
+        // sendUpdates=all is what makes Google email the guests; without it the
+        // event silently lists them.
+        XCTAssertEqual(request.url?.absoluteString, "https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all")
+        let body = try jsonObject(request.httpBody)
+        XCTAssertEqual(body["attendees"] as? [[String: String]], [["email": "ann@example.com"], ["email": "bob@example.com"]])
+        XCTAssertEqual(Set(body.keys), ["summary", "description", "start", "end", "attendees"])
+    }
+
+    func testGoogleCalendarUpdateEventPatchesOnlyTheGivenFields() async throws {
+        let transport = WriteFixtureTransport(status: 200, body: #"{"id":"event-3","summary":"Moved","attendees":[{"email":"private@example.com"}]}"#)
+        let writer = DirectAccountWriter(transport: transport, bearer: { provider in
+            XCTAssertEqual(provider, .google)
+            return "access-secret"
+        })
+
+        let receipt = try await writer.writeAfterOwnerConfirmation(.googleCalendarUpdateEvent(.init(
+            eventID: "abc123_20260909T140000Z", summary: "Moved", description: nil,
+            startRFC3339: "2026-09-09T15:00:00Z", endRFC3339: "2026-09-09T15:30:00Z", attendees: nil)))
+
+        XCTAssertEqual(receipt, .googleCalendarEvent(id: "event-3"))
+        let captured = await transport.onlyRequest()
+        let request = try XCTUnwrap(captured)
+        XCTAssertEqual(request.url?.absoluteString, "https://www.googleapis.com/calendar/v3/calendars/primary/events/abc123_20260909T140000Z?sendUpdates=all")
+        XCTAssertEqual(request.httpMethod, "PATCH")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer access-secret")
+        let body = try jsonObject(request.httpBody)
+        XCTAssertEqual(Set(body.keys), ["summary", "start", "end"], "absent fields are not sent, so Google leaves them alone")
+        XCTAssertEqual(body["summary"] as? String, "Moved")
+        XCTAssertEqual((body["start"] as? [String: String])?["dateTime"], "2026-09-09T15:00:00Z")
+
+        let guests = WriteFixtureTransport(status: 200, body: #"{"id":"event-3"}"#)
+        let guestWriter = DirectAccountWriter(transport: guests, bearer: { _ in "token" })
+        _ = try await guestWriter.writeAfterOwnerConfirmation(.googleCalendarUpdateEvent(.init(
+            eventID: "event-3", summary: nil, description: "Room 4", startRFC3339: nil, endRFC3339: nil, attendees: ["ann@example.com"])))
+        let guestRequest = await guests.onlyRequest()
+        let guestBody = try jsonObject(try XCTUnwrap(guestRequest).httpBody)
+        XCTAssertEqual(Set(guestBody.keys), ["description", "attendees"])
+        XCTAssertEqual(guestBody["attendees"] as? [[String: String]], [["email": "ann@example.com"]])
+    }
+
     func testGoogleDriveCreateTextFileUsesOneBoundedMultipartRelatedRequest() async throws {
         let transport = WriteFixtureTransport(status: 200, body: #"{"id":"file-1","name":"notes.txt","mimeType":"text/plain","owners":[{"emailAddress":"private@example.com"}]}"#)
         let writer = DirectAccountWriter(transport: transport, bearer: { _ in "token" })
@@ -124,6 +175,15 @@ final class DirectAccountWriterTests: XCTestCase {
         let invalid: [AccountWriteRequest] = [
             .googleCalendarCreateEvent(.init(summary: " ", description: "", startRFC3339: "2026-09-09T14:00:00Z", endRFC3339: "2026-09-09T14:30:00Z")),
             .googleCalendarCreateEvent(.init(summary: "Event", description: "", startRFC3339: "2026-09-09T15:00:00Z", endRFC3339: "2026-09-09T14:30:00Z")),
+            .googleCalendarCreateEvent(.init(summary: "Event", description: "", startRFC3339: "2026-09-09T14:00:00Z", endRFC3339: "2026-09-09T14:30:00Z", attendees: ["not-an-email"])),
+            .googleCalendarCreateEvent(.init(summary: "Event", description: "", startRFC3339: "2026-09-09T14:00:00Z", endRFC3339: "2026-09-09T14:30:00Z", attendees: ["a@example.com", "A@example.com"])),
+            .googleCalendarCreateEvent(.init(summary: "Event", description: "", startRFC3339: "2026-09-09T14:00:00Z", endRFC3339: "2026-09-09T14:30:00Z", attendees: (0..<51).map { "guest\($0)@example.com" })),
+            // Nothing to change; a bad id; a start without an end; end before start; an empty summary.
+            .googleCalendarUpdateEvent(.init(eventID: "event-1", summary: nil, description: nil, startRFC3339: nil, endRFC3339: nil, attendees: nil)),
+            .googleCalendarUpdateEvent(.init(eventID: "../calendars/other", summary: "x", description: nil, startRFC3339: nil, endRFC3339: nil, attendees: nil)),
+            .googleCalendarUpdateEvent(.init(eventID: "event-1", summary: nil, description: nil, startRFC3339: "2026-09-09T14:00:00Z", endRFC3339: nil, attendees: nil)),
+            .googleCalendarUpdateEvent(.init(eventID: "event-1", summary: nil, description: nil, startRFC3339: "2026-09-09T15:00:00Z", endRFC3339: "2026-09-09T14:00:00Z", attendees: nil)),
+            .googleCalendarUpdateEvent(.init(eventID: "event-1", summary: " ", description: nil, startRFC3339: nil, endRFC3339: nil, attendees: nil)),
             .googleDriveCreateTextFile(.init(name: "bad\nname.txt", content: "body")),
             .outlookCreateDraft(.init(subject: "", body: "body")),
             .outlookSendMail(.init(to: "not-an-email", subject: "subject", body: "body")),

@@ -136,6 +136,27 @@
       }
     },
     {
+      "id": "gcal-write-update",
+      "kind": "write",
+      "after": "gcal-write-create",
+      "prompt": "actually move that dentist follow up {marker} to 4pm and call it 'dentist follow up {marker} moved'",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.write"
+        ],
+        "operations_any": [
+          "googleCalendarUpdateEvent"
+        ],
+        "approval": "required",
+        "reply_must_not_contain": [
+          "created a new",
+          "second event"
+        ],
+        "oracle": "The model must update the event it just created (googleCalendarUpdateEvent with that event's id), not create another one. The approval preview must name the event id and show only the new time and title. Sweep finds one event with the marker, not two."
+      }
+    },
+    {
       "id": "gcal-write-deny",
       "kind": "write",
       "approve": "deny",

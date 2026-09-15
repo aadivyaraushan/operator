@@ -69,27 +69,48 @@ extension DirectAccountWriter: AccountWriteExecuting {}
 
     private static func parse(_ raw: String?) -> Parsed? {
         guard let raw, Data(raw.utf8).count <= 64_000, let object = try? JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [String: Any], let opText = object["operation"] as? String, let operation = AccountWriteOperation(rawValue: opText) else { return nil }
-        let fields: Set<String> = switch operation {
-        case .googleCalendarCreateEvent: ["operation", "summary", "description", "startRFC3339", "endRFC3339"]
-        case .googleDriveCreateTextFile: ["operation", "name", "content"]
-        case .outlookCreateDraft: ["operation", "subject", "body"]
-        case .outlookSendMail: ["operation", "to", "subject", "body"]
-        case .slackPostMessage: ["operation", "channelID", "text"]
-        case .spotifyStartPlayback: ["operation", "trackURI", "deviceID"]
+        // Every key must be known, every required key present. Optional keys
+        // may be absent or null; a present key must still have the right type.
+        let required: Set<String>
+        let optional: Set<String>
+        switch operation {
+        case .googleCalendarCreateEvent: required = ["operation", "summary", "description", "startRFC3339", "endRFC3339"]; optional = ["attendees"]
+        case .googleCalendarUpdateEvent: required = ["operation", "eventID"]; optional = ["summary", "description", "startRFC3339", "endRFC3339", "attendees"]
+        case .googleDriveCreateTextFile: required = ["operation", "name", "content"]; optional = []
+        case .outlookCreateDraft: required = ["operation", "subject", "body"]; optional = []
+        case .outlookSendMail: required = ["operation", "to", "subject", "body"]; optional = []
+        case .slackPostMessage: required = ["operation", "channelID", "text"]; optional = []
+        case .spotifyStartPlayback: required = ["operation", "trackURI"]; optional = ["deviceID"]
         }
-        let validKeys = operation == .spotifyStartPlayback
-            ? (Set(object.keys) == ["operation", "trackURI"] || Set(object.keys) == fields)
-            : Set(object.keys) == fields
-        guard validKeys else { return nil }
+        let keys = Set(object.keys)
+        guard keys.isSuperset(of: required), keys.isSubset(of: required.union(optional)) else { return nil }
         func string(_ key: String) -> String? { object[key] as? String }
+        /// Outer nil: present with the wrong type, which rejects the request.
+        /// Inner nil: absent or null, which leaves the field untouched.
+        func optionalString(_ key: String) -> String?? {
+            guard let value = object[key], !(value is NSNull) else { return .some(nil) }
+            guard let text = value as? String else { return nil }
+            return .some(text)
+        }
+        func optionalStrings(_ key: String) -> [String]?? {
+            guard let value = object[key], !(value is NSNull) else { return .some(nil) }
+            guard let list = value as? [String] else { return nil }
+            return .some(list)
+        }
         let request: AccountWriteRequest
         switch operation {
-        case .googleCalendarCreateEvent: guard let a=string("summary"),let b=string("description"),let c=string("startRFC3339"),let d=string("endRFC3339") else{return nil}; request = .googleCalendarCreateEvent(.init(summary:a,description:b,startRFC3339:c,endRFC3339:d))
+        case .googleCalendarCreateEvent:
+            guard let a=string("summary"),let b=string("description"),let c=string("startRFC3339"),let d=string("endRFC3339"), let attendees=optionalStrings("attendees") else{return nil}
+            request = .googleCalendarCreateEvent(.init(summary:a,description:b,startRFC3339:c,endRFC3339:d,attendees:attendees ?? []))
+        case .googleCalendarUpdateEvent:
+            guard let id=string("eventID"), let summary=optionalString("summary"), let description=optionalString("description"),
+                  let start=optionalString("startRFC3339"), let end=optionalString("endRFC3339"), let attendees=optionalStrings("attendees") else{return nil}
+            request = .googleCalendarUpdateEvent(.init(eventID:id,summary:summary,description:description,startRFC3339:start,endRFC3339:end,attendees:attendees))
         case .googleDriveCreateTextFile: guard let a=string("name"),let b=string("content") else{return nil}; request = .googleDriveCreateTextFile(.init(name:a,content:b))
         case .outlookCreateDraft: guard let a=string("subject"),let b=string("body") else{return nil}; request = .outlookCreateDraft(.init(subject:a,body:b))
         case .outlookSendMail: guard let a=string("to"),let b=string("subject"),let c=string("body") else{return nil}; request = .outlookSendMail(.init(to:a,subject:b,body:c))
         case .slackPostMessage: guard let a=string("channelID"),let b=string("text") else{return nil}; request = .slackPostMessage(.init(channelID:a,text:b))
-        case .spotifyStartPlayback: guard let a=string("trackURI"), object["deviceID"] == nil || object["deviceID"] is NSNull || object["deviceID"] is String else{return nil}; request = .spotifyStartPlayback(.init(trackURI:a,deviceID:string("deviceID")))
+        case .spotifyStartPlayback: guard let a=string("trackURI"), let deviceID=optionalString("deviceID") else{return nil}; request = .spotifyStartPlayback(.init(trackURI:a,deviceID:deviceID))
         }
         let fingerprint = Self.fingerprint(request)
         return Parsed(request: request, confirmation: .init(operation: operation, preview: Self.preview(request), fingerprint: fingerprint))
@@ -98,13 +119,26 @@ extension DirectAccountWriter: AccountWriteExecuting {}
     private static func fingerprint(_ request: AccountWriteRequest) -> String { String(describing: request.operation) + "|" + preview(request) }
     private static func preview(_ request: AccountWriteRequest) -> String {
         switch request {
-        case let .googleCalendarCreateEvent(v): "Calendar event\nSummary: \(v.summary)\nStarts: \(v.startRFC3339)\nEnds: \(v.endRFC3339)\nDescription: \(v.description)"
+        case let .googleCalendarCreateEvent(v): "Calendar event\nSummary: \(v.summary)\nStarts: \(v.startRFC3339)\nEnds: \(v.endRFC3339)\nDescription: \(v.description)" + (v.attendees.isEmpty ? "" : "\nInvites sent to: \(v.attendees.joined(separator: ", "))")
+        case let .googleCalendarUpdateEvent(v): Self.updatePreview(v)
         case let .googleDriveCreateTextFile(v): "Drive file \(v.name)\nContent: \(v.content)"
         case let .outlookCreateDraft(v): "Outlook draft\nSubject: \(v.subject)\nBody: \(v.body)"
         case let .outlookSendMail(v): "Send email to \(v.to)\nSubject: \(v.subject)\nBody: \(v.body)"
         case let .slackPostMessage(v): "Slack channel \(v.channelID)\nMessage: \(v.text)"
         case let .spotifyStartPlayback(v): "Play Spotify track \(v.trackURI)\(v.deviceID.map { "\nDevice: \($0)" } ?? "")"
         }
+    }
+
+    /// Only what changes is shown, so an unchanged field is not mistaken for
+    /// one being blanked.
+    private static func updatePreview(_ v: GoogleCalendarUpdateEventWrite) -> String {
+        var lines = ["Update calendar event \(v.eventID)"]
+        if let summary = v.summary { lines.append("Summary: \(summary)") }
+        if let start = v.startRFC3339 { lines.append("Starts: \(start)") }
+        if let end = v.endRFC3339 { lines.append("Ends: \(end)") }
+        if let description = v.description { lines.append("Description: \(description)") }
+        if let attendees = v.attendees { lines.append("Guest list becomes: \(attendees.isEmpty ? "nobody" : attendees.joined(separator: ", "))") }
+        return lines.joined(separator: "\n")
     }
 
     private static func receiptJSON(_ receipt: AccountWriteReceipt, operation: AccountWriteOperation) -> String {

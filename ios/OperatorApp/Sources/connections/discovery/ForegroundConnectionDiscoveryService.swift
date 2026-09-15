@@ -187,7 +187,8 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
     ]
 
     private static let writeOperationParameters: [String: [String]] = [
-        "googleCalendarCreateEvent": ["summary", "description", "startRFC3339", "endRFC3339"],
+        "googleCalendarCreateEvent": ["summary", "description", "startRFC3339", "endRFC3339", "attendees?"],
+        "googleCalendarUpdateEvent": ["eventID", "summary?", "description?", "startRFC3339?", "endRFC3339?", "attendees?"],
         "googleDriveCreateTextFile": ["name", "content"],
         "outlookCreateDraft": ["subject", "body"],
         "outlookSendMail": ["to", "subject", "body"],

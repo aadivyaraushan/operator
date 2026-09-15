@@ -166,6 +166,43 @@ final class LiveConnectorWriteTests: XCTestCase {
         print("LIVE-WRITE googleCalendarCreateEvent id=\(id) verified=\(page.count) cleaned=true")
     }
 
+    // Creates an event with the owner as its only guest, moves it and retitles
+    // it through the update write, reads it back, then deletes it. The guest is
+    // the owner's own address so the invitation email goes nowhere new; set
+    // OPERATOR_LIVE_GOOGLE_EMAIL to the signed-in account.
+    func testGoogleCalendarUpdateEventToSelf() async throws {
+        let coordinator = liveCoordinator()
+        let accessToken = try await token(.google, coordinator)
+        let email = ProcessInfo.processInfo.environment["OPERATOR_LIVE_GOOGLE_EMAIL"] ?? ""
+        try XCTSkipIf(email.isEmpty, "set OPERATOR_LIVE_GOOGLE_EMAIL to the signed-in Google address so the invite is sent to the owner only")
+        let mark = liveMark()
+        let created = try await writer(coordinator).writeAfterOwnerConfirmation(
+            .googleCalendarCreateEvent(.init(summary: "\(mark) (Operator live test, safe to delete)",
+                                             description: "Operator live connector test.",
+                                             startRFC3339: "2035-01-02T10:00:00Z",
+                                             endRFC3339: "2035-01-02T11:00:00Z",
+                                             attendees: [email])))
+        guard case let .googleCalendarEvent(id) = created else { return XCTFail("unexpected receipt \(created)") }
+        let eventURL = URL(string: "https://www.googleapis.com/calendar/v3/calendars/primary/events/\(id)")!
+        var verified = false
+        do {
+            let updated = try await writer(coordinator).writeAfterOwnerConfirmation(
+                .googleCalendarUpdateEvent(.init(eventID: id, summary: "\(mark) moved (Operator live test, safe to delete)", description: nil,
+                                                 startRFC3339: "2035-01-02T12:00:00Z", endRFC3339: "2035-01-02T12:30:00Z", attendees: nil)))
+            XCTAssertEqual(updated, .googleCalendarEvent(id: id))
+            let (status, object) = await authed("GET", eventURL, token: accessToken)
+            XCTAssertEqual(status, 200)
+            XCTAssertEqual(object?["summary"] as? String, "\(mark) moved (Operator live test, safe to delete)")
+            XCTAssertEqual((object?["start"] as? [String: Any])?["dateTime"] as? String, "2035-01-02T12:00:00Z")
+            XCTAssertEqual((object?["attendees"] as? [[String: Any]])?.count, 1, "a PATCH without attendees keeps the guest list")
+            verified = status == 200
+        } catch {
+            XCTFail("update failed: \(error)")
+        }
+        _ = await authed("DELETE", eventURL, token: accessToken)
+        print("LIVE-WRITE googleCalendarUpdateEvent id=\(id) verified=\(verified) cleaned=true")
+    }
+
     private func reader(_ coordinator: NativeAccountSetupCoordinator) -> DirectAccountReader {
         DirectAccountReader(bearer: { provider in try await coordinator.accessToken(provider) })
     }

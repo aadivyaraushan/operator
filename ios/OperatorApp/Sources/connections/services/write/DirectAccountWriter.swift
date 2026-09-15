@@ -6,6 +6,7 @@ import OSLog
 // confirmation handler; it is not registered as an OpenClaw node command.
 enum AccountWriteOperation: String, CaseIterable, Sendable {
     case googleCalendarCreateEvent
+    case googleCalendarUpdateEvent
     case googleDriveCreateTextFile
     case outlookCreateDraft
     case outlookSendMail
@@ -14,7 +15,7 @@ enum AccountWriteOperation: String, CaseIterable, Sendable {
 
     var provider: OAuthProvider {
         switch self {
-        case .googleCalendarCreateEvent, .googleDriveCreateTextFile:
+        case .googleCalendarCreateEvent, .googleCalendarUpdateEvent, .googleDriveCreateTextFile:
             .google
         case .outlookCreateDraft, .outlookSendMail:
             .microsoftOutlook
@@ -31,6 +32,34 @@ struct GoogleCalendarCreateEventWrite: Sendable {
     let description: String
     let startRFC3339: String
     let endRFC3339: String
+    /// Email addresses to invite. Google sends each an invitation when the
+    /// event is created (sendUpdates=all), so the owner sees them on the card.
+    let attendees: [String]
+
+    init(summary: String, description: String, startRFC3339: String, endRFC3339: String, attendees: [String] = []) {
+        self.summary = summary
+        self.description = description
+        self.startRFC3339 = startRFC3339
+        self.endRFC3339 = endRFC3339
+        self.attendees = attendees
+    }
+}
+
+/// A PATCH of one existing event: only the fields given are sent, and
+/// Google leaves the rest as they were. `attendees` replaces the whole guest
+/// list (that is what the API does), so a caller adding one guest must pass
+/// the existing ones too; the calendar read returns them.
+struct GoogleCalendarUpdateEventWrite: Sendable {
+    let eventID: String
+    let summary: String?
+    let description: String?
+    let startRFC3339: String?
+    let endRFC3339: String?
+    let attendees: [String]?
+
+    var isEmpty: Bool {
+        self.summary == nil && self.description == nil && self.startRFC3339 == nil && self.endRFC3339 == nil && self.attendees == nil
+    }
 }
 
 struct GoogleDriveCreateTextFileWrite: Sendable {
@@ -61,6 +90,7 @@ struct SpotifyStartPlaybackWrite: Sendable {
 
 enum AccountWriteRequest: Sendable {
     case googleCalendarCreateEvent(GoogleCalendarCreateEventWrite)
+    case googleCalendarUpdateEvent(GoogleCalendarUpdateEventWrite)
     case googleDriveCreateTextFile(GoogleDriveCreateTextFileWrite)
     case outlookCreateDraft(OutlookCreateDraftWrite)
     case outlookSendMail(OutlookSendMailWrite)
@@ -70,6 +100,7 @@ enum AccountWriteRequest: Sendable {
     var operation: AccountWriteOperation {
         switch self {
         case .googleCalendarCreateEvent: .googleCalendarCreateEvent
+        case .googleCalendarUpdateEvent: .googleCalendarUpdateEvent
         case .googleDriveCreateTextFile: .googleDriveCreateTextFile
         case .outlookCreateDraft: .outlookCreateDraft
         case .outlookSendMail: .outlookSendMail
@@ -203,7 +234,10 @@ actor DirectAccountWriter {
     private static func inputShape(_ input: AccountWriteRequest) -> (fields: Int, bytes: Int) {
         switch input {
         case let .googleCalendarCreateEvent(value):
-            (4, value.summary.utf8.count + value.description.utf8.count + value.startRFC3339.utf8.count + value.endRFC3339.utf8.count)
+            (4 + value.attendees.count, value.summary.utf8.count + value.description.utf8.count + value.startRFC3339.utf8.count + value.endRFC3339.utf8.count + value.attendees.reduce(0) { $0 + $1.utf8.count })
+        case let .googleCalendarUpdateEvent(value):
+            ([value.summary, value.description, value.startRFC3339, value.endRFC3339].compactMap { $0 }.count + (value.attendees?.count ?? 0) + 1,
+             [value.eventID, value.summary ?? "", value.description ?? "", value.startRFC3339 ?? "", value.endRFC3339 ?? ""].reduce(0) { $0 + $1.utf8.count } + (value.attendees ?? []).reduce(0) { $0 + $1.utf8.count })
         case let .googleDriveCreateTextFile(value):
             (2, value.name.utf8.count + value.content.utf8.count)
         case let .outlookCreateDraft(value):
@@ -227,7 +261,23 @@ actor DirectAccountWriter {
                   let start = self.rfc3339(value.startRFC3339),
                   let end = self.rfc3339(value.endRFC3339)
             else { return false }
-            return start < end
+            return start < end && self.validAttendees(value.attendees)
+        case let .googleCalendarUpdateEvent(value):
+            guard !value.isEmpty, self.validEventID(value.eventID) else { return false }
+            if let summary = value.summary, !self.validSingleLine(summary, maxBytes: 512, required: true) { return false }
+            if let description = value.description, !self.validBody(description, maxBytes: 16_384) { return false }
+            // A time change needs both ends so the order can be checked here
+            // rather than discovered as a provider rejection.
+            switch (value.startRFC3339, value.endRFC3339) {
+            case (nil, nil): break
+            case let (startText?, endText?):
+                guard startText.utf8.count <= 64, endText.utf8.count <= 64,
+                      let start = self.rfc3339(startText), let end = self.rfc3339(endText), start < end
+                else { return false }
+            default: return false
+            }
+            if let attendees = value.attendees, !self.validAttendees(attendees) { return false }
+            return true
         case let .googleDriveCreateTextFile(value):
             return self.validSingleLine(value.name, maxBytes: 255, required: true)
                 && self.validBody(value.content, maxBytes: 262_144)
@@ -266,6 +316,19 @@ actor DirectAccountWriter {
         return !required || !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// Up to 50 distinct addresses, each a plain email. Duplicates are refused
+    /// so the card the owner reads lists each guest once.
+    private static func validAttendees(_ attendees: [String]) -> Bool {
+        guard attendees.count <= 50, attendees.allSatisfy(self.validEmail) else { return false }
+        return Set(attendees.map { $0.lowercased() }).count == attendees.count
+    }
+
+    /// Google event ids are base32hex, and recurring instances append
+    /// _<timestamp>; nothing else is accepted into the URL path.
+    private static func validEventID(_ value: String) -> Bool {
+        self.matches(value, pattern: #"^[A-Za-z0-9_-]{1,1024}$"#)
+    }
+
     private static func validEmail(_ value: String) -> Bool {
         value.utf8.count <= 320
             && self.matches(value, pattern: #"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$"#)
@@ -291,14 +354,37 @@ actor DirectAccountWriter {
 
         switch input {
         case let .googleCalendarCreateEvent(value):
-            url = URL(string: "https://www.googleapis.com/calendar/v3/calendars/primary/events")!
-            method = "POST"
-            body = try self.jsonData([
+            var components = URLComponents(string: "https://www.googleapis.com/calendar/v3/calendars/primary/events")!
+            var event: [String: Any] = [
                 "summary": value.summary,
                 "description": value.description,
                 "start": ["dateTime": value.startRFC3339],
                 "end": ["dateTime": value.endRFC3339],
-            ])
+            ]
+            if !value.attendees.isEmpty {
+                event["attendees"] = value.attendees.map { ["email": $0] }
+                // Without this Google records the guests but emails nobody.
+                components.queryItems = [URLQueryItem(name: "sendUpdates", value: "all")]
+            }
+            guard let calendarURL = components.url else { throw AccountWriteError.invalidRequest }
+            url = calendarURL
+            method = "POST"
+            body = try self.jsonData(event)
+            contentType = "application/json"
+        case let .googleCalendarUpdateEvent(value):
+            var components = URLComponents(string: "https://www.googleapis.com/calendar/v3/calendars/primary/events/\(value.eventID)")!
+            var patch: [String: Any] = [:]
+            if let summary = value.summary { patch["summary"] = summary }
+            if let description = value.description { patch["description"] = description }
+            if let start = value.startRFC3339 { patch["start"] = ["dateTime": start] }
+            if let end = value.endRFC3339 { patch["end"] = ["dateTime": end] }
+            if let attendees = value.attendees { patch["attendees"] = attendees.map { ["email": $0] } }
+            // Guests already on the event are told about every change.
+            components.queryItems = [URLQueryItem(name: "sendUpdates", value: "all")]
+            guard let calendarURL = components.url else { throw AccountWriteError.invalidRequest }
+            url = calendarURL
+            method = "PATCH"
+            body = try self.jsonData(patch)
             contentType = "application/json"
         case let .googleDriveCreateTextFile(value):
             var components = URLComponents(string: "https://www.googleapis.com/upload/drive/v3/files")!
@@ -378,7 +464,7 @@ actor DirectAccountWriter {
     private static func checkStatus(_ response: HTTPURLResponse, operation: AccountWriteOperation) throws {
         let expected: Int
         switch operation {
-        case .googleCalendarCreateEvent, .googleDriveCreateTextFile, .slackPostMessage:
+        case .googleCalendarCreateEvent, .googleCalendarUpdateEvent, .googleDriveCreateTextFile, .slackPostMessage:
             expected = 200
         case .outlookCreateDraft:
             expected = 201
@@ -404,7 +490,7 @@ actor DirectAccountWriter {
 
     private static func receipt(for input: AccountWriteRequest, data: Data) throws -> AccountWriteReceipt {
         switch input {
-        case .googleCalendarCreateEvent:
+        case .googleCalendarCreateEvent, .googleCalendarUpdateEvent:
             let object = try self.responseObject(data)
             guard let id = object["id"] as? String, self.validRemoteID(id, maxBytes: 1_024) else {
                 throw AccountWriteError.invalidResponse

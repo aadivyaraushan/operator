@@ -93,7 +93,7 @@ final class ConnectorPermissionsTests: XCTestCase {
                 .access(provider, .read), operation)
         }
         let writes: [(String, ConnectorID)] = [
-            ("googleCalendarCreateEvent", .google), ("googleDriveCreateTextFile", .google),
+            ("googleCalendarCreateEvent", .google), ("googleCalendarUpdateEvent", .google), ("googleDriveCreateTextFile", .google),
             ("outlookCreateDraft", .microsoft), ("outlookSendMail", .microsoft),
             ("slackPostMessage", .slack), ("spotifyStartPlayback", .spotify),
         ]

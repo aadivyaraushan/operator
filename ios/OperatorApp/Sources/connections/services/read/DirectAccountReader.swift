@@ -293,7 +293,9 @@ actor DirectAccountReader {
         guard let object = value as? [String: Any] else { return nil }
         let keys: Set<String>
         switch operation {
-        case .googleCalendarEvents: keys = ["id", "summary", "description", "start", "end", "htmlLink"]
+        // attendees is returned so an update that changes the guest list can
+        // carry the existing guests; the PATCH replaces the whole list.
+        case .googleCalendarEvents: keys = ["id", "summary", "description", "start", "end", "htmlLink", "attendees"]
         case .googleDriveFiles: keys = ["id", "name", "mimeType"]
         case .googleTasks: keys = ["id", "title", "notes", "due", "status", "updated", "webViewLink"]
         // Unreachable for the same reason; Gmail rows are constructed field
