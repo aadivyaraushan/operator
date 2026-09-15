@@ -1,9 +1,10 @@
 import Foundation
 import OSLog
 
-/// Where the chat list comes from, so the guard can be tested without the bridge.
+/// Whether a conversation with this JID already exists on the phone, so the
+/// guard can be tested without the bridge.
 protocol WhatsAppKnownRecipients: Sendable {
-    func knownJIDs() async throws -> Set<String>
+    func isKnown(jid: String) async throws -> Bool
 }
 
 /// Where the send history persists. UserDefaults: a relaunch must not reset
@@ -59,7 +60,6 @@ enum WhatsAppSendRefusal: Equatable, Sendable {
 final class WhatsAppSendGuard {
     nonisolated static let minimumGapSeconds = 20
     nonisolated static let dailyCap = 20
-    nonisolated static let chatListLimit = 500
 
     private let recipients: any WhatsAppKnownRecipients
     private let history: any WhatsAppSendHistoryStore
@@ -75,8 +75,9 @@ final class WhatsAppSendGuard {
     /// Nil means the send may proceed. Order matters: the recipient check is
     /// first so a refused stranger never counts against the pace.
     func check(recipientJID: String) async -> WhatsAppSendRefusal? {
-        let known = (try? await self.recipients.knownJIDs()) ?? []
-        guard known.contains(recipientJID) else {
+        // A lookup that fails counts as unknown: the guard fails closed.
+        let known = (try? await self.recipients.isKnown(jid: recipientJID)) ?? false
+        guard known else {
             self.logger.info("[whatsapp-guard] refused branch=unknown-recipient")
             return .unknownRecipient
         }
@@ -111,7 +112,12 @@ final class WhatsAppSendGuard {
 }
 
 extension NativeWhatsAppReadClient: WhatsAppKnownRecipients {
-    func knownJIDs() async throws -> Set<String> {
-        Set(try self.chats(limit: WhatsAppSendGuard.chatListLimit).map(\.jid))
+    /// Known means the local store holds at least one message in a chat with
+    /// this JID - a person or group the owner has actually exchanged messages
+    /// with. Asking for the chat list instead was wrong twice over: the bridge
+    /// caps that call at 50, so the first device attempt threw and refused
+    /// everyone, and a recency-ordered list would refuse anyone quiet lately.
+    func isKnown(jid: String) async throws -> Bool {
+        !(try self.messages(chat: jid, limit: 1)).isEmpty
     }
 }

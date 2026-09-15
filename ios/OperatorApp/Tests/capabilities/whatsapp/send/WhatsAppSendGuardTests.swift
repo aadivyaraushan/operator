@@ -6,7 +6,7 @@ import XCTest
 final class WhatsAppSendGuardTests: XCTestCase {
     private struct Recipients: WhatsAppKnownRecipients {
         let jids: Set<String>
-        func knownJIDs() async throws -> Set<String> { self.jids }
+        func isKnown(jid: String) async throws -> Bool { self.jids.contains(jid) }
     }
     private final class History: WhatsAppSendHistoryStore, @unchecked Sendable {
         var dates: [Date] = []
@@ -66,7 +66,7 @@ final class WhatsAppSendGuardTests: XCTestCase {
     }
 
     func testAnUnreadableChatListMeansNobodyIsKnown() async {
-        struct Failing: WhatsAppKnownRecipients { func knownJIDs() async throws -> Set<String> { throw CocoaError(.fileReadUnknown) } }
+        struct Failing: WhatsAppKnownRecipients { func isKnown(jid: String) async throws -> Bool { throw CocoaError(.fileReadUnknown) } }
         let g = WhatsAppSendGuard(recipients: Failing(), history: History(), now: Date.init)
         let r6 = await g.check(recipientJID: "1@s.whatsapp.net")
         XCTAssertEqual(r6, .unknownRecipient)
