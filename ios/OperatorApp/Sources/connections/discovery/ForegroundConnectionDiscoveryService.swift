@@ -160,6 +160,9 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
         case "podcasts.open":
             parameters = schema(required: ["feedURL", "episodeID"], optional: [], limits: ["feedURL": "public HTTPS feed", "episodeID": "1...2048 characters"])
             note = "Opens one episode from a validated public podcast feed."
+        case "discord.announcements":
+            parameters = schema(required: [], optional: ["sinceRFC3339", "limit"], limits: ["limit": "1...50", "sinceRFC3339": "RFC3339"])
+            note = "Reads the Discord announcement channels the person listed in Operator, through their own account. Rationed to a few passes a day; a refusal names when the next is possible. Read-only; channels cannot be chosen by the agent."
         case "notion.tools":
             parameters = schema(required: [], optional: [])
             note = "Lists bounded tools from the currently connected Notion server."

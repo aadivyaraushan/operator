@@ -21,6 +21,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
     private let discovery: (any GatewayNodeCommandHandler)?
     private let notion: any GatewayNodeCommandHandler
     private let media: (any GatewayNodeCommandHandler)?
+    private let discord: (any GatewayNodeCommandHandler)?
 
     init(
         location: any GatewayNodeCommandHandler,
@@ -41,7 +42,8 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         accountWrite: any GatewayNodeCommandHandler,
         discovery: (any GatewayNodeCommandHandler)? = nil,
         media: (any GatewayNodeCommandHandler)? = nil,
-        notion: any GatewayNodeCommandHandler)
+        notion: any GatewayNodeCommandHandler,
+        discord: (any GatewayNodeCommandHandler)? = nil)
     {
         self.location = location
         self.calendar = calendar
@@ -62,6 +64,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         self.discovery = discovery
         self.media = media
         self.notion = notion
+        self.discord = discord
     }
 
     func handleNodeCommand(_ command: String, paramsJSON: String?, timeoutMilliseconds: Int?) async -> GatewayNodeCommandResult {
@@ -137,6 +140,12 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         case "youtube.search", "youtube.open", "podcasts.search", "podcasts.open":
             if let media {
                 await media.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
+            } else {
+                .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)")
+            }
+        case "discord.announcements":
+            if let discord {
+                await discord.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
             } else {
                 .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)")
             }

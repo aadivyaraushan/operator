@@ -5,6 +5,7 @@ import UIKit
 struct NativeAccountConnectionSheet: View {
     @ObservedObject var model: NativeAccountSetupCoordinator
     @ObservedObject var youtube: YouTubeAPIKeySetupModel
+    @ObservedObject var discord: DiscordAccountSetupModel
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
@@ -15,6 +16,19 @@ struct NativeAccountConnectionSheet: View {
                             HStack { Text(Self.name(provider)); Spacer(); if model.activeProvider == provider { ProgressView() } else { Text(Self.status(model.state(for: provider))).font(.caption).foregroundStyle(.secondary) } }
                         }
                         .disabled(model.activeProvider != nil || model.state(for: provider) == .needsSetup)
+                    }
+                }
+                Section("Discord") {
+                    NavigationLink {
+                        DiscordAccountSetupView(model: self.discord)
+                    } label: {
+                        HStack {
+                            Text("Discord (your account)")
+                            Spacer()
+                            Text(self.discord.statusText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 Section("Media") {
@@ -35,7 +49,8 @@ struct NativeAccountConnectionSheet: View {
             .task {
                 async let accounts: Void = self.model.checkConnections()
                 async let youtube: Void = self.youtube.check()
-                _ = await (accounts, youtube)
+                async let discord: Void = self.discord.check()
+                _ = await (accounts, youtube, discord)
             }
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { model.cancel(); dismiss() } } }
         }

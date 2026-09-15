@@ -50,6 +50,7 @@ struct OperatorApp: App {
     @StateObject private var accounts: NativeAccountSetupCoordinator
     @StateObject private var notion: NativeNotionSetupCoordinator
     @StateObject private var youtube: YouTubeAPIKeySetupModel
+    @StateObject private var discord: DiscordAccountSetupModel
     @StateObject private var permissions: ConnectorPermissionCenter
     private let locationNode: LocalLocationNodeGateway
     private let foregroundRuntime: ForegroundRuntimeCoordinator
@@ -120,6 +121,28 @@ struct OperatorApp: App {
             },
             opener: InAppMediaOpener(),
             isAppActive: { UIApplication.shared.applicationState == .active })
+        // Discord: the owner's own token in the Keychain, the channel list
+        // beside the grants, and a pace guard the acknowledgement promises.
+        let discordTokenStore = KeychainCredentialStore(
+            service: "app.operator.ios.discord",
+            account: "user-token")
+        let discordChannels = UserDefaultsDiscordChannelStore()
+        let discordSetup = DiscordAccountSetupModel(storage: .init(
+            loadToken: {
+                guard let data = try await discordTokenStore.load(), let value = String(data: data, encoding: .utf8) else { return nil }
+                return value
+            },
+            saveToken: { try await discordTokenStore.save(Data($0.utf8)) },
+            clearToken: { try await discordTokenStore.remove() },
+            loadChannels: { discordChannels.load() },
+            saveChannels: { discordChannels.save($0) }))
+        let discordService = ForegroundDiscordAnnouncementsService(
+            client: DiscordUserClient(token: {
+                guard let data = try await discordTokenStore.load(), let value = String(data: data, encoding: .utf8) else { return nil }
+                return value
+            }),
+            channels: { discordChannels.load() },
+            pace: DiscordReadPace(history: UserDefaultsDiscordReadHistoryStore()))
         let handoffCatalogData = Bundle.main.url(
             forResource: "android-handoff-catalog", withExtension: "json")
             .flatMap { try? Data(contentsOf: $0) } ?? Data("[]".utf8)
@@ -146,6 +169,10 @@ struct OperatorApp: App {
                     ConnectionDiscoverySetupStatus(
                         provider: "whatsapp",
                         state: .notChecked,
+                        registrationAvailable: true),
+                    ConnectionDiscoverySetupStatus(
+                        provider: "discord",
+                        state: discordSetup.isConnected ? .connected : .needsSetup,
                         registrationAvailable: true)]
             })
         let setupGateway = LocalModelSetupGateway(
@@ -199,7 +226,8 @@ struct OperatorApp: App {
                 accountWrite: accountWrite,
                 discovery: discovery,
                 media: mediaService,
-                notion: notionService)),
+                notion: notionService,
+                discord: discordService)),
             agentTools: { permissions.currentPublishedTools() })
         permissions.grantsDidChange = { Task { await locationNode.republishAgentTools() } }
         self.locationNode = locationNode
@@ -215,6 +243,7 @@ struct OperatorApp: App {
         _accounts = StateObject(wrappedValue: accountSetup)
         _notion = StateObject(wrappedValue: notionSetup)
         _youtube = StateObject(wrappedValue: youtubeSetup)
+        _discord = StateObject(wrappedValue: discordSetup)
         _permissions = StateObject(wrappedValue: permissions)
         _whatsapp = StateObject(wrappedValue: WhatsAppLinkFlowModel(
             gateway: NativeWhatsAppLinkClient(supportDirectory: supportDirectory)))
@@ -222,7 +251,7 @@ struct OperatorApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, permissions: self.permissions)
+            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, discord: self.discord, permissions: self.permissions)
                 .onOpenURL { url in
                     // Shortcuts returning from sms.send. The only thing known
                     // is what Shortcuts reported; it goes in the session log.
