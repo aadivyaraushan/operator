@@ -113,8 +113,15 @@ private struct ConnectorRow: View {
                     Text(setup)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    if let url = URL(string: "shortcuts://") {
-                        Link("Open Shortcuts", destination: url).font(.caption)
+                    HStack(spacing: 16) {
+                        if self.descriptor.id == .messagesAutosend {
+                            Link("Install shortcut", destination: ForegroundMessageSendService.installURL)
+                                .font(.caption.weight(.semibold))
+                                .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-install")
+                        }
+                        if let url = URL(string: "shortcuts://") {
+                            Link("Open Shortcuts", destination: url).font(.caption)
+                        }
                     }
                 }
             }

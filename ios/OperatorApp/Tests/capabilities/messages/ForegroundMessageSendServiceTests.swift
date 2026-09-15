@@ -89,6 +89,22 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
         XCTAssertNil(ForegroundMessageSendService.callbackOutcome(URL(string: "https://example.com/shortcut/success")!))
     }
 
+    func testInstallURLImportsTheSignedFileUnderTheExactNameTheSendUses() throws {
+        let components = try XCTUnwrap(URLComponents(url: ForegroundMessageSendService.installURL, resolvingAgainstBaseURL: false))
+        XCTAssertEqual(components.scheme, "shortcuts")
+        XCTAssertEqual(components.host, "import-shortcut")
+        let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+        XCTAssertEqual(query["name"], ForegroundMessageSendService.shortcutName)
+        let file = try XCTUnwrap(URL(string: query["url"] ?? ""))
+        XCTAssertEqual(file.scheme, "https", "Shortcuts only imports over https")
+        XCTAssertEqual(file.lastPathComponent, "\(ForegroundMessageSendService.shortcutName).shortcut", "the imported name follows the file name; it must match what sms.send runs")
+        // The file the URL names is the one checked in beside the app.
+        let checkedIn = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Resources/shortcuts/\(ForegroundMessageSendService.shortcutName).shortcut")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: checkedIn.path), checkedIn.path)
+    }
+
     func testAutosendIsItsOwnGrantSeparateFromTheComposer() {
         var grants = ConnectorGrants.none
         grants.set(.messages, .write, allowed: true)

@@ -34,6 +34,27 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
     static let callbackScheme = "app.operator.ios"
     static let callbackHost = "shortcut"
 
+    /// The signed shortcut file, built and signed with `shortcuts sign --mode
+    /// anyone` on a Mac and checked in beside the app. Served from the public
+    /// repository so Shortcuts can fetch it; a Shortcuts import needs an https
+    /// URL, and unsigned files are refused since iOS 15.
+    static let signedShortcutURL = URL(string:
+        "https://raw.githubusercontent.com/aadivyaraushan/operator/codex/ios-connectors/ios/OperatorApp/Resources/shortcuts/Operator%20Send%20Message.shortcut")!
+
+    /// Opens Shortcuts on its import preview for the signed file; one tap on
+    /// "Add Shortcut" there installs it under the exact name sms.send runs.
+    static var installURL: URL {
+        var components = URLComponents()
+        components.scheme = "shortcuts"
+        components.host = "import-shortcut"
+        components.queryItems = [
+            .init(name: "url", value: self.signedShortcutURL.absoluteString),
+            .init(name: "name", value: self.shortcutName),
+            .init(name: "silent", value: "true"),
+        ]
+        return components.url!
+    }
+
     private struct Parameters {
         let recipient: String
         let body: String
