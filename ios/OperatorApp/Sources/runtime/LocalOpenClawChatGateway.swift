@@ -60,6 +60,10 @@ private struct LocalChatDeliveryTimer {
         return self.event(phase: .terminal, at: now, outcome: outcome)
     }
 
+    /// Milliseconds since the request was sent, for log lines that sit
+    /// between the recorded phases: each tool call, each thinking burst.
+    func elapsed(at now: Double) -> Double { max(0, now - self.startedAtMilliseconds) }
+
     private func event(
         phase: LocalChatDeliveryTimingEvent.Phase,
         at now: Double,
@@ -277,16 +281,23 @@ actor LocalOpenClawChatGateway: ChatGateway {
                         await update(.working)
                     case let .activity(runID, activity):
                         self.activeRunID = runID
+                        // Every line carries the time since the request was
+                        // sent, so a turn's budget reads off the log: the gap
+                        // before a tool's start is the model deciding, start to
+                        // result is the tool, result to first-text is the model
+                        // writing. Tool time is a few percent of a turn; the
+                        // rest is the model, and this is how that was measured.
+                        let elapsedMs = Int(timing.elapsed(at: self.monotonicMilliseconds()))
                         switch activity {
                         case let .toolStarted(tool, _, arguments):
                             let command = arguments["invokeCommand"]?.stringValue ?? "-"
-                            self.logger.info("[gateway] activity tool=\(tool, privacy: .public) command=\(command, privacy: .public) phase=start")
+                            self.logger.info("[gateway] activity tool=\(tool, privacy: .public) command=\(command, privacy: .public) phase=start elapsedMs=\(elapsedMs)")
                         case let .toolFinished(tool, _, isError):
-                            self.logger.info("[gateway] activity tool=\(tool, privacy: .public) phase=result error=\(isError)")
+                            self.logger.info("[gateway] activity tool=\(tool, privacy: .public) phase=result error=\(isError) elapsedMs=\(elapsedMs)")
                         case let .thinking(text):
-                            self.logger.info("[gateway] activity thinking characters=\(text.count)")
+                            self.logger.info("[gateway] activity thinking characters=\(text.count) elapsedMs=\(elapsedMs)")
                         case let .commentary(text):
-                            self.logger.info("[gateway] activity commentary characters=\(text.count)")
+                            self.logger.info("[gateway] activity commentary characters=\(text.count) elapsedMs=\(elapsedMs)")
                         }
                         await update(.activity(activity))
                     case let .stream(runID, text):
