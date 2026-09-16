@@ -1732,3 +1732,48 @@ Fifth attempt, 10:19-10:20: a fresh message, the app left at once.
 Still to see live: a task the system expires, and a reply longer than the
 notification's 240 characters being read in full in the app (it is; the
 store has it).
+
+## 2026-09-16, 14:20: where a turn's seconds go
+
+Asked because the owner wants replies faster and is weighing a small
+model on their own compute. Measured before changing anything, from the
+app logs the Sep 15 connector-qa runs saved (Simulator on the original
+Mac, ChatGPT through the Codex transport, Gmail and device banks).
+`node ios/qa/connector-qa/latency.mjs` reads them; the phases are the
+`[chat-timing]` lines plus the node's `handling command / sent result`
+pair, since those builds predate the `[gateway] activity` lines.
+
+Twenty finished turns, 17 with a tool call:
+
+| | median | range |
+| --- | --- | --- |
+| Total, send to terminal | 13.3 s | 7.8 to 57.3 s |
+| To first text | 12.2 s | |
+| Accepted → the model's first tool call | **9.2 s** | 5.0 to 53.8 s |
+| The tool itself (Gmail read, device status) | 0.4 s | 0.0 to 0.6 s |
+| Tool result → first text | ~2 s | 1.7 to 8.3 s |
+| A turn with no tool | 2.7 s | 2.1 to 9.2 s |
+
+Tool execution is 2.2% of wall time. The rest is the model, and almost
+all of it is the first round trip: deciding which tool to call. Once the
+result is back the model writes in about two seconds, which bounds what
+the transport and the prompt size cost at a couple of seconds per round
+trip; the nine seconds before the first call are reasoning time, and its
+spread (5 to 54 s for the same Gmail read) says it is the model's
+thinking budget, not the phone. A second tool call in a turn adds one
+more such gap (18.3 s to first text for the two-read turn). The phone's
+own 39.9 s WhatsApp send on Sep 16 fits: three calls, three gaps.
+
+So the levers, in order of what they can take off a turn: the model's
+reasoning effort on the deciding step; the number of round trips
+(connections.describe before a read is a whole extra one); and only
+then the per-token speed of the model. A small model served fast takes
+the nine-second step to about one, which is the case for it.
+
+Added in the same pass, not yet in a live log: `elapsedMs` on the
+`[gateway] activity` lines (tool start, result, thinking, commentary),
+so a turn's budget reads straight off the phone log for every tool,
+including OpenClaw's own web search, which the node never sees. Built
+for the Simulator; not installed anywhere, and the host-only
+chat-reconnect harness is already failing on HEAD (it does not copy
+`ChatActivity.swift`), so that suite was not the check.
