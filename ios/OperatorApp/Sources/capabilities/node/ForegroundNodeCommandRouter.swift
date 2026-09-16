@@ -22,6 +22,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
     private let notion: any GatewayNodeCommandHandler
     private let media: (any GatewayNodeCommandHandler)?
     private let discord: (any GatewayNodeCommandHandler)?
+    private let incomingMessages: (any GatewayNodeCommandHandler)?
 
     init(
         location: any GatewayNodeCommandHandler,
@@ -43,7 +44,8 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         discovery: (any GatewayNodeCommandHandler)? = nil,
         media: (any GatewayNodeCommandHandler)? = nil,
         notion: any GatewayNodeCommandHandler,
-        discord: (any GatewayNodeCommandHandler)? = nil)
+        discord: (any GatewayNodeCommandHandler)? = nil,
+        incomingMessages: (any GatewayNodeCommandHandler)? = nil)
     {
         self.location = location
         self.calendar = calendar
@@ -65,6 +67,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         self.media = media
         self.notion = notion
         self.discord = discord
+        self.incomingMessages = incomingMessages
     }
 
     func handleNodeCommand(_ command: String, paramsJSON: String?, timeoutMilliseconds: Int?) async -> GatewayNodeCommandResult {
@@ -146,6 +149,12 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         case "discord.announcements":
             if let discord {
                 await discord.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
+            } else {
+                .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)")
+            }
+        case "messages.incoming":
+            if let incomingMessages {
+                await incomingMessages.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
             } else {
                 .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)")
             }

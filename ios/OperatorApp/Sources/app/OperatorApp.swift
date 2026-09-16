@@ -228,7 +228,8 @@ struct OperatorApp: App {
                 discovery: discovery,
                 media: mediaService,
                 notion: notionService,
-                discord: discordService)),
+                discord: discordService,
+                incomingMessages: ForegroundIncomingMessagesService(store: IncomingMessageStore(supportDirectory: supportDirectory)))),
             agentTools: { permissions.currentPublishedTools() })
         permissions.grantsDidChange = { Task { await locationNode.republishAgentTools() } }
         self.locationNode = locationNode

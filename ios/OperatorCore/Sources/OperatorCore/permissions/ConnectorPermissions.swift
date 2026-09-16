@@ -144,10 +144,16 @@ public enum ConnectorCatalog {
               readCommands: ["device.status"], writeCommands: [],
               systemPermission: nil, requiresAccount: false),
         .init(id: .messages, title: "Messages",
-              readSummary: nil,
+              readSummary: "Texts you receive from now on, through a Shortcuts automation you set up once. Not older messages, not ones you sent.",
               writeSummary: "Open a text with the recipient and message filled in. You tap Send.",
-              readCommands: [], writeCommands: ["sms.compose"],
-              systemPermission: nil, requiresAccount: false),
+              readCommands: ["messages.incoming"], writeCommands: ["sms.compose"],
+              systemPermission: nil, requiresAccount: false,
+              setupInstructions: """
+              Reading needs an automation in the Shortcuts app (iOS cannot hand an app your inbox; it can hand it each new text). \
+              Shortcuts > Automation > + > Message. Leave Sender and Message Contains empty, choose Run Immediately, turn Notify When Run off, Next. \
+              Add the action "Record incoming message" (under Operator). For its Message pick Shortcut Input; for Sender pick Shortcut Input > Sender. Done. \
+              From then on every text you receive is filed on this iPhone for Operator; nothing leaves the phone.
+              """),
         .init(id: .messagesAutosend, title: "Messages, sent for you",
               readSummary: nil,
               writeSummary: "When the agent texts someone, or a group of up to ten, send it with no confirmation tap through a shortcut you install once, instead of opening the composer. Also needs Messages > Act. Operator cannot see whether it was delivered, and a message the agent was tricked into writing goes out the same way.",

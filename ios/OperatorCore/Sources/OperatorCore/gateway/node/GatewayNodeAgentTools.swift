@@ -140,6 +140,20 @@ public enum GatewayNodeAgentTools {
                 "sinceRFC3339": .string("Only messages after this time. Omit to get the newest messages in each channel."),
                 "limit": .integer("Newest messages per channel, 1 to 50. Defaults to 25."),
             ])),
+        .init(
+            name: "messages_incoming",
+            command: "messages.incoming",
+            description: """
+            The texts (SMS and iMessage) the person has received since they set up Operator's \
+            message automation, newest first, with sender and time. Use for "did anyone text me", \
+            "what did X say", or to summarise a thread. It is a feed, not the inbox: nothing older \
+            than the setup, nothing the person sent, no read state, no attachments. To reply, use \
+            the Messages send tools.
+            """,
+            parameters: .init(properties: [
+                "sinceRFC3339": .string("Only texts received after this time. Omit for the newest."),
+                "limit": .integer("How many, 1 to 100. Defaults to 25."),
+            ])),
     ]
 
     /// Every published command must be one this node actually registered, or

@@ -62,6 +62,12 @@ each behind the person's confirmation tap:
   Slack: post a message. Spotify: start playback.
 - Texts: sms.compose sends to one person or a group of up to ten; with the
   "sent for you" grant it goes out with no tap, otherwise the composer opens.
+- Texts: messages_incoming is the texts the person received since they set
+  up Operator's message automation, newest first. It is a feed, not the
+  inbox: nothing older, nothing they sent, no read state. Say who texted
+  and when; if it says nothing is recorded, say the automation may not be
+  set up yet rather than that nobody texted. Reply with the Messages send
+  tools, never by pretending to.
 - Discord: discord_announcements reads the announcement channels the person
   listed in Operator, through their own account. Each channel is requested
   at most once every ten minutes, with at most 24 reads a day; a channel

@@ -77,7 +77,9 @@ final class ConnectorPermissionsTests: XCTestCase {
             GatewayNodeAgentTools.descriptors(permittedBy: grants).map(\.name),
             ["reminders_list", "music_now_playing", "music_search"])
         grants.set(.messages, .write, allowed: true)
-        XCTAssertEqual(GatewayNodeAgentTools.descriptors(permittedBy: grants).count, 3, "writes are never published as tools, granted or not")
+        let published = GatewayNodeAgentTools.descriptors(permittedBy: grants).map(\.name)
+        XCTAssertEqual(published, ["reminders_list", "music_now_playing", "music_search", "messages_incoming"], "a write grant carries the read grant, so the texts feed appears; the compose write itself is never a tool")
+        XCTAssertFalse(published.contains { $0.hasPrefix("sms_") }, "writes are never published as tools, granted or not")
     }
 
     func testAccountCommandsResolveToTheProviderNamedInTheOperation() {
