@@ -201,6 +201,16 @@ private struct ConnectorRow: View {
                                 .font(.caption.weight(.semibold))
                                 .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-install")
                         }
+                        if self.descriptor.id == .messages {
+                            if let install = RecordIncomingMessageIntent.installURL {
+                                Link("Install shortcut", destination: install)
+                                    .font(.caption.weight(.semibold))
+                                    .accessibilityIdentifier("permission-messages-install")
+                            }
+                            Link("Create automation", destination: RecordIncomingMessageIntent.createAutomationURL)
+                                .font(.caption.weight(.semibold))
+                                .accessibilityIdentifier("permission-messages-automation")
+                        }
                         if let url = URL(string: "shortcuts://") {
                             Link("Open Shortcuts", destination: url).font(.caption)
                         }

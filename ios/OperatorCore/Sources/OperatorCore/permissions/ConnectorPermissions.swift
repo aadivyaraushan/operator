@@ -149,10 +149,10 @@ public enum ConnectorCatalog {
               readCommands: ["messages.incoming"], writeCommands: ["sms.compose"],
               systemPermission: nil, requiresAccount: false,
               setupInstructions: """
-              Reading needs an automation in the Shortcuts app (iOS cannot hand an app your inbox; it can hand it each new text). \
-              Shortcuts > Automation > + > Message. Leave Sender and Message Contains empty, choose Run Immediately, turn Notify When Run off, Next. \
-              Add the action "Record incoming message" (under Operator). For its Message pick Shortcut Input; for Sender pick Shortcut Input > Sender. Done. \
-              From then on every text you receive is filed on this iPhone for Operator; nothing leaves the phone.
+              Reading needs a Shortcuts automation, which iOS lets only you create (an app cannot hand itself your inbox; Shortcuts can hand it each new text). \
+              Tap Create automation, then: Message > leave Sender and Message Contains empty > Run Immediately > Next > choose OperatorRecordMessage \
+              (installed with Install shortcut). Without that shortcut: New Blank Automation > add "Record incoming message"; Message fills itself; \
+              set Sender to Shortcut Input > Sender. From then on every text you receive is filed on this iPhone for Operator; nothing leaves the phone.
               """),
         .init(id: .messagesAutosend, title: "Messages, sent for you",
               readSummary: nil,
