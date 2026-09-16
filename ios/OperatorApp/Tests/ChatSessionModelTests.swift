@@ -526,11 +526,11 @@ final class ChatSessionModelTests: XCTestCase {
         await gateway.proceed()
         await gateway.waitForStage(4)
         XCTAssertEqual(task.subtitles, [], "no title updates after submission")
-        XCTAssertEqual(task.progress.last, 80)
+        XCTAssertEqual(task.progress, [], "no progress updates either")
+        XCTAssertEqual(continuation.lastProgress, 80, "tracked for the log")
         await gateway.proceed()
         await waitUntil { !continuation.isActive }
         XCTAssertEqual(task.completed, [true])
-        XCTAssertEqual(task.progress.last, 100)
         XCTAssertEqual(notified, ["Here is the digest"], "the reply reaches the person who left")
         XCTAssertEqual(model.messages.last?.text, "Here is the digest")
     }

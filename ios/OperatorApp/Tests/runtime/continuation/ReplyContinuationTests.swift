@@ -45,18 +45,18 @@ final class ReplyContinuationTests: XCTestCase {
 
         continuation.report(progress: 10, subtitle: "Thinking…")
         let task = scheduler.start(scheduler.submitted[0].identifier)
-        XCTAssertEqual(task.progress, [10], "the system started the task late; it gets what was reported so far")
         continuation.report(progress: 40, subtitle: "Checking Discord announcements")
         continuation.report(progress: 30, subtitle: "Checking your calendar")
-        XCTAssertEqual(task.progress, [10, 40, 40], "never backwards")
-        XCTAssertEqual(task.subtitles, [], "the words are set once at submission; every title change expands the system's card")
+        XCTAssertEqual(continuation.lastProgress, 40, "never backwards")
+        XCTAssertEqual(continuation.lastSubtitle, "Checking your calendar")
+        XCTAssertEqual(task.progress, [], "the system's activity hears nothing mid-run: every update expanded its card on the phone")
+        XCTAssertEqual(task.subtitles, [])
 
         continuation.finish(success: true)
-        XCTAssertEqual(task.progress.last, 100)
         XCTAssertEqual(task.completed, [true])
         XCTAssertFalse(continuation.isActive)
         continuation.report(progress: 90, subtitle: "late")
-        XCTAssertEqual(task.progress.count, 4, "nothing after the finish")
+        XCTAssertEqual(continuation.lastProgress, 40, "nothing after the finish")
     }
 
     func testARefusedSubmissionLeavesTheReplyForegroundOnly() {

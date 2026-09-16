@@ -48,8 +48,8 @@ final class ReplyContinuation: ObservableObject {
     private let logger = Logger(subsystem: "app.operator.ios", category: "reply-continuation")
     private var activeIdentifier: String?
     private var task: (any ContinuedProcessingTask)?
-    private var lastProgress = 0
-    private var lastSubtitle = ""
+    private(set) var lastProgress = 0
+    private(set) var lastSubtitle = ""
 
     init(scheduler: any ContinuedProcessingScheduling) {
         self.scheduler = scheduler
@@ -77,23 +77,20 @@ final class ReplyContinuation: ObservableObject {
         return true
     }
 
-    /// Progress in 0...100; safe to call before the system has handed over
-    /// the task. Only the progress moves. The title and subtitle are set
-    /// once at submission and never updated: the system expands its Live
-    /// Activity to the full card on every title change, and the owner wants
-    /// the small ring in the Dynamic Island and a notification at the end,
-    /// nothing in between. The subtitle argument is kept for the log only.
+    /// Records where the run is; nothing reaches the system's Live Activity
+    /// mid-run. Title updates expanded the full card on every step, and on
+    /// the phone progress updates did too, so the task is told nothing
+    /// between submission and completion: the owner wants the small pill in
+    /// the Dynamic Island and a notification at the end, nothing in between.
+    /// Progress is still tracked here for the log and for tests.
     func report(progress: Int, subtitle: String) {
         guard self.isActive else { return }
-        let clamped = max(self.lastProgress, min(progress, Self.progressTotal))
-        self.lastProgress = clamped
+        self.lastProgress = max(self.lastProgress, min(progress, Self.progressTotal))
         self.lastSubtitle = subtitle
-        self.task?.setProgress(completed: clamped, total: Self.progressTotal)
     }
 
     func finish(success: Bool) {
         guard self.isActive else { return }
-        if success { self.task?.setProgress(completed: Self.progressTotal, total: Self.progressTotal) }
         self.task?.setTaskCompleted(success: success)
         self.logger.info("[reply-continuation] finished success=\(success)")
         self.clear()
@@ -111,7 +108,6 @@ final class ReplyContinuation: ObservableObject {
         task.expirationHandler = { [weak self] in
             Task { @MainActor in self?.expire(identifier) }
         }
-        task.setProgress(completed: self.lastProgress, total: Self.progressTotal)
         self.logger.info("[reply-continuation] running")
     }
 
