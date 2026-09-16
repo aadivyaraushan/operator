@@ -22,7 +22,7 @@ final class ReplyContinuationTests: XCTestCase {
         }
     }
 
-    private final class FakeTask: ContinuedProcessingTask {
+    private final class FakeTask: ContinuedProcessingTask, @unchecked Sendable {
         let identifier: String
         var expirationHandler: (@Sendable () -> Void)?
         var progress: [Int] = []

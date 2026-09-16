@@ -15,8 +15,10 @@ protocol ContinuedProcessingScheduling: AnyObject {
     func submit(identifier: String, title: String, subtitle: String, handler: @escaping @MainActor (any ContinuedProcessingTask) -> Void) throws
 }
 
-@MainActor
-protocol ContinuedProcessingTask: AnyObject {
+/// Not main-actor bound: the system hands it over on its own queue and the
+/// underlying BGTask is safe from any thread. ReplyContinuation drives it
+/// from the main actor.
+protocol ContinuedProcessingTask: AnyObject, Sendable {
     var identifier: String { get }
     /// Called by the system when the task must stop.
     var expirationHandler: (@Sendable () -> Void)? { get set }

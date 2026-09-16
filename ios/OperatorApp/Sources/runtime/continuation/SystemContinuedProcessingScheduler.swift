@@ -15,7 +15,11 @@ final class SystemContinuedProcessingScheduler: ContinuedProcessingScheduling {
         guard #available(iOS 26.0, *) else { throw Unavailable() }
         // The handler must exist for this exact identifier before the
         // request is submitted; submitting without one is fatal, not an error.
-        let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: identifier, using: nil) { task in
+        // The scheduler calls it on its own queue: the closure must not
+        // inherit this class's main-actor isolation, or the runtime traps
+        // (crash of 2026-09-16 01:30:31, dispatch_assert_queue in the launch
+        // handler). Everything main-actor happens inside the hop.
+        let launch: @Sendable (BGTask) -> Void = { task in
             guard let continued = task as? BGContinuedProcessingTask else {
                 task.setTaskCompleted(success: false)
                 return
@@ -23,6 +27,7 @@ final class SystemContinuedProcessingScheduler: ContinuedProcessingScheduling {
             let wrapped = SystemContinuedProcessingTask(continued)
             Task { @MainActor in handler(wrapped) }
         }
+        let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: identifier, using: nil, launchHandler: launch)
         guard registered else { throw NotRegistered() }
         let request = BGContinuedProcessingTaskRequest(identifier: identifier, title: title, subtitle: subtitle)
         request.strategy = .fail
@@ -30,9 +35,11 @@ final class SystemContinuedProcessingScheduler: ContinuedProcessingScheduling {
     }
 }
 
+/// Created on the scheduler's queue and used from the main actor. BGTask
+/// and NSProgress are safe to call from any thread, which is what the
+/// unchecked conformance states.
 @available(iOS 26.0, *)
-@MainActor
-private final class SystemContinuedProcessingTask: ContinuedProcessingTask {
+private final class SystemContinuedProcessingTask: ContinuedProcessingTask, @unchecked Sendable {
     private let task: BGContinuedProcessingTask
     init(_ task: BGContinuedProcessingTask) { self.task = task }
     var identifier: String { self.task.identifier }

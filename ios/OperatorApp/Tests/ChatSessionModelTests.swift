@@ -485,7 +485,7 @@ final class ChatSessionModelTests: XCTestCase {
                 self.submitted.append(identifier)
             }
         }
-        final class Task_: ContinuedProcessingTask {
+        final class Task_: ContinuedProcessingTask, @unchecked Sendable {
             let identifier: String
             var expirationHandler: (@Sendable () -> Void)?
             var progress: [Int] = []
