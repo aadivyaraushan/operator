@@ -63,6 +63,18 @@ foreground task does (OperatorApp.swift, `runtimeIsForeground`).
 3. Guidance line for the model; evidence entry; first live test with the
    owner (the automation on the phone, one text, one read).
 
+## Found at the live test
+
+- On the owner's iOS 26 the Message trigger will not proceed with both
+  Sender and Message Contains empty (Apple's guide and the iOS 17
+  walkthroughs say it does). The filter that catches nearly everything is
+  Message Contains with a single space; one-letter automations (e, a, o,
+  i, u) cover one-word texts, and the store's two-minute duplicate window
+  makes several automations firing for one text harmless.
+- `shortcuts://create-automation` opens Shortcuts on the trigger picker
+  (undocumented, verified on the iOS 18 Simulator); the Permissions page
+  offers it. The automation itself still cannot be created by an app.
+
 ## Open until the live test
 
 - The exact names Shortcuts offers for the input's text and sender when
