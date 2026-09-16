@@ -54,11 +54,19 @@ final class EmbeddedRuntimeHost {
     func waitUntilReady(token: String) async throws {
         try start(token: token)
         let deadline = ContinuousClock.now.advanced(by: .seconds(120))
+        var polls = 0
         while ContinuousClock.now < deadline {
             try Task.checkCancellation()
             if try isReady() {
                 logger.info("[embedded-runtime] ready run=\(self.runID, privacy: .public)")
                 return
+            }
+            polls += 1
+            // A wait that is not ending is otherwise silent; say what the
+            // status file holds every ten seconds so it can be read from the log.
+            if polls % 66 == 0 {
+                let status = (try? readStatus()).flatMap { $0 }.flatMap { try? JSONDecoder().decode(Status.self, from: $0) }
+                logger.info("[embedded-runtime] still waiting run=\(self.runID, privacy: .public) seconds=\(polls * 150 / 1000) fileRun=\(status?.runID ?? "none", privacy: .public) fileStatus=\(status?.status ?? "none", privacy: .public)")
             }
             try await Task.sleep(for: .milliseconds(150))
         }

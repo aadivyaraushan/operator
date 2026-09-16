@@ -2,6 +2,7 @@ import Foundation
 import OperatorCore
 import SwiftUI
 import UIKit
+import OSLog
 
 @MainActor
 final class ForegroundRuntimeCoordinator {
@@ -44,6 +45,7 @@ final class ForegroundRuntimeCoordinator {
 struct OperatorApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var runtimeIsForeground = false
+    private let lifecycleLogger = Logger(subsystem: "app.operator.ios", category: "lifecycle")
     @StateObject private var chat: ChatSessionModel
     @StateObject private var continuation: ReplyContinuation
     @StateObject private var setup: ModelSetupModel
@@ -280,6 +282,7 @@ struct OperatorApp: App {
                 }
                 .onChange(of: self.scenePhase, initial: true) { _, phase in
                     // Permission alerts temporarily interrupt interaction; they do not leave the app.
+                    self.lifecycleLogger.info("[scene] phase=\(String(describing: phase), privacy: .public) continuation=\(self.continuation.isActive)")
                     if phase == .active {
                         self.runtimeIsForeground = true
                     } else if phase == .background, !self.continuation.isActive {
