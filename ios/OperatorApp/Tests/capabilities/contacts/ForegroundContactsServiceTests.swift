@@ -218,6 +218,10 @@ private final class StubContactDirectory: ContactDirectory {
         return self.grantOnRequest
     }
 
+    func existing(phoneNumber: String) async -> ContactMatch? { nil }
+    func existing(emailAddress: String) async -> ContactMatch? { nil }
+    func create(_ draft: ContactDraft) async throws -> String { throw ContactDirectoryError.saveFailed }
+
     func search(query: String, limit: Int) async -> [ContactMatch] {
         self.searchCount += 1
         self.lastQuery = query

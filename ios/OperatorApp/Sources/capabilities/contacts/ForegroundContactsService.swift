@@ -34,11 +34,31 @@ struct ContactMatch: Sendable, Equatable {
     let emailAddresses: [String]
 }
 
+/// A contact to add: a name and at least one way to reach them. No notes
+/// (a separate entitlement), no photos, no other fields.
+struct ContactDraft: Codable, Equatable, Sendable {
+    let givenName: String
+    let familyName: String
+    let phoneNumbers: [String]
+    let emailAddresses: [String]
+
+    var displayName: String { [self.givenName, self.familyName].filter { !$0.isEmpty }.joined(separator: " ") }
+}
+
+enum ContactDirectoryError: Error, Equatable, Sendable {
+    case saveFailed
+}
+
 @MainActor
 protocol ContactDirectory: AnyObject, Sendable {
     var access: ContactsAccess { get }
     func requestAccess() async -> Bool
     func search(query: String, limit: Int) async -> [ContactMatch]
+    /// The contact already holding this number or address, if any.
+    func existing(phoneNumber: String) async -> ContactMatch?
+    func existing(emailAddress: String) async -> ContactMatch?
+    /// Adds the contact and returns the display name as saved.
+    func create(_ draft: ContactDraft) async throws -> String
 }
 
 @MainActor
@@ -193,15 +213,48 @@ final class SystemContactDirectory: ContactDirectory {
         }
     }
 
+    private static let keys: [any CNKeyDescriptor] = [
+        CNContactFormatter.descriptorForRequiredKeys(for: .fullName),
+        CNContactPhoneNumbersKey as any CNKeyDescriptor,
+        CNContactEmailAddressesKey as any CNKeyDescriptor,
+    ]
+
     func search(query: String, limit: Int) async -> [ContactMatch] {
-        let keys: [any CNKeyDescriptor] = [
-            CNContactFormatter.descriptorForRequiredKeys(for: .fullName),
-            CNContactPhoneNumbersKey as any CNKeyDescriptor,
-            CNContactEmailAddressesKey as any CNKeyDescriptor,
-        ]
         let predicate = CNContact.predicateForContacts(matchingName: query)
-        let contacts = (try? self.store.unifiedContacts(matching: predicate, keysToFetch: keys)) ?? []
-        return contacts.prefix(limit).map { contact in
+        return self.matches(predicate).prefix(limit).map { $0 }
+    }
+
+    func existing(phoneNumber: String) async -> ContactMatch? {
+        self.matches(CNContact.predicateForContacts(matching: CNPhoneNumber(stringValue: phoneNumber))).first
+    }
+
+    func existing(emailAddress: String) async -> ContactMatch? {
+        self.matches(CNContact.predicateForContacts(matchingEmailAddress: emailAddress)).first
+    }
+
+    func create(_ draft: ContactDraft) async throws -> String {
+        let contact = CNMutableContact()
+        contact.givenName = draft.givenName
+        contact.familyName = draft.familyName
+        contact.phoneNumbers = draft.phoneNumbers.map {
+            CNLabeledValue(label: CNLabelPhoneNumberMobile, value: CNPhoneNumber(stringValue: $0))
+        }
+        contact.emailAddresses = draft.emailAddresses.map {
+            CNLabeledValue(label: CNLabelHome, value: $0 as NSString)
+        }
+        let request = CNSaveRequest()
+        request.add(contact, toContainerWithIdentifier: nil)
+        do {
+            try self.store.execute(request)
+        } catch {
+            throw ContactDirectoryError.saveFailed
+        }
+        return CNContactFormatter.string(from: contact, style: .fullName) ?? draft.displayName
+    }
+
+    private func matches(_ predicate: NSPredicate) -> [ContactMatch] {
+        let contacts = (try? self.store.unifiedContacts(matching: predicate, keysToFetch: Self.keys)) ?? []
+        return contacts.map { contact in
             ContactMatch(
                 displayName: CNContactFormatter.string(from: contact, style: .fullName) ?? "",
                 phoneNumbers: contact.phoneNumbers.map(\.value.stringValue),

@@ -23,6 +23,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
     private let media: (any GatewayNodeCommandHandler)?
     private let discord: (any GatewayNodeCommandHandler)?
     private let incomingMessages: (any GatewayNodeCommandHandler)?
+    private let contactCreate: (any GatewayNodeCommandHandler)?
 
     init(
         location: any GatewayNodeCommandHandler,
@@ -45,7 +46,8 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         media: (any GatewayNodeCommandHandler)? = nil,
         notion: any GatewayNodeCommandHandler,
         discord: (any GatewayNodeCommandHandler)? = nil,
-        incomingMessages: (any GatewayNodeCommandHandler)? = nil)
+        incomingMessages: (any GatewayNodeCommandHandler)? = nil,
+        contactCreate: (any GatewayNodeCommandHandler)? = nil)
     {
         self.location = location
         self.calendar = calendar
@@ -68,6 +70,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         self.notion = notion
         self.discord = discord
         self.incomingMessages = incomingMessages
+        self.contactCreate = contactCreate
     }
 
     func handleNodeCommand(_ command: String, paramsJSON: String?, timeoutMilliseconds: Int?) async -> GatewayNodeCommandResult {
@@ -149,6 +152,12 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         case "discord.announcements":
             if let discord {
                 await discord.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
+            } else {
+                .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)")
+            }
+        case "contacts.create":
+            if let contactCreate {
+                await contactCreate.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
             } else {
                 .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)")
             }

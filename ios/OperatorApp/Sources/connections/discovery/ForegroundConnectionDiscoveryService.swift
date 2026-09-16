@@ -163,6 +163,9 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
         case "discord.announcements":
             parameters = schema(required: [], optional: ["sinceRFC3339", "limit"], limits: ["limit": "1...50", "sinceRFC3339": "RFC3339"])
             note = "Reads the Discord announcement channels the person listed in Operator, through their own account. Rationed to a few passes a day; a refusal names when the next is possible. Read-only; channels cannot be chosen by the agent."
+        case "contacts.create":
+            parameters = schema(required: ["name"], optional: ["phones", "emails"], limits: ["name": "1...100 characters", "phones": "up to 3", "emails": "up to 3", "note": "at least one phone or email"])
+            note = "Saves a new contact after the person sees it and taps Save. Refuses a number or email already in Contacts; never changes an existing contact."
         case "messages.incoming":
             parameters = schema(required: [], optional: ["sinceRFC3339", "limit"], limits: ["limit": "1...100", "sinceRFC3339": "RFC3339"])
             note = "Texts the person received since they set up the message automation, newest first. A feed, not the inbox: no history, no sent messages, no read state."

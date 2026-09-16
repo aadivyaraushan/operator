@@ -136,6 +136,7 @@ struct OperatorApp: App {
             clearToken: { try await discordTokenStore.remove() },
             loadChannels: { discordChannels.load() },
             saveChannels: { discordChannels.save($0) }))
+        let contactDirectory = SystemContactDirectory()
         let discordService = ForegroundDiscordAnnouncementsService(
             client: DiscordUserClient(token: {
                 guard let data = try await discordTokenStore.load(), let value = String(data: data, encoding: .utf8) else { return nil }
@@ -198,7 +199,7 @@ struct OperatorApp: App {
                 location: ForegroundLocationService(),
                 calendar: ForegroundCalendarService(),
                 reminders: ForegroundRemindersService(),
-                contacts: ForegroundContactsService(),
+                contacts: ForegroundContactsService(directory: contactDirectory, isAppActive: { UIApplication.shared.applicationState == .active }),
                 photos: ForegroundPhotosService(),
                 music: ForegroundMusicService(),
                 weather: ForegroundWeatherService(recordCard: { card in
@@ -229,7 +230,11 @@ struct OperatorApp: App {
                 media: mediaService,
                 notion: notionService,
                 discord: discordService,
-                incomingMessages: ForegroundIncomingMessagesService(store: IncomingMessageStore(supportDirectory: supportDirectory)))),
+                incomingMessages: ForegroundIncomingMessagesService(store: IncomingMessageStore(supportDirectory: supportDirectory)),
+                contactCreate: ForegroundContactCreateService(
+                    directory: contactDirectory,
+                    presenter: SystemContactCreatePresenter(),
+                    isAppActive: { UIApplication.shared.applicationState == .active }))),
             agentTools: { permissions.currentPublishedTools() })
         permissions.grantsDidChange = { Task { await locationNode.republishAgentTools() } }
         self.locationNode = locationNode
