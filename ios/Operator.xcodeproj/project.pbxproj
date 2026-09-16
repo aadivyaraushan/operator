@@ -57,6 +57,7 @@
 		633C1C667A412FAB052A71CD /* SystemWhatsAppComposePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA855847FA0C15621EBE0F2F /* SystemWhatsAppComposePresenter.swift */; };
 		63EB0E9E3C22DE2DF6E0B512 /* PhoneOAuthClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3277E59E6676EB7FEE74EA91 /* PhoneOAuthClientTests.swift */; };
 		6551EE48C76C89D0F9603C76 /* ForegroundMapsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0A121D6D416362695FBAFB /* ForegroundMapsService.swift */; };
+		6861395555DACD63E7AD4EA4 /* PendingSendCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B8002FEC9D1765CF413F9F /* PendingSendCenter.swift */; };
 		69F60C5711AA56D80FA1FF83 /* SystemNotionToolConfirmationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8452F4937F242079ED343071 /* SystemNotionToolConfirmationPresenter.swift */; };
 		6A68EE8A2870354A95BB13DE /* WhatsAppLinkFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24C13B4FD25697ADEC95BCFD /* WhatsAppLinkFlow.swift */; };
 		6B15C5E70ADCEF61435BF35F /* ForegroundMediaNodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E260410CCF3BEE7038F1C3C /* ForegroundMediaNodeService.swift */; };
@@ -93,6 +94,7 @@
 		A4ECC164BB85F656C7132BBC /* NativeAccountConnectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9492520A3BA851A694A077 /* NativeAccountConnectionSheet.swift */; };
 		A6E6C7B92112253D286B93C1 /* ConnectorPermissionCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F154D523ECF9750E20A2FF /* ConnectorPermissionCenter.swift */; };
 		A884BE925DAD7100F4E248C6 /* ForegroundWeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F656AC5615EE768928E80646 /* ForegroundWeatherService.swift */; };
+		AA41432EE6820F7979B54B41 /* PendingSendCenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC532C1EC6518F0D874328D8 /* PendingSendCenterTests.swift */; };
 		AA46805C6D338FDA5A9EF147 /* ForegroundContactCreateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6D4ABEE1296F78A61B0BC3E /* ForegroundContactCreateService.swift */; };
 		AD20A16BB271664E168AC63C /* ForegroundMessageSendServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19CABBF8C5516FFD8ECDFA3E /* ForegroundMessageSendServiceTests.swift */; };
 		B300654E87D79A4B03A259F8 /* WhatsAppLinkFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 828C58FCF6EC83564AEA420E /* WhatsAppLinkFlowTests.swift */; };
@@ -311,6 +313,7 @@
 		B3ABBDCA8280EFA20982CA4B /* NativeWhatsAppReadClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWhatsAppReadClient.swift; sourceTree = "<group>"; };
 		B3EFCEC0ED2A7FEA62302B8D /* NativeAccountSetupCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAccountSetupCoordinatorTests.swift; sourceTree = "<group>"; };
 		B4EA716A42D67D854FB9616D /* ForegroundRemindersServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundRemindersServiceTests.swift; sourceTree = "<group>"; };
+		B9B8002FEC9D1765CF413F9F /* PendingSendCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingSendCenter.swift; sourceTree = "<group>"; };
 		B9E3D881095DD2A08566CBAE /* ForegroundDeviceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundDeviceService.swift; sourceTree = "<group>"; };
 		BBA3F03E905D5FE1B11D4D9B /* LiveConnectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveConnectorTests.swift; sourceTree = "<group>"; };
 		BC37EE7F222735D21673BC20 /* DirectAccountReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectAccountReader.swift; sourceTree = "<group>"; };
@@ -341,6 +344,7 @@
 		E8494D608BFF220294347A7F /* ChatEndToEndUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatEndToEndUITests.swift; sourceTree = "<group>"; };
 		EA855847FA0C15621EBE0F2F /* SystemWhatsAppComposePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemWhatsAppComposePresenter.swift; sourceTree = "<group>"; };
 		EC2AE4F1A079DCA963DA0725 /* NotionLoopbackCallbackServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotionLoopbackCallbackServer.swift; sourceTree = "<group>"; };
+		EC532C1EC6518F0D874328D8 /* PendingSendCenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingSendCenterTests.swift; sourceTree = "<group>"; };
 		EE6353F222861E64E1856902 /* ModelSetupFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSetupFlow.swift; sourceTree = "<group>"; };
 		EEA2909F51A0A2F1575F4132 /* Speech.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
 		F0F154D523ECF9750E20A2FF /* ConnectorPermissionCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorPermissionCenter.swift; sourceTree = "<group>"; };
@@ -457,6 +461,14 @@
 				826145382FCAEBEB3B7439D1 /* ForegroundMusicService.swift */,
 			);
 			path = music;
+			sourceTree = "<group>";
+		};
+		14403512FFFFE494FD5A66DE /* confirm */ = {
+			isa = PBXGroup;
+			children = (
+				B9B8002FEC9D1765CF413F9F /* PendingSendCenter.swift */,
+			);
+			path = confirm;
 			sourceTree = "<group>";
 		};
 		168FB28A631720BB722BCD2C /* signing */ = {
@@ -668,6 +680,7 @@
 		5A729924F22B2C6F32E8691C /* whatsapp */ = {
 			isa = PBXGroup;
 			children = (
+				F8937FE49570D7C2070EB284 /* confirm */,
 				4DFCC407C0102600DEA20B3A /* link */,
 				580A728770FAE0471AA4D926 /* send */,
 			);
@@ -1267,6 +1280,7 @@
 		F5C9CCE21DC72227A60BF491 /* whatsapp */ = {
 			isa = PBXGroup;
 			children = (
+				14403512FFFFE494FD5A66DE /* confirm */,
 				21FE61AF70D4263818F182D9 /* link */,
 				E1DD6DB9B7B6A80E2E58E655 /* native */,
 				395650EA36311288212F89E4 /* read */,
@@ -1299,6 +1313,14 @@
 			path = auth;
 			sourceTree = "<group>";
 		};
+		F8937FE49570D7C2070EB284 /* confirm */ = {
+			isa = PBXGroup;
+			children = (
+				EC532C1EC6518F0D874328D8 /* PendingSendCenterTests.swift */,
+			);
+			path = confirm;
+			sourceTree = "<group>";
+		};
 		F9B65EEEE49D12C4CC113B90 /* chat */ = {
 			isa = PBXGroup;
 			children = (
@@ -1327,7 +1349,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_8CD30791-AA93-455F-902B-D9B02F5A812E" /* embedded */ = {
+		"TEMP_F2F1B992-D515-4EDB-8BEE-A203438D4835" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1521,6 +1543,7 @@
 				951A0E155F073F63DE0A69E9 /* NotionNodeTests.swift in Sources */,
 				F50494031EA799DF091E228F /* OfflineDictationModelTests.swift in Sources */,
 				CED0DD2CBF76656CC237E954 /* OperatorChatAppIntentTests.swift in Sources */,
+				AA41432EE6820F7979B54B41 /* PendingSendCenterTests.swift in Sources */,
 				63EB0E9E3C22DE2DF6E0B512 /* PhoneOAuthClientTests.swift in Sources */,
 				41A8A949CF0F2E5FABB3EB61 /* ReplyContinuationTests.swift in Sources */,
 				24341752AAD7E050880843F2 /* SpotifyLoopbackSetupTests.swift in Sources */,
@@ -1597,6 +1620,7 @@
 				FEDFDE2079B92A33F5E712E6 /* OfflineDictation.swift in Sources */,
 				79D6EEA191EB7EA5D764E9F0 /* OperatorApp.swift in Sources */,
 				5261B89CDC4B182A3DD354CD /* OperatorChatAppIntent.swift in Sources */,
+				6861395555DACD63E7AD4EA4 /* PendingSendCenter.swift in Sources */,
 				F3778B8382A2BA55F0B1CDFF /* PhoneOAuthClient.swift in Sources */,
 				BC3844E544DDEAA656919833 /* PodcastMediaServices.swift in Sources */,
 				490CBF62A70354B3465B6877 /* PublicMediaHTTPTransport.swift in Sources */,
