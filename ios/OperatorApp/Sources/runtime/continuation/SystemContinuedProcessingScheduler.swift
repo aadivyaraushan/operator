@@ -9,10 +9,13 @@ import Foundation
 @MainActor
 final class SystemContinuedProcessingScheduler: ContinuedProcessingScheduling {
     struct Unavailable: Error {}
+    struct NotRegistered: Error {}
 
-    func register(handler: @escaping @MainActor (any ContinuedProcessingTask) -> Void) {
-        guard #available(iOS 26.0, *) else { return }
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: ReplyContinuation.wildcardIdentifier, using: nil) { task in
+    func submit(identifier: String, title: String, subtitle: String, handler: @escaping @MainActor (any ContinuedProcessingTask) -> Void) throws {
+        guard #available(iOS 26.0, *) else { throw Unavailable() }
+        // The handler must exist for this exact identifier before the
+        // request is submitted; submitting without one is fatal, not an error.
+        let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: identifier, using: nil) { task in
             guard let continued = task as? BGContinuedProcessingTask else {
                 task.setTaskCompleted(success: false)
                 return
@@ -20,10 +23,7 @@ final class SystemContinuedProcessingScheduler: ContinuedProcessingScheduling {
             let wrapped = SystemContinuedProcessingTask(continued)
             Task { @MainActor in handler(wrapped) }
         }
-    }
-
-    func submit(identifier: String, title: String, subtitle: String) throws {
-        guard #available(iOS 26.0, *) else { throw Unavailable() }
+        guard registered else { throw NotRegistered() }
         let request = BGContinuedProcessingTaskRequest(identifier: identifier, title: title, subtitle: subtitle)
         request.strategy = .fail
         try BGTaskScheduler.shared.submit(request)

@@ -480,8 +480,10 @@ final class ChatSessionModelTests: XCTestCase {
         final class Scheduler: ContinuedProcessingScheduling {
             var handler: (@MainActor (any ContinuedProcessingTask) -> Void)?
             var submitted: [String] = []
-            func register(handler: @escaping @MainActor (any ContinuedProcessingTask) -> Void) { self.handler = handler }
-            func submit(identifier: String, title: String, subtitle: String) throws { self.submitted.append(identifier) }
+            func submit(identifier: String, title: String, subtitle: String, handler: @escaping @MainActor (any ContinuedProcessingTask) -> Void) throws {
+                self.handler = handler
+                self.submitted.append(identifier)
+            }
         }
         final class Task_: ContinuedProcessingTask {
             let identifier: String

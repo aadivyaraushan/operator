@@ -5,19 +5,19 @@ import XCTest
 @MainActor
 final class ReplyContinuationTests: XCTestCase {
     private final class Scheduler: ContinuedProcessingScheduling {
-        var handler: (@MainActor (any ContinuedProcessingTask) -> Void)?
+        var handlers: [String: @MainActor (any ContinuedProcessingTask) -> Void] = [:]
         var submitted: [(identifier: String, title: String, subtitle: String)] = []
         var refuse = false
         struct Refused: Error {}
-        func register(handler: @escaping @MainActor (any ContinuedProcessingTask) -> Void) { self.handler = handler }
-        func submit(identifier: String, title: String, subtitle: String) throws {
+        func submit(identifier: String, title: String, subtitle: String, handler: @escaping @MainActor (any ContinuedProcessingTask) -> Void) throws {
             if self.refuse { throw Refused() }
+            self.handlers[identifier] = handler
             self.submitted.append((identifier, title, subtitle))
         }
         /// The system starting the task it accepted.
         func start(_ identifier: String) -> FakeTask {
             let task = FakeTask(identifier: identifier)
-            self.handler?(task)
+            self.handlers[identifier]?(task)
             return task
         }
     }
@@ -86,8 +86,9 @@ final class ReplyContinuationTests: XCTestCase {
         XCTAssertFalse(continuation.isActive)
         XCTAssertEqual(expired, 1)
 
-        let stray = scheduler.start("app.operator.ios.reply.something-old")
-        XCTAssertEqual(stray.completed, [false], "a task for a message this launch does not track is ended, not driven")
+        // The system hands back the finished task's handler again later.
+        let stray = scheduler.start(scheduler.submitted[0].identifier)
+        XCTAssertEqual(stray.completed, [false], "a task for a message no longer tracked is ended, not driven")
         XCTAssertFalse(continuation.isActive)
     }
 }

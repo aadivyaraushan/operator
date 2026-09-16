@@ -3,14 +3,16 @@ import OSLog
 
 /// What the app needs from the system's continued-processing scheduler, so
 /// the lifecycle can be tested without BackgroundTasks. `submit` runs while
-/// the app is in front; the scheduler later calls `handler` with a running
-/// task, which the app drives until it completes or expires.
+/// the app is in front and registers the handler for that exact identifier
+/// first: the wildcard in Info.plist only permits the family, and a
+/// submission whose own identifier has no handler is an uncaught exception
+/// (the phone log of 2026-09-16 01:22:44). The scheduler later calls the
+/// handler with a running task, which the app drives to completion.
 @MainActor
 protocol ContinuedProcessingScheduling: AnyObject {
-    /// Registers the single handler for `app.operator.ios.reply.*`.
-    func register(handler: @escaping @MainActor (any ContinuedProcessingTask) -> Void)
-    /// Throws when the system will not run the task now.
-    func submit(identifier: String, title: String, subtitle: String) throws
+    /// Throws when the handler cannot be registered or the system will not
+    /// run the task now.
+    func submit(identifier: String, title: String, subtitle: String, handler: @escaping @MainActor (any ContinuedProcessingTask) -> Void) throws
 }
 
 @MainActor
@@ -49,7 +51,6 @@ final class ReplyContinuation: ObservableObject {
 
     init(scheduler: any ContinuedProcessingScheduling) {
         self.scheduler = scheduler
-        self.scheduler.register { [weak self] task in self?.attach(task) }
     }
 
     /// Submits a task for this message. Returns false when the system
@@ -59,7 +60,9 @@ final class ReplyContinuation: ObservableObject {
         guard !self.isActive else { return false }
         let identifier = Self.identifierPrefix + messageID.uuidString.lowercased()
         do {
-            try self.scheduler.submit(identifier: identifier, title: Self.title, subtitle: subtitle)
+            try self.scheduler.submit(identifier: identifier, title: Self.title, subtitle: subtitle) { [weak self] task in
+                self?.attach(task)
+            }
         } catch {
             self.logger.info("[reply-continuation] refused errorType=\(String(reflecting: type(of: error)), privacy: .public)")
             return false
