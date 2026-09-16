@@ -221,6 +221,16 @@ final class ChatSessionModel: ObservableObject {
         }
     }
 
+    /// A line from the app itself, for something that ended outside a run:
+    /// today, a WhatsApp message sent from a notification's Send button.
+    func recordLocalNote(_ text: String) async {
+        do {
+            self.apply(try await self.store.appendAssistant(text))
+        } catch {
+            self.logger.error("[chat] local note not persisted errorType=\(String(reflecting: type(of: error)), privacy: .public)")
+        }
+    }
+
     func recordWeatherCard(_ card: WeatherCard) async throws {
         self.apply(try await self.store.appendWeatherCard(card))
         self.logger.info("[chat] weather card persisted")

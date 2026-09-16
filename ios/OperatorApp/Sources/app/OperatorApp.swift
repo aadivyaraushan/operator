@@ -2,6 +2,7 @@ import Foundation
 import OperatorCore
 import SwiftUI
 import UIKit
+import UserNotifications
 import OSLog
 
 @MainActor
@@ -56,6 +57,9 @@ struct OperatorApp: App {
     @StateObject private var discord: DiscordAccountSetupModel
     @StateObject private var permissions: ConnectorPermissionCenter
     private let locationNode: LocalLocationNodeGateway
+    /// Answers the "Send to X on WhatsApp?" notification; the notification
+    /// center holds its delegate weakly, so the App keeps it.
+    private let sendConfirmations: SendConfirmationResponder
     private let foregroundRuntime: ForegroundRuntimeCoordinator
     private let embeddedRuntime: EmbeddedRuntimeHost
     private let runtimeToken: () async throws -> String
@@ -205,6 +209,24 @@ struct OperatorApp: App {
         // grants allow. A fresh install grants nothing.
         let permissions = ConnectorPermissionCenter(store: UserDefaultsConnectorGrantStore())
         let whatsappRead = NativeWhatsAppReadClient(supportDirectory: supportDirectory)
+        // A WhatsApp send while Operator is off screen: the same guard, but
+        // the question goes out as a notification and Send is a button on it.
+        let whatsappPresenter = SystemWhatsAppComposePresenter()
+        let whatsappSender = NativeWhatsAppSendClient(supportDirectory: supportDirectory)
+        let whatsappGuard = WhatsAppSendGuard(recipients: whatsappRead, history: UserDefaultsWhatsAppSendHistoryStore())
+        let sendNotifier = SendConfirmationNotifier()
+        sendNotifier.registerCategory()
+        let pendingSends = PendingSendCenter(
+            store: PendingSendStore(supportDirectory: supportDirectory),
+            notifier: sendNotifier,
+            sender: whatsappSender,
+            guardrail: whatsappGuard,
+            recordSent: { [weak chat, weak permissions] send in
+                permissions?.recordExternalOutcome(connector: .whatsapp, access: .write, command: "whatsapp.compose from notification", succeeded: true)
+                await chat?.recordLocalNote("Sent to \(send.recipientName) on WhatsApp: \(send.body)")
+            })
+        let sendConfirmations = SendConfirmationResponder(center: pendingSends, presenter: whatsappPresenter, isOnScreen: isOnScreen)
+        UNUserNotificationCenter.current().delegate = sendConfirmations
         let messageSend = ForegroundMessageSendService(
             runner: SystemShortcutRunner(),
             isAppActive: { UIApplication.shared.applicationState == .active })
@@ -238,10 +260,12 @@ struct OperatorApp: App {
                 handoff: ForegroundAppHandoffService(),
                 whatsapp: ForegroundWhatsAppReadService(client: whatsappRead, isAppActive: isActiveOrContinuing),
                 whatsappCompose: ForegroundWhatsAppComposeService(
-                    presenter: SystemWhatsAppComposePresenter(),
-                    sender: NativeWhatsAppSendClient(supportDirectory: supportDirectory),
-                    isAppActive: { UIApplication.shared.applicationState == .active },
-                    guardrail: WhatsAppSendGuard(recipients: whatsappRead, history: UserDefaultsWhatsAppSendHistoryStore())),
+                    presenter: whatsappPresenter,
+                    sender: whatsappSender,
+                    isAppActive: isOnScreen,
+                    guardrail: whatsappGuard,
+                    confirmations: pendingSends,
+                    names: whatsappRead),
                 accounts: accountReader,
                 accountWrite: accountWrite,
                 discovery: discovery,
@@ -256,6 +280,7 @@ struct OperatorApp: App {
             agentTools: { permissions.currentPublishedTools() })
         permissions.grantsDidChange = { Task { await locationNode.republishAgentTools() } }
         self.locationNode = locationNode
+        self.sendConfirmations = sendConfirmations
         self.foregroundRuntime = ForegroundRuntimeCoordinator(
             waitForChatGateway: { [weak chat] in
                 guard let chat else { return false }

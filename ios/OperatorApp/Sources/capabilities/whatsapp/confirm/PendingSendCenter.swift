@@ -104,6 +104,8 @@ final class PendingSendCenter {
         case expired
         case refused(WhatsAppSendRefusal)
         case failed
+        /// The person opened the app from the notification and tapped Cancel.
+        case declined
     }
 
     static let sendTimeoutMilliseconds = 20_000
@@ -147,12 +149,33 @@ final class PendingSendCenter {
     /// The Send action. The draft is taken out of the store first, so a
     /// second tap on the same notification sends nothing.
     func perform(id: String) async -> PerformOutcome {
+        guard let send = self.take(id: id) else { return .expired }
+        return await self.send(send)
+    }
+
+    /// A tap on the notification itself: the app comes to the front, so the
+    /// question is put again there, in the alert, and only Send sends.
+    func confirmOnScreen(id: String, presenter: any WhatsAppComposePresenter) async -> PerformOutcome {
+        guard let send = self.take(id: id) else { return .expired }
+        let request = WhatsAppComposeRequest(recipientJID: send.recipientJID, body: send.body)
+        guard case let .confirmed(confirmed) = await presenter.confirm(request), confirmed == request else {
+            self.logger.info("[pending-send] declined in the alert")
+            return .declined
+        }
+        return await self.send(send)
+    }
+
+    private func take(id: String) -> PendingSend? {
         self.notifier.withdraw(id: id)
         guard let send = self.store.take(id: id) else {
             self.logger.info("[pending-send] tap on an expired or unknown draft")
             self.notifier.report(title: "Not sent", body: "That confirmation expired. Ask Operator again.")
-            return .expired
+            return nil
         }
+        return send
+    }
+
+    private func send(_ send: PendingSend) async -> PerformOutcome {
         if let guardrail, let refusal = await guardrail.check(recipientJID: send.recipientJID) {
             self.logger.info("[pending-send] refused at the tap code=\(refusal.code, privacy: .public)")
             self.notifier.report(title: "Not sent to \(send.recipientName)", body: refusal.message)

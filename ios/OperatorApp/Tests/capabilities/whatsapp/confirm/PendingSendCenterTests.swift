@@ -136,6 +136,35 @@ final class PendingSendCenterTests: XCTestCase {
         XCTAssertEqual(store.count, 0)
     }
 
+    private final class Presenter: WhatsAppComposePresenter {
+        var decision: WhatsAppComposeDecision = .denied
+        var asked: [WhatsAppComposeRequest] = []
+        func confirm(_ request: WhatsAppComposeRequest) async -> WhatsAppComposeDecision { self.asked.append(request); return self.decision }
+        func cancel() {}
+    }
+
+    func testATapOnTheNotificationItselfAsksAgainInTheAlert() async {
+        let notifier = Notifier()
+        let sender = Sender()
+        let (center, store, _) = self.center(notifier, sender)
+        let presenter = Presenter()
+
+        guard case let .asked(first) = await center.ask(.init(recipientJID: "villa@s.whatsapp.net", body: "yo"), recipientName: "Villa") else { return XCTFail() }
+        let declined = await center.confirmOnScreen(id: first, presenter: presenter)
+        XCTAssertEqual(declined, .declined)
+        XCTAssertEqual(presenter.asked.map(\.body), ["yo"])
+        XCTAssertTrue(sender.sent.isEmpty)
+        XCTAssertEqual(store.count, 0, "Cancel in the alert drops the draft")
+        XCTAssertEqual(notifier.withdrawn, [first])
+
+        guard case let .asked(second) = await center.ask(.init(recipientJID: "villa@s.whatsapp.net", body: "yo again"), recipientName: "Villa") else { return XCTFail() }
+        presenter.decision = .confirmed(.init(recipientJID: "villa@s.whatsapp.net", body: "yo again"))
+        let sent = await center.confirmOnScreen(id: second, presenter: presenter)
+        XCTAssertEqual(sent, .sent(recipientName: "Villa"))
+        XCTAssertEqual(sender.sent.map(\.body), ["yo again"])
+        XCTAssertEqual(notifier.reports.map(\.title), ["Sent to Villa"])
+    }
+
     func testTheStoreSurvivesAnotherInstance() {
         let store = PendingSendStore(supportDirectory: self.directory, now: { self.clock })
         let send = PendingSend(id: "a", recipientJID: "villa@s.whatsapp.net", recipientName: "Villa", body: "hi", createdAt: self.clock)
