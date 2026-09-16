@@ -45,6 +45,7 @@ struct OperatorApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var runtimeIsForeground = false
     @StateObject private var chat: ChatSessionModel
+    @StateObject private var continuation: ReplyContinuation
     @StateObject private var setup: ModelSetupModel
     @StateObject private var whatsapp: WhatsAppLinkFlowModel
     @StateObject private var accounts: NativeAccountSetupCoordinator
@@ -81,9 +82,16 @@ struct OperatorApp: App {
             vault: vault,
             appVersion: version,
             platform: platform)
+        let continuation = ReplyContinuation(scheduler: SystemContinuedProcessingScheduler())
         let chat = ChatSessionModel(
             store: persistence,
-            gateway: gateway)
+            gateway: gateway,
+            continuation: continuation)
+        chat.isInForeground = { UIApplication.shared.applicationState == .active }
+        chat.onReplyInBackground = { text in ReplyNotifier.post(reply: text) }
+        // Asked the first time a reply is kept alive, while the app is in
+        // front, so the first background reply is not lost to the prompt.
+        chat.onContinuationBegan = { ReplyNotifier.requestPermissionIfNeeded() }
         let accountSetup = NativeAccountSetupCoordinator(
             bundle: .main,
             presenter: SystemOAuthSessionPresenter())
@@ -246,6 +254,7 @@ struct OperatorApp: App {
             startNode: { await locationNode.start() },
             stopNode: { await locationNode.stop() })
         _chat = StateObject(wrappedValue: chat)
+        _continuation = StateObject(wrappedValue: continuation)
         _setup = StateObject(wrappedValue: ModelSetupModel(gateway: setupGateway))
         _accounts = StateObject(wrappedValue: accountSetup)
         _notion = StateObject(wrappedValue: notionSetup)
@@ -273,7 +282,17 @@ struct OperatorApp: App {
                     // Permission alerts temporarily interrupt interaction; they do not leave the app.
                     if phase == .active {
                         self.runtimeIsForeground = true
-                    } else if phase == .background {
+                    } else if phase == .background, !self.continuation.isActive {
+                        self.runtimeIsForeground = false
+                    }
+                    // With a reply in flight the transition waits for the
+                    // continued-processing task; see onChange(of: isActive).
+                }
+                .onChange(of: self.continuation.isActive) { _, isActive in
+                    // The task ended (reply, failure, or the system expired
+                    // it) while the app is not in front: apply the deferred
+                    // background transition now.
+                    if !isActive, self.scenePhase == .background {
                         self.runtimeIsForeground = false
                     }
                 }

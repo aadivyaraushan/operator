@@ -48,6 +48,16 @@ final class ChatSessionModel: ObservableObject {
     @Published private(set) var lastError: String?
 
     let dictation: OfflineDictationModel
+    /// Keeps the reply in flight alive after the person leaves the app;
+    /// nil where the platform has no such task. Driven from here: begun on
+    /// send, reported from the live activity, finished with the reply.
+    private let continuation: ReplyContinuation?
+    /// Called with the reply's text when it lands while the app is not in
+    /// front, so it can reach the person as a notification.
+    var onReplyInBackground: (@MainActor (String) -> Void)?
+    /// Called when a continuation is accepted for a message.
+    var onContinuationBegan: (@MainActor () -> Void)?
+    var isInForeground: @MainActor () -> Bool = { true }
 
     private let store: any ChatPersistence
     private let gateway: any ChatGateway
@@ -66,11 +76,13 @@ final class ChatSessionModel: ObservableObject {
     init(
         store: any ChatPersistence,
         gateway: any ChatGateway,
-        dictation: OfflineDictationModel? = nil
+        dictation: OfflineDictationModel? = nil,
+        continuation: ReplyContinuation? = nil
     ) {
         self.store = store
         self.gateway = gateway
         self.dictation = dictation ?? OfflineDictationModel(service: AppleOnDeviceDictationService())
+        self.continuation = continuation
     }
 
     func restore() {
@@ -188,6 +200,9 @@ final class ChatSessionModel: ObservableObject {
         self.liveActivity = self.isGatewayReady ? ChatLiveActivity() : nil
         self.lastError = nil
         self.connectionState = self.isGatewayReady ? .working : .offline
+        if self.isGatewayReady, self.continuation?.begin(messageID: id, subtitle: "Thinking…") == true {
+            self.onContinuationBegan?()
+        }
         self.logger.info("[chat] staged input id=\(id.uuidString, privacy: .public) characters=\(trimmed.count)")
 
         Task { @MainActor [weak self] in
@@ -282,6 +297,7 @@ final class ChatSessionModel: ObservableObject {
                 self.streamingReply = nil
                 self.liveActivity = nil
                 self.inFlight.remove(entry.id)
+                self.continuation?.finish(success: false)
                 self.logger.error("[chat] delivery paused id=\(entry.id.uuidString, privacy: .public)")
                 shouldReconnectAfterFlush = true
                 break
@@ -352,12 +368,18 @@ final class ChatSessionModel: ObservableObject {
                 self.inFlight.insert(entryID)
                 if self.liveActivity == nil { self.liveActivity = ChatLiveActivity() }
                 self.connectionState = .working
+                self.continuation?.report(progress: 10, subtitle: "Thinking…")
             case let .activity(activity):
                 self.inFlight.insert(entryID)
                 var live = self.liveActivity ?? ChatLiveActivity()
                 live.apply(activity)
                 self.liveActivity = live
                 self.connectionState = .working
+                // Each step moves the pill along; the subtitle is the step.
+                let steps = live.steps
+                let progress = min(70, 10 + steps.count * 15)
+                let subtitle = steps.last(where: { $0.state == .running })?.title ?? steps.last?.title ?? "Thinking…"
+                self.continuation?.report(progress: progress, subtitle: subtitle)
             case let .stream(text):
                 self.inFlight.insert(entryID)
                 self.streamingReply = text
@@ -365,6 +387,7 @@ final class ChatSessionModel: ObservableObject {
                 live.phase = .writing
                 self.liveActivity = live
                 self.connectionState = .working
+                self.continuation?.report(progress: 80, subtitle: "Writing the reply")
             case let .reply(text):
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.apply(try await self.store.appendAssistant(text))
@@ -377,6 +400,8 @@ final class ChatSessionModel: ObservableObject {
                 self.liveActivity = nil
                 self.inFlight.remove(entryID)
                 self.connectionState = .ready
+                self.continuation?.finish(success: true)
+                if !self.isInForeground() { self.onReplyInBackground?(text) }
                 self.logger.info("[chat] reply persisted for id=\(entryID.uuidString, privacy: .public)")
             case let .failed(message):
                 self.apply(try await self.store.markAccepted(id: entryID))
@@ -385,17 +410,21 @@ final class ChatSessionModel: ObservableObject {
                 self.inFlight.remove(entryID)
                 self.lastError = message
                 self.connectionState = .ready
+                self.continuation?.finish(success: false)
+                if !self.isInForeground() { self.onReplyInBackground?(message) }
             case .stopped:
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.streamingReply = nil
                 self.liveActivity = nil
                 self.inFlight.remove(entryID)
                 self.connectionState = .ready
+                self.continuation?.finish(success: false)
             }
         } catch {
             self.connectionState = .offline
             self.liveActivity = nil
             self.inFlight.remove(entryID)
+            self.continuation?.finish(success: false)
             self.lastError = "Operator replied, but the result could not be saved."
             self.logger.error("[chat] delivery update persistence failed")
         }

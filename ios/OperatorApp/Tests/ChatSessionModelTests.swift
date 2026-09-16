@@ -476,6 +476,62 @@ final class ChatSessionModelTests: XCTestCase {
         XCTAssertNil(model.lastError)
     }
 
+    func testAReplyInFlightIsKeptAliveByAContinuationAndReachesThePersonWhoLeft() async throws {
+        final class Scheduler: ContinuedProcessingScheduling {
+            var handler: (@MainActor (any ContinuedProcessingTask) -> Void)?
+            var submitted: [String] = []
+            func register(handler: @escaping @MainActor (any ContinuedProcessingTask) -> Void) { self.handler = handler }
+            func submit(identifier: String, title: String, subtitle: String) throws { self.submitted.append(identifier) }
+        }
+        final class Task_: ContinuedProcessingTask {
+            let identifier: String
+            var expirationHandler: (@Sendable () -> Void)?
+            var progress: [Int] = []
+            var subtitles: [String] = []
+            var completed: [Bool] = []
+            init(identifier: String) { self.identifier = identifier }
+            func setProgress(completed: Int, total: Int) { self.progress.append(completed) }
+            func updateTitle(_ title: String, subtitle: String) { self.subtitles.append(subtitle) }
+            func setTaskCompleted(success: Bool) { self.completed.append(success) }
+        }
+        let scheduler = Scheduler()
+        let continuation = ReplyContinuation(scheduler: scheduler)
+        let gateway = ActivityGateway()
+        let model = ChatSessionModel(store: RecordingPersistence(), gateway: gateway, continuation: continuation)
+        var inForeground = true
+        var notified: [String] = []
+        model.isInForeground = { inForeground }
+        model.onReplyInBackground = { notified.append($0) }
+        model.runtimeBecameReady()
+        model.restore()
+        await waitUntil { model.connectionState == .ready }
+
+        model.draft = "what did I miss on discord?"
+        model.send()
+        XCTAssertTrue(continuation.isActive, "the task is submitted with the message")
+        XCTAssertEqual(scheduler.submitted.count, 1)
+        let task = Task_(identifier: scheduler.submitted[0])
+        scheduler.handler?(task)
+
+        await gateway.waitForStage(1)
+        await gateway.proceed()
+        await gateway.waitForStage(2)
+        XCTAssertEqual(task.subtitles.last, "Checking Discord announcements")
+        inForeground = false // the person leaves while the tools run
+        await gateway.proceed()
+        await gateway.waitForStage(3)
+        await gateway.proceed()
+        await gateway.waitForStage(4)
+        XCTAssertEqual(task.subtitles.last, "Writing the reply")
+        XCTAssertEqual(task.progress.last, 80)
+        await gateway.proceed()
+        await waitUntil { !continuation.isActive }
+        XCTAssertEqual(task.completed, [true])
+        XCTAssertEqual(task.progress.last, 100)
+        XCTAssertEqual(notified, ["Here is the digest"], "the reply reaches the person who left")
+        XCTAssertEqual(model.messages.last?.text, "Here is the digest")
+    }
+
     func testStepsSpeakPlainlyAndKeepTheExactBoundedCallBehindThem() {
         let plain = ChatActivityStep(id: "1", tool: "web_search", arguments: ["query": .string("discord self-bot ban 2026"), "count": .number(5)], state: .running)
         XCTAssertEqual(plain.title, "Searching the web")
