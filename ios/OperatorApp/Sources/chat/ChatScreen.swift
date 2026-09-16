@@ -63,10 +63,15 @@ struct ChatScreen: View {
     @ObservedObject var permissions: ConnectorPermissionCenter
     @State private var isConnectionsPresented = false
     @State private var isPermissionsPresented = false
-    /// Whether the transcript is scrolled to (or near) its end. While the
-    /// person has scrolled up to read, streaming and activity updates must
-    /// not pull the view back down; their own new message still does.
-    @State private var isNearBottom = true
+    /// Whether the transcript follows new content to its end. Set by the
+    /// person's own scrolling only: a drag that ends away from the end
+    /// stops following, a drag that ends at the end resumes it, and their
+    /// own new message always resumes it. Content growing under a still
+    /// finger-free view never changes it, which is what made the old
+    /// "near the bottom" test fail the moment the reply bubble appeared
+    /// below the sent message.
+    @State private var isFollowing = true
+    @State private var isNearEnd = true
 
     /// "Signed in" / "Not signed in" for the Permissions page's account rows.
     private func accountStatus(_ id: ConnectorID) -> String? {
@@ -84,6 +89,15 @@ struct ChatScreen: View {
         if id == .whatsapp { return self.whatsapp.state == .linked ? "Linked" : "Not linked" }
         if id == .discord { return self.discord.isConnected ? "Token saved" : "No token" }
         return nil
+    }
+
+    private func follow(_ proxy: ScrollViewProxy, animated: Bool) {
+        guard self.isFollowing else { return }
+        if animated {
+            withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("end", anchor: .bottom) }
+        } else {
+            proxy.scrollTo("end", anchor: .bottom)
+        }
     }
 
     var body: some View {
@@ -163,41 +177,30 @@ struct ChatScreen: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 4)
                         }
+                        // The end of the transcript, whatever is last.
+                        Color.clear.frame(height: 1).id("end")
                     }
                     .padding(16)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .onScrollGeometryChange(for: Bool.self) { geometry in
-                    geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - 80
-                } action: { _, nearBottom in
-                    self.isNearBottom = nearBottom
+                    geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - 40
+                } action: { _, nearEnd in
+                    self.isNearEnd = nearEnd
+                }
+                .onScrollPhaseChange { _, phase in
+                    // Only the person's own gesture decides; programmatic
+                    // scrolls report .animating and content growth reports nothing.
+                    if phase == .idle { self.isFollowing = self.isNearEnd }
                 }
                 .onChange(of: self.model.messages.count) {
-                    guard let last = self.model.messages.last else { return }
-                    // The person's own message always comes into view; a reply
-                    // only when they are already at the end, so reading back
-                    // through a long transcript is never interrupted.
-                    if last.role == .user || self.isNearBottom {
-                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(last.id, anchor: .bottom) }
-                    }
+                    if self.model.messages.last?.role == .user { self.isFollowing = true }
+                    self.follow(proxy, animated: true)
                 }
-                .onChange(of: self.model.streamingReply) {
-                    if self.model.streamingReply != nil, self.isNearBottom {
-                        proxy.scrollTo("streaming-reply", anchor: .bottom)
-                    }
-                }
-                .onChange(of: self.model.liveActivity) {
-                    if self.model.liveActivity != nil, self.isNearBottom {
-                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("streaming-reply", anchor: .bottom) }
-                    }
-                }
-                .onChange(of: self.model.approvals.map(\.id)) {
-                    if let id = self.model.approvals.last?.id {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            proxy.scrollTo("approval-\(id)", anchor: .bottom)
-                        }
-                    }
-                }
+                .onChange(of: self.model.streamingReply) { self.follow(proxy, animated: false) }
+                .onChange(of: self.model.liveActivity) { self.follow(proxy, animated: true) }
+                .onChange(of: self.model.approvals.map(\.id)) { self.follow(proxy, animated: true) }
+                .onChange(of: self.model.lastError) { self.follow(proxy, animated: true) }
             }
 
             Divider()
@@ -441,9 +444,9 @@ private struct ActivityBubble: View {
     }
 }
 
-/// `● whatsapp.compose(recipient: "…", body: "…")`, monospaced, with the
-/// state in the marker: a spinner while it runs, a check when it is done, a
-/// warning when it failed.
+/// "Checking Discord announcements" with the state in the marker: a spinner
+/// while it runs, a check when it is done, a warning when it failed. The
+/// exact call is in the accessibility label, not on screen.
 private struct ActivityStepRow: View {
     let step: ChatActivityStep
 
@@ -460,21 +463,14 @@ private struct ActivityStepRow: View {
                 }
             }
             .frame(width: 14, height: 14)
-            (Text(self.step.name).fontWeight(.semibold) + Text(self.step.arguments.isEmpty ? "()" : "(\(self.step.arguments))"))
-                .font(.system(.footnote, design: .monospaced))
+            Text(self.step.title)
+                .font(.footnote)
                 .foregroundStyle(self.step.state == .running ? .primary : .secondary)
-                .lineLimit(3)
-                .textSelection(.enabled)
+                .lineLimit(2)
         }
         .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel({
-            switch self.step.state {
-            case .running: "Running \(self.step.title)"
-            case .done: "Finished \(self.step.title)"
-            case .failed: "Failed \(self.step.title)"
-            }
-        }())
+        .accessibilityLabel(self.step.state == .failed ? "\(self.step.title), failed. \(self.step.call)" : "\(self.step.title). \(self.step.call)")
     }
 }
 

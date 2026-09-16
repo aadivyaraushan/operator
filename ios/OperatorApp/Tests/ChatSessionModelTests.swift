@@ -165,13 +165,15 @@ final class ChatSessionModelTests: XCTestCase {
         await gateway.proceed()
         await gateway.waitForStage(2)
         let running = try XCTUnwrap(model.liveActivity)
-        XCTAssertEqual(running.steps.map(\.title), [#"discord_announcements(limit: 25)"#])
+        XCTAssertEqual(running.steps.map(\.title), ["Checking Discord announcements"])
+        XCTAssertEqual(running.steps.map(\.call), [#"discord_announcements(limit: 25)"#], "the exact call stays behind the words")
         XCTAssertEqual(running.steps.first?.state, .running)
 
         await gateway.proceed()
         await gateway.waitForStage(3)
         let afterTools = try XCTUnwrap(model.liveActivity)
-        XCTAssertEqual(afterTools.steps.map(\.title), [#"discord_announcements(limit: 25)"#, #"connections.read(operation: "gmailMessages", limit: 5)"#], "the node bridge is unwrapped to the command it carried")
+        XCTAssertEqual(afterTools.steps.map(\.title), ["Checked Discord announcements", "Read Gmail"], "past tense once done; the node bridge is unwrapped to the command it carried")
+        XCTAssertEqual(afterTools.steps.map(\.call), [#"discord_announcements(limit: 25)"#, #"connections.read(operation: "gmailMessages", limit: 5)"#])
         XCTAssertEqual(afterTools.steps.map(\.state), [.done, .failed])
         XCTAssertEqual(afterTools.phase, .thinking, "between tools the agent is thinking again")
 
@@ -472,19 +474,29 @@ final class ChatSessionModelTests: XCTestCase {
         XCTAssertNil(model.lastError)
     }
 
-    func testStepsReadLikeATerminalAgentAndBoundTheirArguments() {
+    func testStepsSpeakPlainlyAndKeepTheExactBoundedCallBehindThem() {
         let plain = ChatActivityStep(id: "1", tool: "web_search", arguments: ["query": .string("discord self-bot ban 2026"), "count": .number(5)], state: .running)
-        XCTAssertEqual(plain.title, #"web_search(query: "discord self-bot ban 2026", count: 5)"#)
+        XCTAssertEqual(plain.title, "Searching the web")
+        XCTAssertEqual(plain.call, #"web_search(query: "discord self-bot ban 2026", count: 5)"#)
 
         let bridged = ChatActivityStep(id: "2", tool: "nodes", arguments: [
             "action": .string("invoke"), "node": .string("iphone"), "invokeCommand": .string("whatsapp.compose"),
             "invokeParamsJson": .string(#"{"recipient":"+1 555 0100","body":"running late, there in 10\nsorry"}"#), "invokeTimeoutMs": .number(30_000),
         ], state: .done)
         XCTAssertEqual(bridged.name, "whatsapp.compose")
-        XCTAssertEqual(bridged.title, #"whatsapp.compose(recipient: "+1 555 0100", body: "running late, there in 10 sorry")"#)
+        XCTAssertEqual(bridged.title, "Prepared a WhatsApp message")
+        XCTAssertEqual(bridged.call, #"whatsapp.compose(recipient: "+1 555 0100", body: "running late, there in 10 sorry")"#)
 
         let bare = ChatActivityStep(id: "3", tool: "nodes", arguments: ["action": .string("status")], state: .done)
-        XCTAssertEqual(bare.title, "nodes()", "a bridge call with no command keeps its own name and hides the bookkeeping")
+        XCTAssertEqual(bare.call, "nodes()", "a bridge call with no command keeps its own name and hides the bookkeeping")
+        XCTAssertEqual(bare.title, "Checked this iPhone's tools")
+
+        let unknown = ChatActivityStep(id: "5", tool: "some_new.tool", arguments: [:], state: .running)
+        XCTAssertEqual(unknown.title, "Using some new tool", "a tool the words do not cover is still named")
+        let mail = ChatActivityStep(id: "6", tool: "nodes", arguments: [
+            "action": .string("invoke"), "invokeCommand": .string("connections.write"), "invokeParamsJson": .string(#"{"operation":"outlookSendMail"}"#),
+        ], state: .running)
+        XCTAssertEqual(mail.title, "Writing to Outlook")
 
         let long = ChatActivityStep(id: "4", tool: "exec", arguments: [
             "command": .string(String(repeating: "x", count: 200)), "host": .string("node"), "cwd": .string("/"), "env": .object(["A": .string("1")]), "z": .bool(true),
