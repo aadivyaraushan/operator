@@ -165,6 +165,8 @@ final class ChatSessionModelTests: XCTestCase {
         await gateway.proceed()
         await gateway.waitForStage(2)
         let running = try XCTUnwrap(model.liveActivity)
+        XCTAssertEqual(running.reasoning, "The person wants a digest.")
+        XCTAssertEqual(running.commentary, ["I'll read the announcement channels first."])
         XCTAssertEqual(running.steps.map(\.title), ["Checking Discord announcements"])
         XCTAssertEqual(running.steps.map(\.call), [#"discord_announcements(limit: 25)"#], "the exact call stays behind the words")
         XCTAssertEqual(running.steps.first?.state, .running)
@@ -665,6 +667,8 @@ private actor ActivityGateway: ChatGateway {
     func deliver(_ entry: OutboxEntry, update: @escaping @Sendable (ChatDeliveryUpdate) async -> Void) async throws {
         await update(.accepted)
         await self.reach(1)
+        await update(.activity(.thinking(text: "The person wants a digest.")))
+        await update(.activity(.commentary(text: "I'll read the announcement channels first.")))
         await update(.activity(.toolStarted(tool: "discord_announcements", callID: "c1", arguments: ["limit": .number(25)])))
         await self.reach(2)
         await update(.activity(.toolFinished(tool: "discord_announcements", callID: "c1", isError: false)))

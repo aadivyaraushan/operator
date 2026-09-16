@@ -72,6 +72,9 @@ struct ChatScreen: View {
     /// below the sent message.
     @State private var isFollowing = true
     @State private var isNearEnd = true
+    /// True from the person's touch until the scroll it started comes to
+    /// rest; the app's own animated scrolls never set it.
+    @State private var isPersonScrolling = false
 
     /// "Signed in" / "Not signed in" for the Permissions page's account rows.
     private func accountStatus(_ id: ConnectorID) -> String? {
@@ -189,9 +192,20 @@ struct ChatScreen: View {
                     self.isNearEnd = nearEnd
                 }
                 .onScrollPhaseChange { _, phase in
-                    // Only the person's own gesture decides; programmatic
-                    // scrolls report .animating and content growth reports nothing.
-                    if phase == .idle { self.isFollowing = self.isNearEnd }
+                    // Only the person's own gesture decides. A finger reports
+                    // tracking or interacting first; the app's own scrolls go
+                    // straight to animating, and content growth reports nothing.
+                    switch phase {
+                    case .tracking, .interacting:
+                        self.isPersonScrolling = true
+                    case .idle:
+                        if self.isPersonScrolling {
+                            self.isPersonScrolling = false
+                            self.isFollowing = self.isNearEnd
+                        }
+                    default:
+                        break
+                    }
                 }
                 .onChange(of: self.model.messages.count) {
                     if self.model.messages.last?.role == .user { self.isFollowing = true }
@@ -417,6 +431,9 @@ private struct ActivityBubble: View {
             ForEach(self.activity.steps) { step in
                 ActivityStepRow(step: step)
             }
+            if self.text == nil, !self.activity.commentary.isEmpty || !self.activity.reasoning.isEmpty {
+                ThinkingBox(commentary: self.activity.commentary, reasoning: self.activity.reasoning)
+            }
             if let text {
                 HStack(alignment: .bottom, spacing: 8) {
                     Text(ChatMessageText.assistantText(text))
@@ -471,6 +488,41 @@ private struct ActivityStepRow: View {
         .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(self.step.state == .failed ? "\(self.step.title), failed. \(self.step.call)" : "\(self.step.title). \(self.step.call)")
+    }
+}
+
+/// What the model is thinking while it drafts: its commentary lines and the
+/// tail of its reasoning, quiet and italic. Present only until the reply
+/// text starts; the steps above it are what remain afterwards.
+private struct ThinkingBox: View {
+    let commentary: [String]
+    let reasoning: String
+
+    private var reasoningTail: String {
+        let lines = self.reasoning.split(separator: "\n", omittingEmptySubsequences: true).suffix(4)
+        let tail = lines.joined(separator: "\n")
+        return tail.count > 400 ? "…" + tail.suffix(400) : tail
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(self.commentary.enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if !self.reasoning.isEmpty {
+                Text(self.reasoningTail)
+                    .font(.footnote)
+                    .italic()
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(6)
+                    .transaction { $0.animation = nil }
+            }
+        }
+        .padding(.horizontal, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Operator is thinking: \(self.commentary.joined(separator: ". "))")
     }
 }
 

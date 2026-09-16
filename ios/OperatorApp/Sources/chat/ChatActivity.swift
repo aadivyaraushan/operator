@@ -135,6 +135,11 @@ struct ChatLiveActivity: Equatable, Sendable {
 
     var steps: [ChatActivityStep] = []
     var phase: Phase = .thinking
+    /// The model's reasoning so far, when the runtime streams it. Shown
+    /// while drafting, gone with the reply.
+    var reasoning = ""
+    /// What the model said it was about to do, in order. Same lifetime.
+    var commentary: [String] = []
 
     mutating func apply(_ activity: GatewayRunActivity) {
         switch activity {
@@ -146,6 +151,11 @@ struct ChatLiveActivity: Equatable, Sendable {
         case let .toolFinished(_, callID, isError):
             guard let index = self.steps.firstIndex(where: { $0.id == callID }) else { return }
             self.steps[index].state = isError ? .failed : .done
+        case let .thinking(text):
+            self.reasoning = text
+        case let .commentary(text):
+            guard self.commentary.last != text else { return }
+            self.commentary.append(text)
         }
     }
 }

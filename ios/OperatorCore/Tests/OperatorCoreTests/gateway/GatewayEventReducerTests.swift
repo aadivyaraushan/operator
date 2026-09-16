@@ -147,6 +147,22 @@ final class GatewayEventReducerTests: XCTestCase {
         XCTAssertEqual(reducer.apply(foreign), [])
     }
 
+    func testThinkingAccumulatesDeltasAndCommentaryIsShownOncePerItem() throws {
+        var reducer = GatewayEventReducer(sessionKey: "agent:main:main")
+        let d1 = try JSONDecoder().decode(GatewayEventFrame<GatewayAgentEvent>.self, from: Data(#"{"type":"event","event":"agent","payload":{"runId":"run-1","sessionKey":"agent:main:main","stream":"thinking","data":{"delta":"Need the "}}}"#.utf8)).payload
+        XCTAssertEqual(reducer.apply(d1), [.working(runID: "run-1"), .activity(runID: "run-1", .thinking(text: "Need the "))])
+        XCTAssertEqual(reducer.apply(.init(runID: "run-1", stream: "thinking", delta: "calendar first.")), [.activity(runID: "run-1", .thinking(text: "Need the calendar first."))])
+        XCTAssertEqual(reducer.apply(.init(runID: "run-1", stream: "thinking", text: "Full snapshot replaces", delta: "x")), [.activity(runID: "run-1", .thinking(text: "Full snapshot replaces"))])
+        XCTAssertEqual(reducer.apply(.init(runID: "run-1", stream: "thinking")), [], "nothing to show yet")
+
+        let preamble = try JSONDecoder().decode(GatewayEventFrame<GatewayAgentEvent>.self, from: Data(#"{"type":"event","event":"agent","payload":{"runId":"run-1","sessionKey":"agent:main:main","stream":"item","data":{"kind":"preamble","itemId":"c-1","phase":"update","title":"Preamble","progressText":"I'll check your calendar first. "}}}"#.utf8)).payload
+        XCTAssertEqual(reducer.apply(preamble), [.activity(runID: "run-1", .commentary(text: "I'll check your calendar first."))])
+        XCTAssertEqual(reducer.apply(preamble), [], "the same item's text again is not repeated")
+        XCTAssertEqual(reducer.apply(.init(runID: "run-1", stream: "item", kind: "preamble", itemID: "c-1", progressText: "I'll check your calendar first, then Discord.")), [.activity(runID: "run-1", .commentary(text: "I'll check your calendar first, then Discord."))], "the item growing is shown")
+        XCTAssertEqual(reducer.apply(.init(runID: "run-1", stream: "item", kind: "tool", itemID: "t-1", progressText: "running")), [], "other item kinds are not commentary")
+        XCTAssertEqual(reducer.apply(.init(runID: "run-1", stream: "assistant", text: "Hi", delta: "Hi")), [], "assistant text comes through chat events")
+    }
+
     func testFinalWithoutReadableTextReportsUnverifiedFailure() {
         var emptyReducer = GatewayEventReducer(sessionKey: "main")
         XCTAssertEqual(
