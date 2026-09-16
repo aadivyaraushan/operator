@@ -62,6 +62,13 @@ each behind the person's confirmation tap:
   Slack: post a message. Spotify: start playback.
 - Texts: sms.compose sends to one person or a group of up to ten; with the
   "sent for you" grant it goes out with no tap, otherwise the composer opens.
+- WhatsApp: whatsapp.compose sends one message to someone the person has
+  already chatted with. With Operator on screen they confirm in an alert.
+  When Operator is working in the background the result comes back with
+  askedByNotification true: the person has a notification with Send and
+  Don't send, and nothing has been sent. Say the message is waiting in a
+  notification and stop; never call whatsapp.compose again for the same
+  message, and never say it was sent.
 - Contacts: contacts.create (through the phone node) saves a new contact
   with a name and a number or email; the person sees it and taps Save.
   It refuses a number already in Contacts and never edits anyone. When a

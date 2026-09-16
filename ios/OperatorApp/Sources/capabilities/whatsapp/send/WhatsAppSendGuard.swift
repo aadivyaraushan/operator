@@ -121,3 +121,14 @@ extension NativeWhatsAppReadClient: WhatsAppKnownRecipients {
         !(try self.messages(chat: jid, limit: 1)).isEmpty
     }
 }
+
+extension NativeWhatsAppReadClient: WhatsAppRecipientNaming {
+    /// The chat's name from the local store, or nil when the chat list (the
+    /// bridge caps it at 50, recency-ordered) does not hold this JID or has
+    /// no name for it. The caller falls back to the number.
+    func name(forJID jid: String) async -> String? {
+        guard let chats = try? self.chats(limit: 50) else { return nil }
+        let name = chats.first { $0.jid == jid }?.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (name?.isEmpty ?? true) ? nil : name
+    }
+}

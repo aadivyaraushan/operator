@@ -134,7 +134,7 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
             note = "Runs one explicit foreground sync; it does not start pairing."
         case "whatsapp.compose":
             parameters = schema(required: ["recipientJID", "body"], optional: [])
-            note = "Shows an immutable native preview and sends once only after owner confirmation."
+            note = "Shows an immutable native preview and sends once only after owner confirmation; in the background the result has askedByNotification true and nothing is sent until the owner taps Send on the notification."
         case "connections.read":
             parameters = schema(required: ["operation"], optional: ["query", "channel", "timeMin", "timeMax", "limit", "cursor"])
             note = "Reads from a connected account; choose operation from accountOperations.read."
