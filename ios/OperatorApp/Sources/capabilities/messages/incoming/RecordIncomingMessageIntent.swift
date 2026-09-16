@@ -16,11 +16,14 @@ struct RecordIncomingMessageIntent: AppIntent {
     /// iOS 18): from there it is Message, Run Immediately, Next, and the
     /// shortcut below. Apple gives no way to create the automation itself.
     static let createAutomationURL = URL(string: "shortcuts://create-automation")!
-    /// The shortcut that carries the field wiring, shared from the Shortcuts
-    /// app as an iCloud link like OperatorSendMessage's. Nil until the owner
-    /// has built and shared it once; the Permissions page then offers it.
+    /// The shortcut that carries the field wiring (Message from the input,
+    /// Sender from the input's Sender), shared from the Shortcuts app as an
+    /// iCloud link like OperatorSendMessage's; the signed file the link serves
+    /// is checked in under Resources/shortcuts. Shared from the owner's
+    /// automation on 2026-09-16, so Shortcuts shows it under the automation's
+    /// own name, "Automation 6A0C5F28…", until it is re-shared renamed.
     static let shortcutName = "OperatorRecordMessage"
-    static let installURL: URL? = nil
+    static let installURL: URL? = URL(string: "https://www.icloud.com/shortcuts/786adfe7e3d440ef93f1b9652dcf4bcc")
     static var parameterSummary: some ParameterSummary {
         Summary("Record \(\.$text) from \(\.$sender)")
     }

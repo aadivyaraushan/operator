@@ -62,6 +62,17 @@ final class ForegroundIncomingMessagesServiceTests: XCTestCase {
         XCTAssertEqual(code, "UNSUPPORTED_COMMAND")
     }
 
+    func testTheInstallLinkIsAnICloudShortcutAndTheSharedFileIsCheckedIn() throws {
+        let url = try XCTUnwrap(RecordIncomingMessageIntent.installURL)
+        XCTAssertEqual(url.host, "www.icloud.com", "only an iCloud share link installs; see OperatorSendMessage")
+        XCTAssertTrue(url.path.hasPrefix("/shortcuts/"))
+        XCTAssertEqual(RecordIncomingMessageIntent.createAutomationURL.scheme, "shortcuts")
+        let checkedIn = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Resources/shortcuts/\(RecordIncomingMessageIntent.shortcutName).shortcut")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: checkedIn.path), checkedIn.path)
+    }
+
     func testTheCatalogGatesTheFeedBehindTheMessagesReadGrant() {
         let messages = ConnectorCatalog.descriptor(.messages)
         XCTAssertEqual(messages.readCommands, ["messages.incoming"])

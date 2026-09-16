@@ -150,9 +150,9 @@ public enum ConnectorCatalog {
               systemPermission: nil, requiresAccount: false,
               setupInstructions: """
               Reading needs a Shortcuts automation, which iOS lets only you create (an app cannot hand itself your inbox; Shortcuts can hand it each new text). \
-              Tap Create automation, then: Message > leave Sender empty, type one space into Message Contains (Shortcuts insists on a filter; a space matches \
-              any text of two or more words) > Run Immediately > Next > choose OperatorRecordMessage (installed with Install shortcut). Without that \
-              shortcut: New Blank Automation > add "Record incoming message"; Message fills itself; set Sender to Shortcut Input > Sender. \
+              First tap Install shortcut, then Add Shortcut. Then tap Create automation: Message > leave Sender empty, type one space into Message Contains \
+              (Shortcuts insists on a filter; a space matches any text of two or more words) > Run Immediately > Next > choose the shortcut you just added \
+              (it is listed as "Automation 6A0C5F28…"). Without it: New Blank Automation > add "Record incoming message"; Message fills itself; set Sender to Shortcut Input > Sender. \
               For one-word texts too, add the same automation for e, a, o, i and u; Operator files a text once however many fire. \
               From then on every text you receive is filed on this iPhone for Operator; nothing leaves the phone.
               """),
