@@ -1709,3 +1709,26 @@ The two Trail Mix 403s: the owner had left that server with the second
 account, so they are correct, not a fault. Twice today a message sat in the outbox until
 a relaunch; the runtime status file said ready both times, so it is the
 chat connection, not the runtime. No log of the stuck period was captured.
+
+## 2026-09-16, 10:20: a reply finished in the background, first time
+
+Continued processing (planning/continued-processing-plan.md), on the
+phone now on iOS 27.0, built with Xcode 26.6, which installs to it fine.
+Four attempts, each a different failure, each read from the phone:
+
+| Attempt | What happened | Fix |
+| --- | --- | --- |
+| 1 (01:22) | App crashed on send: `No launch handler registered for task with identifier app.operator.ios.reply.<uuid>`. The wildcard is only for Info.plist; the handler must be registered for the exact identifier, and the failure is an uncaught ObjC exception | 904cbab: register per identifier before submitting |
+| 2 (01:30) | Task accepted and started; app died 0.2 ms later, SIGTRAP in `dispatch_assert_queue` inside the launch handler: the closure had inherited main-actor isolation and the scheduler calls it on its own queue | d2452ce: non-isolated handler that hops to the main actor |
+| 3 (10:02) | No new message was sent; the queued one from the night before was re-sent on foreground and re-sends had no continuation | 92fcbad: begin the continuation on every delivery |
+| 4 (10:1x) | Survived leaving the app; the model reached WhatsApp, which refused with APP_NOT_ACTIVE, Operator's own on-screen-only rule | 317cf65: screen-free readers accept active-or-continuing |
+
+Fifth attempt, 10:19-10:20: a fresh message, the app left at once.
+`first-text` at 39.9 s, `terminal outcome=reply` at 42.8 s,
+`[reply-continuation] finished success=true`, reply persisted,
+`[reply-notifier] posted characters=240` at 10:20:39, scene active at
+10:20:40 (opened from the notification). No node disconnect, no refusal.
+
+Still to see live: a task the system expires, and a reply longer than the
+notification's 240 characters being read in full in the app (it is; the
+store has it).
