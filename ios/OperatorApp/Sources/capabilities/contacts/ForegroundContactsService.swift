@@ -83,14 +83,19 @@ final class ForegroundContactsService: GatewayNodeCommandHandler {
 
     private let directory: any ContactDirectory
     private let isAppActive: @MainActor @Sendable () -> Bool
+    /// Whether the permission prompt could be shown right now. A lookup can
+    /// run while a reply is kept alive in the background; a prompt cannot.
+    private let canPrompt: @MainActor @Sendable () -> Bool
     private let logger = Logger(subsystem: "app.operator.ios", category: "foreground-contacts")
 
     init(
         directory: any ContactDirectory,
-        isAppActive: @escaping @MainActor @Sendable () -> Bool)
+        isAppActive: @escaping @MainActor @Sendable () -> Bool,
+        canPrompt: (@MainActor @Sendable () -> Bool)? = nil)
     {
         self.directory = directory
         self.isAppActive = isAppActive
+        self.canPrompt = canPrompt ?? isAppActive
     }
 
     func handleNodeCommand(
@@ -118,6 +123,10 @@ final class ForegroundContactsService: GatewayNodeCommandHandler {
             return .failure(code: "PERMISSION_DENIED", message: "Contacts permission was denied")
         }
         if self.directory.access == .notDetermined {
+            guard self.canPrompt() else {
+                self.logger.info("[contacts] refused branch=cannot_prompt")
+                return .failure(code: "APP_NOT_ACTIVE", message: "Open Operator to allow Contacts access")
+            }
             guard let granted = await GatewayDeadline.run(
                 milliseconds: Int(deadline.timeIntervalSinceNow * 1_000),
                 { [directory] in await directory.requestAccess() })

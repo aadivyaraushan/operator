@@ -122,7 +122,7 @@ final class ForegroundCalendarService: GatewayNodeCommandHandler {
 }
 
 @MainActor
-private final class EventKitCalendarStore: CalendarEventStore {
+final class EventKitCalendarStore: CalendarEventStore {
     private let store = EKEventStore()
 
     var access: CalendarAccess {

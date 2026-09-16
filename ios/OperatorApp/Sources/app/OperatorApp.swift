@@ -85,6 +85,13 @@ struct OperatorApp: App {
             appVersion: version,
             platform: platform)
         let continuation = ReplyContinuation(scheduler: SystemContinuedProcessingScheduler())
+        // Readers that put nothing on screen may run while a reply is being
+        // kept alive in the background. Anything that presents an alert, a
+        // permission prompt, a composer or another app keeps the strict check.
+        let isActiveOrContinuing: @MainActor @Sendable () -> Bool = {
+            UIApplication.shared.applicationState == .active || continuation.isActive
+        }
+        let isOnScreen: @MainActor @Sendable () -> Bool = { UIApplication.shared.applicationState == .active }
         let chat = ChatSessionModel(
             store: persistence,
             gateway: gateway,
@@ -100,7 +107,8 @@ struct OperatorApp: App {
         let accountReader = ForegroundAccountReadService(
             reader: DirectAccountReader(bearer: { provider in
                 try await accountSetup.accessToken(provider)
-            }))
+            }),
+            isAppActive: isActiveOrContinuing)
         let accountWrite = ForegroundAccountWriteConfirmationService(
             writer: DirectAccountWriter(bearer: { provider in
                 try await accountSetup.accessToken(provider)
@@ -207,11 +215,11 @@ struct OperatorApp: App {
             platform: platform,
             handler: PermissionGuardedNodeCommandHandler(center: permissions, next: ForegroundNodeCommandRouter(
                 location: ForegroundLocationService(),
-                calendar: ForegroundCalendarService(),
-                reminders: ForegroundRemindersService(),
-                contacts: ForegroundContactsService(directory: contactDirectory, isAppActive: { UIApplication.shared.applicationState == .active }),
-                photos: ForegroundPhotosService(),
-                music: ForegroundMusicService(),
+                calendar: ForegroundCalendarService(store: EventKitCalendarStore(), isAppActive: isActiveOrContinuing),
+                reminders: ForegroundRemindersService(store: EventKitReminderStore(), isAppActive: isActiveOrContinuing),
+                contacts: ForegroundContactsService(directory: contactDirectory, isAppActive: isActiveOrContinuing, canPrompt: isOnScreen),
+                photos: ForegroundPhotosService(library: SystemPhotoLibrary(), isAppActive: isActiveOrContinuing),
+                music: ForegroundMusicService(library: SystemMusicLibrary(), isAppActive: isActiveOrContinuing),
                 weather: ForegroundWeatherService(recordCard: { card in
                     try await chat.recordWeatherCard(card)
                 }),
@@ -228,7 +236,7 @@ struct OperatorApp: App {
                 messageSend: messageSend,
                 maps: ForegroundMapsService(),
                 handoff: ForegroundAppHandoffService(),
-                whatsapp: ForegroundWhatsAppReadService(client: whatsappRead),
+                whatsapp: ForegroundWhatsAppReadService(client: whatsappRead, isAppActive: isActiveOrContinuing),
                 whatsappCompose: ForegroundWhatsAppComposeService(
                     presenter: SystemWhatsAppComposePresenter(),
                     sender: NativeWhatsAppSendClient(supportDirectory: supportDirectory),
