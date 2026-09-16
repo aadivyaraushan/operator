@@ -519,13 +519,13 @@ final class ChatSessionModelTests: XCTestCase {
         await gateway.waitForStage(1)
         await gateway.proceed()
         await gateway.waitForStage(2)
-        XCTAssertEqual(task.subtitles.last, "Checking Discord announcements")
+        XCTAssertEqual(scheduler.submitted.count, 1)
         inForeground = false // the person leaves while the tools run
         await gateway.proceed()
         await gateway.waitForStage(3)
         await gateway.proceed()
         await gateway.waitForStage(4)
-        XCTAssertEqual(task.subtitles.last, "Writing the reply")
+        XCTAssertEqual(task.subtitles, [], "no title updates after submission")
         XCTAssertEqual(task.progress.last, 80)
         await gateway.proceed()
         await waitUntil { !continuation.isActive }

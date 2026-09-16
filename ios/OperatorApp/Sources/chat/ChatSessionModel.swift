@@ -279,7 +279,7 @@ final class ChatSessionModel: ObservableObject {
                 // Every delivery, not only a fresh send: a message re-sent
                 // from the queue after a relaunch is the one most likely to
                 // be left running while the person goes elsewhere.
-                if self.continuation?.begin(messageID: entry.id, subtitle: "Thinking…") == true {
+                if self.continuation?.begin(messageID: entry.id, subtitle: "Working on your reply") == true {
                     self.onContinuationBegan?()
                 }
                 try await self.gateway.deliver(entry) { [weak self] update in

@@ -77,15 +77,18 @@ final class ReplyContinuation: ObservableObject {
         return true
     }
 
-    /// Progress in 0...100 and the line under the title; safe to call
-    /// before the system has handed over the task.
+    /// Progress in 0...100; safe to call before the system has handed over
+    /// the task. Only the progress moves. The title and subtitle are set
+    /// once at submission and never updated: the system expands its Live
+    /// Activity to the full card on every title change, and the owner wants
+    /// the small ring in the Dynamic Island and a notification at the end,
+    /// nothing in between. The subtitle argument is kept for the log only.
     func report(progress: Int, subtitle: String) {
         guard self.isActive else { return }
         let clamped = max(self.lastProgress, min(progress, Self.progressTotal))
         self.lastProgress = clamped
         self.lastSubtitle = subtitle
         self.task?.setProgress(completed: clamped, total: Self.progressTotal)
-        self.task?.updateTitle(Self.title, subtitle: subtitle)
     }
 
     func finish(success: Bool) {
@@ -109,7 +112,6 @@ final class ReplyContinuation: ObservableObject {
             Task { @MainActor in self?.expire(identifier) }
         }
         task.setProgress(completed: self.lastProgress, total: Self.progressTotal)
-        task.updateTitle(Self.title, subtitle: self.lastSubtitle)
         self.logger.info("[reply-continuation] running")
     }
 

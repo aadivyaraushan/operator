@@ -46,11 +46,10 @@ final class ReplyContinuationTests: XCTestCase {
         continuation.report(progress: 10, subtitle: "Thinking…")
         let task = scheduler.start(scheduler.submitted[0].identifier)
         XCTAssertEqual(task.progress, [10], "the system started the task late; it gets what was reported so far")
-        XCTAssertEqual(task.subtitles, ["Thinking…"])
         continuation.report(progress: 40, subtitle: "Checking Discord announcements")
         continuation.report(progress: 30, subtitle: "Checking your calendar")
         XCTAssertEqual(task.progress, [10, 40, 40], "never backwards")
-        XCTAssertEqual(task.subtitles.last, "Checking your calendar")
+        XCTAssertEqual(task.subtitles, [], "the words are set once at submission; every title change expands the system's card")
 
         continuation.finish(success: true)
         XCTAssertEqual(task.progress.last, 100)
