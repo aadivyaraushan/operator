@@ -45,14 +45,23 @@ final class ReplyContinuation: ObservableObject {
     var onExpired: (@MainActor () -> Void)?
 
     private let scheduler: any ContinuedProcessingScheduling
+    private let heartbeatInterval: Duration
     private let logger = Logger(subsystem: "app.operator.ios", category: "reply-continuation")
     private var activeIdentifier: String?
     private var task: (any ContinuedProcessingTask)?
+    private var heartbeat: Task<Void, Never>?
     private(set) var lastProgress = 0
     private(set) var lastSubtitle = ""
+    /// The last value handed to the system; the heartbeat only ever raises it.
+    private(set) var deliveredProgress = 0
 
-    init(scheduler: any ContinuedProcessingScheduling) {
+    /// `heartbeatInterval`: how often the system task is told progress. It
+    /// must hear something regularly or it expires the task (the phone log
+    /// of 2026-09-16 10:37: "Task has not reported progress within expected
+    /// cadence", then expiry, 32 seconds after a run with no reports).
+    init(scheduler: any ContinuedProcessingScheduling, heartbeatInterval: Duration = .seconds(5)) {
         self.scheduler = scheduler
+        self.heartbeatInterval = heartbeatInterval
     }
 
     /// Submits a task for this message. Returns false when the system
@@ -77,12 +86,12 @@ final class ReplyContinuation: ObservableObject {
         return true
     }
 
-    /// Records where the run is; nothing reaches the system's Live Activity
-    /// mid-run. Title updates expanded the full card on every step, and on
-    /// the phone progress updates did too, so the task is told nothing
-    /// between submission and completion: the owner wants the small pill in
-    /// the Dynamic Island and a notification at the end, nothing in between.
-    /// Progress is still tracked here for the log and for tests.
+    /// Records where the run is. Nothing reaches the system task here: the
+    /// heartbeat delivers progress on its own cadence, in small monotone
+    /// steps, so the system's card is not poked on every tool call and yet
+    /// hears from the task often enough not to expire it. The title and
+    /// subtitle are set at submission and never updated; a title change
+    /// expands the card every time.
     func report(progress: Int, subtitle: String) {
         guard self.isActive else { return }
         self.lastProgress = max(self.lastProgress, min(progress, Self.progressTotal))
@@ -91,9 +100,21 @@ final class ReplyContinuation: ObservableObject {
 
     func finish(success: Bool) {
         guard self.isActive else { return }
+        if success { self.task?.setProgress(completed: Self.progressTotal, total: Self.progressTotal) }
         self.task?.setTaskCompleted(success: success)
         self.logger.info("[reply-continuation] finished success=\(success)")
         self.clear()
+    }
+
+    /// One tick: the greater of what the run reported and one step past the
+    /// last delivery, never above 95 until the finish. A change every tick
+    /// is what keeps the scheduler's progress tracker healthy.
+    private func tick() {
+        guard let task else { return }
+        let next = min(max(self.lastProgress, self.deliveredProgress + 1), Self.progressTotal - 5)
+        guard next > self.deliveredProgress else { return }
+        self.deliveredProgress = next
+        task.setProgress(completed: next, total: Self.progressTotal)
     }
 
     private func attach(_ task: any ContinuedProcessingTask) {
@@ -108,6 +129,14 @@ final class ReplyContinuation: ObservableObject {
         task.expirationHandler = { [weak self] in
             Task { @MainActor in self?.expire(identifier) }
         }
+        self.tick()
+        self.heartbeat = Task { @MainActor [weak self, interval = self.heartbeatInterval] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled else { return }
+                self?.tick()
+            }
+        }
         self.logger.info("[reply-continuation] running")
     }
 
@@ -120,8 +149,11 @@ final class ReplyContinuation: ObservableObject {
     }
 
     private func clear() {
+        self.heartbeat?.cancel()
+        self.heartbeat = nil
         self.task = nil
         self.activeIdentifier = nil
         self.isActive = false
+        self.deliveredProgress = 0
     }
 }

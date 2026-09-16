@@ -497,7 +497,7 @@ final class ChatSessionModelTests: XCTestCase {
             func setTaskCompleted(success: Bool) { self.completed.append(success) }
         }
         let scheduler = Scheduler()
-        let continuation = ReplyContinuation(scheduler: scheduler)
+        let continuation = ReplyContinuation(scheduler: scheduler, heartbeatInterval: .seconds(60))
         let gateway = ActivityGateway()
         let model = ChatSessionModel(store: RecordingPersistence(), gateway: gateway, continuation: continuation)
         var inForeground = true
@@ -526,11 +526,12 @@ final class ChatSessionModelTests: XCTestCase {
         await gateway.proceed()
         await gateway.waitForStage(4)
         XCTAssertEqual(task.subtitles, [], "no title updates after submission")
-        XCTAssertEqual(task.progress, [], "no progress updates either")
-        XCTAssertEqual(continuation.lastProgress, 80, "tracked for the log")
+        XCTAssertEqual(task.progress, [1], "the system started the task before anything was reported, so the first tick delivered one step; the heartbeat is a minute away in this test")
+        XCTAssertEqual(continuation.lastProgress, 80, "tracked for the heartbeat")
         await gateway.proceed()
         await waitUntil { !continuation.isActive }
         XCTAssertEqual(task.completed, [true])
+        XCTAssertEqual(task.progress.last, 100)
         XCTAssertEqual(notified, ["Here is the digest"], "the reply reaches the person who left")
         XCTAssertEqual(model.messages.last?.text, "Here is the digest")
     }

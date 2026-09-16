@@ -34,27 +34,38 @@ final class ReplyContinuationTests: XCTestCase {
         func setTaskCompleted(success: Bool) { self.completed.append(success) }
     }
 
-    func testOneTaskPerReplyFromSendToTheReplyWithProgressThatNeverGoesBackwards() {
+    func testOneTaskPerReplyWithProgressDeliveredOnAHeartbeatNotOnEveryStep() async throws {
         let scheduler = Scheduler()
-        let continuation = ReplyContinuation(scheduler: scheduler)
+        let continuation = ReplyContinuation(scheduler: scheduler, heartbeatInterval: .milliseconds(40))
         let id = UUID()
-        XCTAssertTrue(continuation.begin(messageID: id, subtitle: "Thinking…"))
+        XCTAssertTrue(continuation.begin(messageID: id, subtitle: "Working on your reply"))
         XCTAssertTrue(continuation.isActive)
         XCTAssertEqual(scheduler.submitted.map(\.identifier), ["app.operator.ios.reply." + id.uuidString.lowercased()])
         XCTAssertFalse(continuation.begin(messageID: UUID(), subtitle: "again"), "one at a time")
 
         continuation.report(progress: 10, subtitle: "Thinking…")
         let task = scheduler.start(scheduler.submitted[0].identifier)
+        XCTAssertEqual(task.progress, [10], "the system started late; the first tick delivers what was reported")
         continuation.report(progress: 40, subtitle: "Checking Discord announcements")
         continuation.report(progress: 30, subtitle: "Checking your calendar")
+        XCTAssertEqual(task.progress, [10], "steps are not delivered as they happen")
         XCTAssertEqual(continuation.lastProgress, 40, "never backwards")
         XCTAssertEqual(continuation.lastSubtitle, "Checking your calendar")
-        XCTAssertEqual(task.progress, [], "the system's activity hears nothing mid-run: every update expanded its card on the phone")
-        XCTAssertEqual(task.subtitles, [])
+        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+        while task.progress.count < 3, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertGreaterThanOrEqual(task.progress.count, 3, "the heartbeat keeps delivering")
+        XCTAssertEqual(task.progress[1], 40, "a tick delivers the run's progress when it has moved")
+        XCTAssertEqual(task.progress[2], 41, "and one step past the last delivery when it has not, so the scheduler sees change")
+        XCTAssertTrue(task.progress.allSatisfy { $0 <= 95 }, "never past 95 before the finish")
+        XCTAssertEqual(task.subtitles, [], "the words are never updated after submission")
 
         continuation.finish(success: true)
+        XCTAssertEqual(task.progress.last, 100)
         XCTAssertEqual(task.completed, [true])
         XCTAssertFalse(continuation.isActive)
+        let delivered = task.progress.count
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(task.progress.count, delivered, "the heartbeat stops with the finish")
         continuation.report(progress: 90, subtitle: "late")
         XCTAssertEqual(continuation.lastProgress, 40, "nothing after the finish")
     }
@@ -71,7 +82,7 @@ final class ReplyContinuationTests: XCTestCase {
 
     func testExpirationEndsTheTaskAndTellsTheAppAndAStrayTaskIsEndedAtOnce() {
         let scheduler = Scheduler()
-        let continuation = ReplyContinuation(scheduler: scheduler)
+        let continuation = ReplyContinuation(scheduler: scheduler, heartbeatInterval: .seconds(60))
         var expired = 0
         continuation.onExpired = { expired += 1 }
         let id = UUID()
