@@ -200,9 +200,6 @@ final class ChatSessionModel: ObservableObject {
         self.liveActivity = self.isGatewayReady ? ChatLiveActivity() : nil
         self.lastError = nil
         self.connectionState = self.isGatewayReady ? .working : .offline
-        if self.isGatewayReady, self.continuation?.begin(messageID: id, subtitle: "Thinking…") == true {
-            self.onContinuationBegan?()
-        }
         self.logger.info("[chat] staged input id=\(id.uuidString, privacy: .public) characters=\(trimmed.count)")
 
         Task { @MainActor [weak self] in
@@ -279,6 +276,12 @@ final class ChatSessionModel: ObservableObject {
             do {
                 self.apply(try await self.store.markSending(id: entry.id))
                 self.connectionState = .working
+                // Every delivery, not only a fresh send: a message re-sent
+                // from the queue after a relaunch is the one most likely to
+                // be left running while the person goes elsewhere.
+                if self.continuation?.begin(messageID: entry.id, subtitle: "Thinking…") == true {
+                    self.onContinuationBegan?()
+                }
                 try await self.gateway.deliver(entry) { [weak self] update in
                     await self?.handle(update, entryID: entry.id)
                 }

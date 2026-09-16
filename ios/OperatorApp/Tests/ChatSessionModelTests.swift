@@ -510,7 +510,8 @@ final class ChatSessionModelTests: XCTestCase {
 
         model.draft = "what did I miss on discord?"
         model.send()
-        XCTAssertTrue(continuation.isActive, "the task is submitted with the message")
+        await waitUntil { continuation.isActive }
+        XCTAssertTrue(continuation.isActive, "the task is submitted as the delivery starts")
         XCTAssertEqual(scheduler.submitted.count, 1)
         let task = Task_(identifier: scheduler.submitted[0])
         scheduler.handler?(task)
