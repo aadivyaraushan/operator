@@ -32,7 +32,7 @@ test('bootstrap passes preserved state to the gateway on each app launch', t => 
     assert.equal(result.status, 'pass');
     assert.equal(result.run, run);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(state, 'observed.json'))), {
-      ...JSON.parse(saved), agents: {defaults: {fastModeDefault: 'auto'}},
+      ...JSON.parse(saved), agents: {defaults: {fastModeDefault: 'auto', contextPruning: {mode: 'cache-ttl', ttl: '5m'}}},
       tools: {web: {search: {openaiCodex: {enabled: true, mode: 'live'}}}}
     });
   }

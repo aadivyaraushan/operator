@@ -73,6 +73,26 @@ function addAutomaticFastModeDefault(configPath) {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), {mode: 0o600});
 }
 
+// Trim old tool results before each model call. OpenClaw leaves this off
+// for non-Anthropic providers, and Operator's context is mostly tool
+// results (a Discord pass, a WhatsApp sync), so without it every later
+// question carries all of them until compaction. In-memory only; the
+// transcript on disk is untouched. An explicit setting, including "off",
+// is never replaced.
+function addContextPruningDefault(configPath) {
+  let config;
+  try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')); }
+  catch (error) { if (error instanceof SyntaxError) return; throw error; }
+  const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (!isObject(config) || (config.agents !== undefined && !isObject(config.agents))) return;
+  if (config.agents?.defaults !== undefined && !isObject(config.agents.defaults)) return;
+  if (config.agents?.defaults?.contextPruning !== undefined) return;
+  config.agents ??= {};
+  config.agents.defaults ??= {};
+  config.agents.defaults.contextPruning = {mode: 'cache-ttl', ttl: '5m'};
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), {mode: 0o600});
+}
+
 function addNativeSearchDefaults(configPath) {
   let config;
   try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')); }
@@ -106,7 +126,7 @@ export function prepareState(state) {
     gateway: {mode: 'local', bind: 'loopback', auth: {mode: 'token', token: randomBytes(32).toString('hex')}, controlUi: {enabled: false}},
     // OpenClaw resolves the default workspace from OPENCLAW_STATE_DIR/workspace.
     // Keeping it out of the file survives an iOS app-container relocation.
-    agents: {defaults: {fastModeDefault: 'auto'}},
+    agents: {defaults: {fastModeDefault: 'auto', contextPruning: {mode: 'cache-ttl', ttl: '5m'}}},
     tools: {web: {search: {openaiCodex: {enabled: true, mode: 'live'}}}}
   };
   try {
@@ -122,6 +142,7 @@ export function prepareState(state) {
     // A saved default keeps ordinary chat free of restart-unsafe message overrides.
     // Preserve explicit preferences and leave non-JSON configuration untouched.
     addAutomaticFastModeDefault(configPath);
+    addContextPruningDefault(configPath);
     addNativeSearchDefaults(configPath);
     fs.mkdirSync(workspace, {recursive: true, mode: 0o700});
     return {configPath, created: false, guidanceRefreshed: refreshWorkspaceGuidance(workspace)};

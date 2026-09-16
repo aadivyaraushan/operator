@@ -23,6 +23,7 @@ test('first launch creates private loopback configuration and workspace', t => {
   assert.match(config.gateway.auth.token, /^[a-f0-9]{64}$/);
   assert.equal(config.agents.defaults.workspace, undefined);
   assert.equal(config.agents.defaults.fastModeDefault, 'auto');
+  assert.deepEqual(config.agents.defaults.contextPruning, {mode: 'cache-ttl', ttl: '5m'});
   assert.deepEqual(config.tools.web.search.openaiCodex, {enabled: true, mode: 'live'});
   assert.ok(fs.statSync(path.join(state, 'workspace')).isDirectory());
   assert.equal(fs.statSync(result.configPath).mode & 0o777, 0o600);
@@ -118,12 +119,20 @@ test('existing settings gain automatic fast mode without replacing credentials o
   const saved = {gateway: {auth: {token: 'synthetic-secret'}}, agents: {defaults: {model: {primary: 'test-model'}}}, custom: ['keep']};
   fs.writeFileSync(configPath, JSON.stringify(saved));
   prepareState(state);
-  assert.deepEqual(JSON.parse(fs.readFileSync(configPath)), {...saved, agents: {defaults: {...saved.agents.defaults, fastModeDefault: 'auto'}}, tools: {web: {search: {openaiCodex: {enabled: true, mode: 'live'}}}}});
+  const pruning = {mode: 'cache-ttl', ttl: '5m'};
+  assert.deepEqual(JSON.parse(fs.readFileSync(configPath)), {...saved, agents: {defaults: {...saved.agents.defaults, fastModeDefault: 'auto', contextPruning: pruning}}, tools: {web: {search: {openaiCodex: {enabled: true, mode: 'live'}}}}});
   const stable = fs.readFileSync(configPath, 'utf8');
   prepareState(state);
   assert.equal(fs.readFileSync(configPath, 'utf8'), stable);
   for (const preference of [true, false, 'auto']) {
-    const explicit = JSON.stringify({...saved, agents: {defaults: {fastModeDefault: preference}}, tools: {web: {search: {openaiCodex: {enabled: true, mode: 'live'}}}}});
+    const explicit = JSON.stringify({...saved, agents: {defaults: {fastModeDefault: preference, contextPruning: pruning}}, tools: {web: {search: {openaiCodex: {enabled: true, mode: 'live'}}}}});
+    fs.writeFileSync(configPath, explicit);
+    prepareState(state);
+    assert.equal(fs.readFileSync(configPath, 'utf8'), explicit);
+  }
+  // An owner who turned pruning off, or tuned it, keeps that.
+  for (const chosen of [{mode: 'off'}, {mode: 'cache-ttl', ttl: '1h'}]) {
+    const explicit = JSON.stringify({...saved, agents: {defaults: {fastModeDefault: 'auto', contextPruning: chosen}}, tools: {web: {search: {openaiCodex: {enabled: true, mode: 'live'}}}}});
     fs.writeFileSync(configPath, explicit);
     prepareState(state);
     assert.equal(fs.readFileSync(configPath, 'utf8'), explicit);
@@ -148,7 +157,7 @@ test('search defaults preserve explicit disables, providers, restrictions and un
     {openaiCodex: {enabled: true, mode: 'cached', allowedDomains: ['example.com']}},
     null, [], false
   ]) {
-    const saved = JSON.stringify({agents: {defaults: {fastModeDefault: 'auto'}}, tools: {web: {search}}, marker: 'keep'});
+    const saved = JSON.stringify({agents: {defaults: {fastModeDefault: 'auto', contextPruning: {mode: 'off'}}}, tools: {web: {search}}, marker: 'keep'});
     fs.writeFileSync(configPath, saved);
     prepareState(state);
     assert.equal(fs.readFileSync(configPath, 'utf8'), saved);
@@ -159,7 +168,7 @@ test('search migration fills only missing native options and keeps saved data', 
   const state = sandbox(t);
   fs.mkdirSync(state);
   const configPath = path.join(state, 'openclaw.json');
-  const saved = {agents: {defaults: {fastModeDefault: 'auto'}}, tools: {web: {fetch: {enabled: true}, search: {openaiCodex: {allowedDomains: ['example.com'], mode: 'cached'}}}}, marker: 'keep'};
+  const saved = {agents: {defaults: {fastModeDefault: 'auto', contextPruning: {mode: 'off'}}}, tools: {web: {fetch: {enabled: true}, search: {openaiCodex: {allowedDomains: ['example.com'], mode: 'cached'}}}}, marker: 'keep'};
   fs.writeFileSync(configPath, JSON.stringify(saved));
   prepareState(state);
   const expected = structuredClone(saved);
