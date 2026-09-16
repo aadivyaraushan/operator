@@ -183,7 +183,9 @@ final class ChatSessionModel: ObservableObject {
             idempotencyKey: id.uuidString.lowercased(),
             state: .waiting))
         self.streamingReply = nil
-        self.liveActivity = nil
+        // Something on screen at once: the dots, until the runtime's own
+        // events replace them. Not when the message can only wait.
+        self.liveActivity = self.isGatewayReady ? ChatLiveActivity() : nil
         self.lastError = nil
         self.connectionState = self.isGatewayReady ? .working : .offline
         self.logger.info("[chat] staged input id=\(id.uuidString, privacy: .public) characters=\(trimmed.count)")

@@ -402,10 +402,9 @@ private struct WeatherResultCard: View {
     }
 }
 
-/// The reply in progress: each tool the agent has used so far with its
-/// state, the line for what is happening between tools, and the text as it
-/// streams. Present from acceptance to reply, so the person always sees
-/// what Operator is doing rather than a bubble that says nothing.
+/// The reply in progress, from the moment of sending: three dots while the
+/// model thinks, each tool call as it runs (the exact tool and arguments,
+/// the way a terminal agent shows them), then the text as it streams.
 private struct ActivityBubble: View {
     let activity: ChatLiveActivity
     let text: String?
@@ -413,30 +412,7 @@ private struct ActivityBubble: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(self.activity.steps) { step in
-                HStack(spacing: 6) {
-                    switch step.state {
-                    case .running:
-                        ProgressView().controlSize(.mini)
-                    case .done:
-                        Image(systemName: "checkmark").foregroundStyle(.secondary)
-                    case .failed:
-                        Image(systemName: "exclamationmark.circle").foregroundStyle(.orange)
-                    }
-                    Text(step.title)
-                }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(step.state == .failed ? "\(step.title), failed" : step.title)
-            }
-            if let status = self.activity.statusLine, self.text == nil {
-                HStack(spacing: 6) {
-                    ProgressView().controlSize(.mini)
-                    Text(status)
-                }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("Operator is thinking")
+                ActivityStepRow(step: step)
             }
             if let text {
                 HStack(alignment: .bottom, spacing: 8) {
@@ -451,10 +427,75 @@ private struct ActivityBubble: View {
                         .controlSize(.small)
                         .accessibilityLabel("Operator is writing")
                 }
+            } else {
+                TypingDots()
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(
+                        Color(uiColor: .secondarySystemBackground),
+                        in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .accessibilityLabel(self.activity.steps.contains { $0.state == .running } ? "Operator is running a tool" : "Operator is thinking")
             }
         }
-        .padding(.horizontal, self.text == nil ? 4 : 0)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// `● whatsapp.compose(recipient: "…", body: "…")`, monospaced, with the
+/// state in the marker: a spinner while it runs, a check when it is done, a
+/// warning when it failed.
+private struct ActivityStepRow: View {
+    let step: ChatActivityStep
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Group {
+                switch self.step.state {
+                case .running:
+                    ProgressView().controlSize(.mini)
+                case .done:
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                case .failed:
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                }
+            }
+            .frame(width: 14, height: 14)
+            (Text(self.step.name).fontWeight(.semibold) + Text(self.step.arguments.isEmpty ? "()" : "(\(self.step.arguments))"))
+                .font(.system(.footnote, design: .monospaced))
+                .foregroundStyle(self.step.state == .running ? .primary : .secondary)
+                .lineLimit(3)
+                .textSelection(.enabled)
+        }
+        .padding(.horizontal, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel({
+            switch self.step.state {
+            case .running: "Running \(self.step.title)"
+            case .done: "Finished \(self.step.title)"
+            case .failed: "Failed \(self.step.title)"
+            }
+        }())
+    }
+}
+
+/// Three dots that pulse in turn.
+private struct TypingDots: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(0 ..< 3, id: \.self) { index in
+                Circle()
+                    .fill(Color.secondary)
+                    .frame(width: 8, height: 8)
+                    .opacity(self.isAnimating ? 1 : 0.3)
+                    .animation(
+                        .easeInOut(duration: 0.5).repeatForever(autoreverses: true).delay(Double(index) * 0.18),
+                        value: self.isAnimating)
+            }
+        }
+        .onAppear { self.isAnimating = true }
+        .accessibilityHidden(true)
     }
 }
 

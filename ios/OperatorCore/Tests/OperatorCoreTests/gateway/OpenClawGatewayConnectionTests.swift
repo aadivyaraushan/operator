@@ -144,7 +144,7 @@ final class OpenClawGatewayConnectionTests: XCTestCase {
         XCTAssertEqual(ignoredForeign, .ignored(event: "agent"))
         XCTAssertEqual(activity, .conversation([
             .working(runID: "run-1"),
-            .activity(runID: "run-1", .toolStarted(tool: "discord_announcements", callID: "call-9", command: nil, operation: nil)),
+            .activity(runID: "run-1", .toolStarted(tool: "discord_announcements", callID: "call-9", arguments: ["limit": .number(25)])),
         ]), "a tool start for this session is the one agent event that reaches the app")
         XCTAssertEqual(conversation, .conversation([.reply(runID: "run-1", text: "Hello")]), "working was already announced by the tool start")
         let sent = await transport.sentMessages()

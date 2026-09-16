@@ -90,9 +90,9 @@ private struct MessageProjection: Decodable {
 }
 
 /// One `agent` event as the gateway broadcasts it to a client that connected
-/// with the `tool-events` capability. Only the fields the app shows are
-/// decoded; tool arguments stay on the runtime except the node command and
-/// operation names, which are what turn "nodes" into "Reading Gmail".
+/// with the `tool-events` capability. The tool's arguments come through as
+/// the runtime sends them (it redacts secrets before broadcasting); results
+/// do not, only whether the call failed.
 public struct GatewayAgentEvent: Decodable, Equatable, Sendable {
     public let runID: String
     public let sessionKey: String?
@@ -102,13 +102,12 @@ public struct GatewayAgentEvent: Decodable, Equatable, Sendable {
     public let toolName: String?
     public let toolCallID: String?
     public let isError: Bool
-    public let commandName: String?
-    public let operationName: String?
+    public let arguments: [String: JSONValue]
 
     public init(
         runID: String, sessionKey: String? = nil, sequence: Int? = nil, stream: String,
         phase: String? = nil, toolName: String? = nil, toolCallID: String? = nil, isError: Bool = false,
-        commandName: String? = nil, operationName: String? = nil)
+        arguments: [String: JSONValue] = [:])
     {
         self.runID = runID
         self.sessionKey = sessionKey
@@ -118,8 +117,7 @@ public struct GatewayAgentEvent: Decodable, Equatable, Sendable {
         self.toolName = toolName
         self.toolCallID = toolCallID
         self.isError = isError
-        self.commandName = commandName
-        self.operationName = operationName
+        self.arguments = arguments
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -134,14 +132,6 @@ public struct GatewayAgentEvent: Decodable, Equatable, Sendable {
         case phase, name, toolCallId, isError, args
     }
 
-    private enum ArgsKeys: String, CodingKey {
-        case command, params
-    }
-
-    private enum ParamsKeys: String, CodingKey {
-        case operation
-    }
-
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.runID = try container.decode(String.self, forKey: .runID)
@@ -149,31 +139,21 @@ public struct GatewayAgentEvent: Decodable, Equatable, Sendable {
         self.sequence = try container.decodeIfPresent(Int.self, forKey: .sequence)
         self.stream = try container.decode(String.self, forKey: .stream)
         guard let data = try? container.nestedContainer(keyedBy: DataKeys.self, forKey: .data) else {
-            self.phase = nil; self.toolName = nil; self.toolCallID = nil; self.isError = false
-            self.commandName = nil; self.operationName = nil
+            self.phase = nil; self.toolName = nil; self.toolCallID = nil; self.isError = false; self.arguments = [:]
             return
         }
         self.phase = try? data.decodeIfPresent(String.self, forKey: .phase)
         self.toolName = try? data.decodeIfPresent(String.self, forKey: .name)
         self.toolCallID = try? data.decodeIfPresent(String.self, forKey: .toolCallId)
         self.isError = (try? data.decodeIfPresent(Bool.self, forKey: .isError)) ?? false
-        if let args = try? data.nestedContainer(keyedBy: ArgsKeys.self, forKey: .args) {
-            self.commandName = try? args.decodeIfPresent(String.self, forKey: .command)
-            self.operationName = (try? args.nestedContainer(keyedBy: ParamsKeys.self, forKey: .params))
-                .flatMap { try? $0.decodeIfPresent(String.self, forKey: .operation) }
-        } else {
-            self.commandName = nil
-            self.operationName = nil
-        }
+        self.arguments = (try? data.decodeIfPresent(JSONValue.self, forKey: .args))?.objectValue ?? [:]
     }
 }
 
 /// What the agent is doing inside a run, as far as the app shows it: a tool
-/// starting and a tool finishing. `tool` is the agent-facing tool name;
-/// `command` and `operation` are set when the tool was the runtime's node
-/// bridge, so the app can name the actual capability instead of "nodes".
+/// starting, with its arguments, and a tool finishing.
 public enum GatewayRunActivity: Equatable, Sendable {
-    case toolStarted(tool: String, callID: String, command: String?, operation: String?)
+    case toolStarted(tool: String, callID: String, arguments: [String: JSONValue])
     case toolFinished(tool: String, callID: String, isError: Bool)
 
     /// Nil for every stream and phase the app does not show.
@@ -181,7 +161,7 @@ public enum GatewayRunActivity: Equatable, Sendable {
         guard event.stream == "tool", let tool = event.toolName, !tool.isEmpty else { return nil }
         let callID = event.toolCallID ?? tool
         switch event.phase {
-        case "start": self = .toolStarted(tool: tool, callID: callID, command: event.commandName, operation: event.operationName)
+        case "start": self = .toolStarted(tool: tool, callID: callID, arguments: event.arguments)
         case "result": self = .toolFinished(tool: tool, callID: callID, isError: event.isError)
         default: return nil
         }

@@ -1,40 +1,53 @@
 import Foundation
 import OperatorCore
 
-/// One thing the agent did while answering: a tool call, named for a person.
+/// One tool call the agent made while answering, shown the way a terminal
+/// agent shows it: the exact tool and its arguments, e.g.
+/// `whatsapp.compose(recipient: "+1 555…", body: "on my way")`.
 struct ChatActivityStep: Identifiable, Equatable, Sendable {
     enum State: Equatable, Sendable { case running, done, failed }
 
     /// The tool call id, so a result finds its start.
     let id: String
-    let label: ChatActivityLabel
+    /// The tool as the agent named it, unwrapped: the runtime's node bridge
+    /// is one tool ("nodes") carrying every phone command, so for it this is
+    /// the command (`whatsapp.compose`), not the bridge.
+    let name: String
+    /// `key: value, key: value`, bounded, or empty.
+    let arguments: String
     var state: State
 
-    var title: String { self.state == .running ? self.label.live : self.label.done }
+    /// `name(arguments)`.
+    var title: String { self.arguments.isEmpty ? "\(self.name)()" : "\(self.name)(\(self.arguments))" }
+
+    init(id: String, name: String, arguments: String, state: State) {
+        self.id = id
+        self.name = name
+        self.arguments = arguments
+        self.state = state
+    }
+
+    init(id: String, tool: String, arguments: [String: JSONValue], state: State) {
+        let call = ChatActivityFormatter.call(tool: tool, arguments: arguments)
+        self.init(id: id, name: call.name, arguments: call.arguments, state: state)
+    }
 }
 
-/// What the agent is doing right now for the message in flight. Shown from
-/// the moment the runtime accepts the message, so a long run is never a
-/// bubble that says "Sending" and nothing else.
+/// What the agent is doing right now for the message in flight. Present from
+/// the moment the message is sent, so the person always has something on
+/// screen: three dots while the model thinks, each tool as it runs, then the
+/// text as it streams.
 struct ChatLiveActivity: Equatable, Sendable {
     enum Phase: Equatable, Sendable { case thinking, writing }
 
     var steps: [ChatActivityStep] = []
     var phase: Phase = .thinking
 
-    /// The line under the steps: what is happening that is not a step.
-    var statusLine: String? {
-        switch self.phase {
-        case .writing: return nil
-        case .thinking: return self.steps.contains { $0.state == .running } ? nil : "Thinking…"
-        }
-    }
-
     mutating func apply(_ activity: GatewayRunActivity) {
         switch activity {
-        case let .toolStarted(tool, callID, command, operation):
+        case let .toolStarted(tool, callID, arguments):
             guard !self.steps.contains(where: { $0.id == callID }) else { return }
-            self.steps.append(.init(id: callID, label: ChatActivityLabel.label(tool: tool, command: command, operation: operation), state: .running))
+            self.steps.append(.init(id: callID, tool: tool, arguments: arguments, state: .running))
             // A tool after text means the agent is not done writing after all.
             self.phase = .thinking
         case let .toolFinished(_, callID, isError):
@@ -44,88 +57,59 @@ struct ChatLiveActivity: Equatable, Sendable {
     }
 }
 
-/// Present and past forms of a step, e.g. "Reading Discord announcements" /
-/// "Read Discord announcements".
-struct ChatActivityLabel: Equatable, Sendable {
-    let live: String
-    let done: String
+/// Turns a tool call into `name` and a one-line argument summary.
+enum ChatActivityFormatter {
+    static let argumentLimit = 3
+    static let valueLimit = 48
+    static let lineLimit = 120
 
-    /// Names the capability, not the tool: the runtime's node bridge is one
-    /// tool ("nodes") that carries every phone command, so the command and,
-    /// for connected accounts, the operation are what a person recognises.
-    static func label(tool: String, command: String?, operation: String?) -> ChatActivityLabel {
-        if let command, let known = Self.byCommand(command, operation: operation) { return known }
-        if let known = Self.byTool[tool] { return known }
-        let words = tool.replacingOccurrences(of: "_", with: " ").replacingOccurrences(of: ".", with: " ")
-        return .init(live: "Using \(words)", done: "Used \(words)")
+    /// Keys shown first when present, in this order; the rest follow by name.
+    private static let leadingKeys = ["operation", "command", "query", "recipient", "to", "name", "url", "path", "channel", "limit"]
+    /// Bookkeeping the runtime adds that says nothing about the call.
+    private static let hiddenKeys: Set<String> = ["action", "node", "invokeTimeoutMs", "timeoutMs", "gatewayUrl", "gatewayToken"]
+
+    static func call(tool: String, arguments: [String: JSONValue]) -> (name: String, arguments: String) {
+        var name = tool
+        var arguments = arguments
+        // The node bridge: nodes(action: invoke, invokeCommand: X, invokeParamsJson: "{…}")
+        // is shown as X(…the parameters…).
+        if tool == "nodes", let command = arguments["invokeCommand"]?.stringValue, !command.isEmpty {
+            name = command
+            let params = arguments["invokeParamsJson"]?.stringValue.flatMap(JSONValue.parse)?.objectValue ?? [:]
+            arguments = params
+        }
+        return (name, Self.summary(arguments))
     }
 
-    private static let byTool: [String: ChatActivityLabel] = [
-        "discord_announcements": .init(live: "Reading Discord announcements", done: "Read Discord announcements"),
-        "calendar_events": .init(live: "Checking your calendar", done: "Checked your calendar"),
-        "reminders_list": .init(live: "Checking your reminders", done: "Checked your reminders"),
-        "contacts_search": .init(live: "Looking up a contact", done: "Looked up a contact"),
-        "photos_latest": .init(live: "Looking at recent photos", done: "Looked at recent photos"),
-        "music_now_playing": .init(live: "Checking what's playing", done: "Checked what's playing"),
-        "music_search": .init(live: "Searching your music", done: "Searched your music"),
-        "weather_forecast": .init(live: "Checking the weather", done: "Checked the weather"),
-        "device_status": .init(live: "Checking this iPhone", done: "Checked this iPhone"),
-        "web_search": .init(live: "Searching the web", done: "Searched the web"),
-        "web_fetch": .init(live: "Reading a web page", done: "Read a web page"),
-        "browser": .init(live: "Using the browser", done: "Used the browser"),
-        "exec": .init(live: "Running a command", done: "Ran a command"),
-        "bash": .init(live: "Running a command", done: "Ran a command"),
-        "read": .init(live: "Reading a file", done: "Read a file"),
-        "write": .init(live: "Writing a file", done: "Wrote a file"),
-        "edit": .init(live: "Editing a file", done: "Edited a file"),
-        "memory_search": .init(live: "Searching memory", done: "Searched memory"),
-        "memory_get": .init(live: "Reading memory", done: "Read memory"),
-        "message": .init(live: "Sending a message", done: "Sent a message"),
-    ]
-
-    private static func byCommand(_ command: String, operation: String?) -> ChatActivityLabel? {
-        switch command {
-        case "location.get": return .init(live: "Getting your location", done: "Got your location")
-        case "calendar.events": return .init(live: "Checking your calendar", done: "Checked your calendar")
-        case "reminders.list": return .init(live: "Checking your reminders", done: "Checked your reminders")
-        case "contacts.search": return .init(live: "Looking up a contact", done: "Looked up a contact")
-        case "photos.latest": return .init(live: "Looking at recent photos", done: "Looked at recent photos")
-        case "music.nowPlaying": return .init(live: "Checking what's playing", done: "Checked what's playing")
-        case "music.search": return .init(live: "Searching your music", done: "Searched your music")
-        case "weather.forecast": return .init(live: "Checking the weather", done: "Checked the weather")
-        case "device.status": return .init(live: "Checking this iPhone", done: "Checked this iPhone")
-        case "sms.compose": return .init(live: "Preparing a text", done: "Prepared a text")
-        case "sms.send": return .init(live: "Sending a text", done: "Sent a text")
-        case "maps.search": return .init(live: "Looking up a place", done: "Looked up a place")
-        case "maps.directions": return .init(live: "Getting directions", done: "Got directions")
-        case "apps.open": return .init(live: "Opening an app", done: "Opened an app")
-        case "whatsapp.chats", "whatsapp.messages", "whatsapp.sync": return .init(live: "Reading WhatsApp", done: "Read WhatsApp")
-        case "whatsapp.compose": return .init(live: "Preparing a WhatsApp message", done: "Prepared a WhatsApp message")
-        case "discord.announcements": return .init(live: "Reading Discord announcements", done: "Read Discord announcements")
-        case "notion.tools", "notion.call": return .init(live: "Working in Notion", done: "Worked in Notion")
-        case "youtube.search": return .init(live: "Searching YouTube", done: "Searched YouTube")
-        case "youtube.open": return .init(live: "Opening YouTube", done: "Opened YouTube")
-        case "podcasts.search": return .init(live: "Searching podcasts", done: "Searched podcasts")
-        case "podcasts.open": return .init(live: "Opening a podcast", done: "Opened a podcast")
-        case "connections.describe": return .init(live: "Checking connected accounts", done: "Checked connected accounts")
-        case "connections.read": return Self.connection(operation, live: "Reading", done: "Read")
-        case "connections.write": return Self.connection(operation, live: "Writing to", done: "Wrote to")
-        default: return nil
+    static func summary(_ arguments: [String: JSONValue]) -> String {
+        let keys = arguments.keys.filter { !Self.hiddenKeys.contains($0) }
+        let ordered = Self.leadingKeys.filter { keys.contains($0) } + keys.filter { !Self.leadingKeys.contains($0) }.sorted()
+        var parts: [String] = []
+        for key in ordered.prefix(Self.argumentLimit) {
+            guard let value = arguments[key] else { continue }
+            parts.append("\(key): \(Self.render(value))")
         }
+        if ordered.count > Self.argumentLimit { parts.append("…") }
+        let line = parts.joined(separator: ", ")
+        return line.count > Self.lineLimit ? String(line.prefix(Self.lineLimit - 1)) + "…" : line
     }
 
-    private static func connection(_ operation: String?, live: String, done: String) -> ChatActivityLabel {
-        let service: String = switch operation {
-        case "gmailMessages": "Gmail"
-        case "googleCalendarEvents", "googleCalendarCreateEvent", "googleCalendarUpdateEvent": "Google Calendar"
-        case "googleDriveFiles", "googleDriveCreateTextFile": "Google Drive"
-        case "googleTasks": "Google Tasks"
-        case "outlookInbox", "outlookCreateDraft", "outlookSendMail": "Outlook"
-        case "outlookCalendarEvents": "Outlook Calendar"
-        case "slackChannels", "slackHistory", "slackPostMessage": "Slack"
-        case "spotifyPlayback", "spotifySearch", "spotifyStartPlayback": "Spotify"
-        default: "a connected account"
+    private static func render(_ value: JSONValue) -> String {
+        switch value {
+        case let .string(text):
+            let flat = text.replacingOccurrences(of: "\n", with: " ")
+            let cut = flat.count > Self.valueLimit ? String(flat.prefix(Self.valueLimit - 1)) + "…" : flat
+            return "\"\(cut)\""
+        case let .number(number):
+            return number == number.rounded() && abs(number) < 1e15 ? String(Int(number)) : String(number)
+        case let .bool(flag):
+            return flag ? "true" : "false"
+        case .null:
+            return "null"
+        case let .array(items):
+            return "[\(items.count) item\(items.count == 1 ? "" : "s")]"
+        case let .object(fields):
+            return "{\(fields.count) field\(fields.count == 1 ? "" : "s")}"
         }
-        return .init(live: "\(live) \(service)", done: "\(done) \(service)")
     }
 }

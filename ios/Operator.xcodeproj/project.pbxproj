@@ -1251,14 +1251,14 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_8E95E15B-AB31-4AEC-9E6F-30EF66959919" /* embedded */ = {
+		"TEMP_3B8B7057-0A72-4CB6-BFC2-D92BF1A19A89" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			path = embedded;
 			sourceTree = "<group>";
 		};
-		"TEMP_B5B4C3CC-31AD-43DA-8641-50DB6B2393E1" /* runtime */ = {
+		"TEMP_60EE727E-A31E-40A7-9BE2-BBF4734F4AA1" /* runtime */ = {
 			isa = PBXGroup;
 			children = (
 			);

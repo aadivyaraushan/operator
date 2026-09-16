@@ -100,18 +100,19 @@ final class GatewayEventReducerTests: XCTestCase {
             [])
     }
 
-    func testAgentToolEventsDecodeTheCapabilityBehindTheNodeBridgeAndNothingElse() throws {
-        let data = Data(#"{"type":"event","event":"agent","payload":{"runId":"run-1","sessionKey":"agent:main:main","seq":4,"stream":"tool","ts":3,"data":{"phase":"start","name":"nodes","toolCallId":"call-1","args":{"action":"invoke","node":"iphone","command":"connections.read","params":{"operation":"gmailMessages","limit":5,"query":"private"}}}}}"#.utf8)
+    func testAgentToolEventsDecodeTheToolAndItsArgumentsAndNothingElse() throws {
+        let data = Data(#"{"type":"event","event":"agent","payload":{"runId":"run-1","sessionKey":"agent:main:main","seq":4,"stream":"tool","ts":3,"data":{"phase":"start","name":"nodes","toolCallId":"call-1","args":{"action":"invoke","node":"iphone","invokeCommand":"connections.read","invokeParamsJson":"{\"operation\":\"gmailMessages\",\"limit\":5}","invokeTimeoutMs":30000}}}}"#.utf8)
         let frame = try JSONDecoder().decode(GatewayEventFrame<GatewayAgentEvent>.self, from: data)
         XCTAssertEqual(frame.payload.stream, "tool")
         XCTAssertEqual(frame.payload.phase, "start")
         XCTAssertEqual(frame.payload.toolName, "nodes")
         XCTAssertEqual(frame.payload.toolCallID, "call-1")
-        XCTAssertEqual(frame.payload.commandName, "connections.read")
-        XCTAssertEqual(frame.payload.operationName, "gmailMessages")
+        XCTAssertEqual(frame.payload.arguments["invokeCommand"], .string("connections.read"))
+        XCTAssertEqual(frame.payload.arguments["invokeTimeoutMs"], .number(30_000))
+        XCTAssertEqual(JSONValue.parse(frame.payload.arguments["invokeParamsJson"]?.stringValue ?? ""), .object(["operation": .string("gmailMessages"), "limit": .number(5)]))
         XCTAssertEqual(
             GatewayRunActivity(frame.payload),
-            .toolStarted(tool: "nodes", callID: "call-1", command: "connections.read", operation: "gmailMessages"))
+            .toolStarted(tool: "nodes", callID: "call-1", arguments: frame.payload.arguments))
 
         let result = try JSONDecoder().decode(GatewayEventFrame<GatewayAgentEvent>.self, from: Data(#"{"type":"event","event":"agent","payload":{"runId":"run-1","stream":"tool","data":{"phase":"result","name":"nodes","toolCallId":"call-1","isError":true,"result":{"content":"private"}}}}"#.utf8))
         XCTAssertEqual(GatewayRunActivity(result.payload), .toolFinished(tool: "nodes", callID: "call-1", isError: true))
@@ -129,7 +130,7 @@ final class GatewayEventReducerTests: XCTestCase {
         let start = GatewayAgentEvent(runID: "run-1", sessionKey: "agent:main:main", stream: "tool", phase: "start", toolName: "discord_announcements", toolCallID: "c1")
         XCTAssertEqual(reducer.apply(start), [
             .working(runID: "run-1"),
-            .activity(runID: "run-1", .toolStarted(tool: "discord_announcements", callID: "c1", command: nil, operation: nil)),
+            .activity(runID: "run-1", .toolStarted(tool: "discord_announcements", callID: "c1", arguments: [:])),
         ])
         let finish = GatewayAgentEvent(runID: "run-1", sessionKey: nil, stream: "tool", phase: "result", toolName: "discord_announcements", toolCallID: "c1")
         XCTAssertEqual(reducer.apply(finish), [

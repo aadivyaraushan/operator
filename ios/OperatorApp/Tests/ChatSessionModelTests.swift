@@ -155,9 +155,9 @@ final class ChatSessionModelTests: XCTestCase {
         model.draft = "what did I miss on discord?"
         model.send()
 
+        XCTAssertEqual(model.liveActivity, ChatLiveActivity(), "the dots are up the moment the message is sent")
         await gateway.waitForStage(1)
-        XCTAssertEqual(model.liveActivity, ChatLiveActivity(), "accepted: thinking, no steps yet")
-        XCTAssertEqual(model.liveActivity?.statusLine, "Thinking…")
+        XCTAssertEqual(model.liveActivity, ChatLiveActivity(), "accepted: still thinking, no steps yet")
         let sent = try XCTUnwrap(model.messages.first { $0.role == .user })
         XCTAssertEqual(sent.delivery, .sending, "the store keeps it in the outbox until the reply")
         XCTAssertTrue(model.inFlight.contains(sent.id), "but the bubble no longer says Sending")
@@ -165,28 +165,26 @@ final class ChatSessionModelTests: XCTestCase {
         await gateway.proceed()
         await gateway.waitForStage(2)
         let running = try XCTUnwrap(model.liveActivity)
-        XCTAssertEqual(running.steps.map(\.title), ["Reading Discord announcements"])
+        XCTAssertEqual(running.steps.map(\.title), [#"discord_announcements(limit: 25)"#])
         XCTAssertEqual(running.steps.first?.state, .running)
-        XCTAssertNil(running.statusLine, "a running step is the status")
 
         await gateway.proceed()
         await gateway.waitForStage(3)
         let afterTools = try XCTUnwrap(model.liveActivity)
-        XCTAssertEqual(afterTools.steps.map(\.title), ["Read Discord announcements", "Read Gmail"])
+        XCTAssertEqual(afterTools.steps.map(\.title), [#"discord_announcements(limit: 25)"#, #"connections.read(operation: "gmailMessages", limit: 5)"#], "the node bridge is unwrapped to the command it carried")
         XCTAssertEqual(afterTools.steps.map(\.state), [.done, .failed])
-        XCTAssertEqual(afterTools.statusLine, "Thinking…", "between tools the agent is thinking again")
+        XCTAssertEqual(afterTools.phase, .thinking, "between tools the agent is thinking again")
 
         await gateway.proceed()
         await gateway.waitForStage(4)
         XCTAssertEqual(model.liveActivity?.phase, .writing)
-        XCTAssertNil(model.liveActivity?.statusLine)
         XCTAssertEqual(model.streamingReply, "Here")
 
         await gateway.proceed()
         await waitUntil { model.liveActivity == nil && model.messages.last?.role == .assistant }
         let reply = try XCTUnwrap(model.messages.last)
         XCTAssertEqual(reply.text, "Here is the digest")
-        XCTAssertEqual(model.stepsByReply[reply.id]?.map(\.title), ["Read Discord announcements", "Read Gmail"], "the steps stay under the reply they produced")
+        XCTAssertEqual(model.stepsByReply[reply.id]?.map(\.name), ["discord_announcements", "connections.read"], "the steps stay under the reply they produced")
         XCTAssertNil(model.streamingReply)
         XCTAssertTrue(model.inFlight.isEmpty)
     }
@@ -474,6 +472,29 @@ final class ChatSessionModelTests: XCTestCase {
         XCTAssertNil(model.lastError)
     }
 
+    func testStepsReadLikeATerminalAgentAndBoundTheirArguments() {
+        let plain = ChatActivityStep(id: "1", tool: "web_search", arguments: ["query": .string("discord self-bot ban 2026"), "count": .number(5)], state: .running)
+        XCTAssertEqual(plain.title, #"web_search(query: "discord self-bot ban 2026", count: 5)"#)
+
+        let bridged = ChatActivityStep(id: "2", tool: "nodes", arguments: [
+            "action": .string("invoke"), "node": .string("iphone"), "invokeCommand": .string("whatsapp.compose"),
+            "invokeParamsJson": .string(#"{"recipient":"+1 555 0100","body":"running late, there in 10\nsorry"}"#), "invokeTimeoutMs": .number(30_000),
+        ], state: .done)
+        XCTAssertEqual(bridged.name, "whatsapp.compose")
+        XCTAssertEqual(bridged.title, #"whatsapp.compose(recipient: "+1 555 0100", body: "running late, there in 10 sorry")"#)
+
+        let bare = ChatActivityStep(id: "3", tool: "nodes", arguments: ["action": .string("status")], state: .done)
+        XCTAssertEqual(bare.title, "nodes()", "a bridge call with no command keeps its own name and hides the bookkeeping")
+
+        let long = ChatActivityStep(id: "4", tool: "exec", arguments: [
+            "command": .string(String(repeating: "x", count: 200)), "host": .string("node"), "cwd": .string("/"), "env": .object(["A": .string("1")]), "z": .bool(true),
+        ], state: .failed)
+        XCTAssertTrue(long.arguments.hasPrefix(#"command: ""# + String(repeating: "x", count: ChatActivityFormatter.valueLimit - 1) + "…\""), long.arguments)
+        XCTAssertTrue(long.arguments.hasSuffix(", …"), "more than three arguments is said, not shown")
+        XCTAssertLessThanOrEqual(long.arguments.count, ChatActivityFormatter.lineLimit)
+        XCTAssertEqual(ChatActivityFormatter.summary(["items": .array([.null, .null]), "flag": .bool(false)]), "flag: false, items: [2 items]")
+    }
+
     private func readyModel(store: any ChatPersistence, gateway: any ChatGateway) -> ChatSessionModel {
         let model = ChatSessionModel(store: store, gateway: gateway)
         model.runtimeBecameReady()
@@ -632,10 +653,13 @@ private actor ActivityGateway: ChatGateway {
     func deliver(_ entry: OutboxEntry, update: @escaping @Sendable (ChatDeliveryUpdate) async -> Void) async throws {
         await update(.accepted)
         await self.reach(1)
-        await update(.activity(.toolStarted(tool: "discord_announcements", callID: "c1", command: nil, operation: nil)))
+        await update(.activity(.toolStarted(tool: "discord_announcements", callID: "c1", arguments: ["limit": .number(25)])))
         await self.reach(2)
         await update(.activity(.toolFinished(tool: "discord_announcements", callID: "c1", isError: false)))
-        await update(.activity(.toolStarted(tool: "nodes", callID: "c2", command: "connections.read", operation: "gmailMessages")))
+        await update(.activity(.toolStarted(tool: "nodes", callID: "c2", arguments: [
+            "action": .string("invoke"), "node": .string("iphone"), "invokeCommand": .string("connections.read"),
+            "invokeParamsJson": .string(#"{"operation":"gmailMessages","limit":5}"#), "invokeTimeoutMs": .number(30_000),
+        ])))
         await update(.activity(.toolFinished(tool: "nodes", callID: "c2", isError: true)))
         await self.reach(3)
         await update(.stream("Here"))

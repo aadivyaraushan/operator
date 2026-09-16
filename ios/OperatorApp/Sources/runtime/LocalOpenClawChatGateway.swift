@@ -278,8 +278,9 @@ actor LocalOpenClawChatGateway: ChatGateway {
                     case let .activity(runID, activity):
                         self.activeRunID = runID
                         switch activity {
-                        case let .toolStarted(tool, _, command, _):
-                            self.logger.info("[gateway] activity tool=\(tool, privacy: .public) command=\(command ?? "-", privacy: .public) phase=start")
+                        case let .toolStarted(tool, _, arguments):
+                            let command = arguments["invokeCommand"]?.stringValue ?? "-"
+                            self.logger.info("[gateway] activity tool=\(tool, privacy: .public) command=\(command, privacy: .public) phase=start")
                         case let .toolFinished(tool, _, isError):
                             self.logger.info("[gateway] activity tool=\(tool, privacy: .public) phase=result error=\(isError)")
                         }
