@@ -1777,3 +1777,38 @@ including OpenClaw's own web search, which the node never sees. Built
 for the Simulator; not installed anywhere, and the host-only
 chat-reconnect harness is already failing on HEAD (it does not copy
 `ChatActivity.swift`), so that suite was not the check.
+
+## 2026-09-16, 22:51: the run that was "taking forever" was a question nobody could see
+
+Owner asked why a run was slow. Not slow: at 22:51:18 the model called
+OpenClaw's built-in `ask_user` ("What should I send in the Aadivya and
+Arnav group chat?", three options, `timeoutSeconds: 900`) and Operator
+had no way to show or answer it. Read from the phone's own
+`agents/main/agent/openclaw-agent.sqlite` (`transcript_events`, copied
+with `devicectl device copy from`; the phone's info-level log lines do
+not reach `pymobiledevice3 syslog`). The same transcript holds two
+earlier `ask_user` calls, Sep 15 05:44 and 16:49, both ended by
+`[System] Your previous turn was interrupted by a gateway restart while
+OpenClaw was waiting on…`, i.e. a force-quit.
+
+Built in the same evening, per planning/ask-user-plan.md, commits
+3277498..efba0f5: Operator is now a question client of the gateway
+(`question.requested`/`question.resolved` on the chat socket,
+`question.list` replay on every foreground connection,
+`question.resolve` over a control connection), a `QuestionCard` in the
+thread under the Needs your answer mark, a notification whose buttons
+are the options when the app is off screen with a reply kept alive, and
+a connector-qa check that fails a step whose question was never settled.
+Tests: OperatorCore 127 (10 new), chat-reconnect harness 52 (its
+staging had been broken since the activity work and is fixed),
+OperatorAppTests QuestionNotifierTests 6, connector-qa 40.
+
+Not yet seen live. A phone build from efba0f5 was signed (team
+57266AVWJR) and the install started at 23:25, but the phone dropped
+off USB before it landed. To finish: reconnect, `devicectl device
+install app` from `/private/tmp/operator-phone-build/Build/Products/
+Debug-iphoneos/Operator.app` (an upgrade; Keychain and conversation are
+kept), then ask the exact prompt again — "message aadivya and arnav in
+the gc" — and watch for the card; then the same with the app left, for
+the notification. The transcript will show `ask_user`'s toolResult
+carrying the chosen option instead of a restart line.
