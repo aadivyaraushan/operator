@@ -221,7 +221,7 @@ public enum ConnectorCatalog {
               writeSummary: nil,
               readCommands: ["canvas.courses", "canvas.upcoming", "canvas.announcements"], writeCommands: [],
               systemPermission: nil, requiresAccount: true,
-              setupInstructions: "Under Connect accounts > Canvas, enter your school's Canvas address and paste an access token from Canvas > Account > Settings > Approved Integrations > New Access Token. The token is kept on this iPhone."),
+              setupInstructions: "Under Connect accounts > Canvas, pick your school and tap Sign in and connect: Operator opens Canvas's token page for you and keeps the token on this iPhone; you only tap Generate."),
         .init(id: .google, title: "Google",
               readSummary: "Calendar events, every file in your Drive (Docs, Sheets and Slides included), and Gmail messages.",
               writeSummary: "Create or change calendar events, and create, edit, rename or move Drive files (Docs, Sheets and Slides included), each after you approve it.",

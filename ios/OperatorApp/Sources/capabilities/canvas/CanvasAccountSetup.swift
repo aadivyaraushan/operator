@@ -38,16 +38,62 @@ final class CanvasAccountSetupModel: ObservableObject {
     @Published private(set) var state: CanvasAccountSetupState = .checking
     @Published private(set) var baseURL: URL?
     @Published private(set) var message: String?
+    /// Schools matching what the person typed, from Canvas's own finder.
+    @Published private(set) var schools: [CanvasSchool] = []
+    /// The school picked or typed, before any token exists.
+    @Published private(set) var chosenSchool: CanvasSchool?
 
     private let storage: CanvasAccountStorage
     private let client: CanvasClient
+    private let finder: CanvasSchoolFinder
     private let logger = Logger(subsystem: "app.operator.ios", category: "canvas-setup")
     private var hasToken = false
+    private var searchTask: Task<Void, Never>?
 
     init(storage: CanvasAccountStorage, transport: any PhoneHTTPTransport = URLSessionPhoneHTTPTransport()) {
         self.storage = storage
         self.client = CanvasClient(transport: transport, baseURL: { storage.loadBaseURL() }, token: { try await storage.loadToken() })
+        self.finder = CanvasSchoolFinder(transport: transport)
         self.baseURL = storage.loadBaseURL()
+        if let host = self.baseURL?.host { self.chosenSchool = CanvasSchool(name: host, domain: host) }
+    }
+
+    /// Searches as the person types; a short pause between keystrokes so
+    /// a name is one request, not one per letter.
+    func searchSchools(_ term: String) {
+        self.searchTask?.cancel()
+        let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else { self.schools = []; return }
+        self.searchTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(350))
+            guard let self, !Task.isCancelled else { return }
+            let results = await self.finder.search(trimmed)
+            guard !Task.isCancelled else { return }
+            self.schools = results
+        }
+    }
+
+    func choose(_ school: CanvasSchool) {
+        self.chosenSchool = school
+        self.schools = []
+        self.message = nil
+    }
+
+    func clearChosenSchool() {
+        guard !self.isConnected else { return }
+        self.chosenSchool = nil
+        self.schools = []
+    }
+
+    /// The address the guided sign-in should open, or nil until a school is chosen.
+    var guidedURL: URL? { self.chosenSchool?.baseURL }
+
+    /// Saves a token the guided sign-in captured, for the chosen school.
+    func saveCapturedToken(_ token: String) async -> (ok: Bool, name: String?, message: String?) {
+        guard let school = self.chosenSchool else { return (false, nil, "Choose your school first.") }
+        let ok = await self.save(address: school.domain, token: token)
+        let name: String? = if case let .connected(name) = self.state { name } else { nil }
+        return (ok, name, ok ? nil : self.message)
     }
 
     var isConnected: Bool { if case .connected = self.state { return true } else { return false } }
@@ -146,38 +192,90 @@ final class CanvasAccountSetupModel: ObservableObject {
 
 struct CanvasAccountSetupView: View {
     @ObservedObject var model: CanvasAccountSetupModel
-    @State private var address = ""
-    @State private var token = ""
+    @State private var schoolQuery = ""
+    @State private var pastedToken = ""
+    @State private var isGuidedSetupPresented = false
     @State private var isClearConfirmationPresented = false
+    @State private var isPasteShown = false
 
     var body: some View {
         Form {
             Section {
-                Text("Reads your courses, what is due and announcements through an access token you make in Canvas. Canvas supports these tokens for exactly this; nothing here can affect your account. Reading is turned on separately on the Permissions page.")
+                Text("Reads your courses, what is due and announcements. Sign in to Canvas once here; Operator makes the access token for you and keeps it on this iPhone. Reading is turned on separately on the Permissions page.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                TextField("School's Canvas address", text: self.$address)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                SecureField(self.model.isConnected ? "Replace access token" : "Access token", text: self.$token)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                Button("Save") {
-                    Task { if await self.model.save(address: self.address, token: self.token) { self.token = "" } }
-                }
-                .disabled(self.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || self.token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || self.isWorking)
-                if let message = self.model.message {
-                    Text(message).font(.footnote).foregroundStyle(.red)
+                if let school = self.model.chosenSchool {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(school.name)
+                            if school.name != school.domain { Text(school.domain).font(.caption).foregroundStyle(.secondary) }
+                        }
+                        Spacer()
+                        if !self.model.isConnected {
+                            Button("Change") { self.schoolQuery = ""; self.model.clearChosenSchool() }
+                                .font(.callout)
+                        }
+                    }
+                    .accessibilityIdentifier("canvas-chosen-school")
+                } else {
+                    TextField("Your school's name", text: self.$schoolQuery)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .onChange(of: self.schoolQuery) { _, term in self.model.searchSchools(term) }
+                        .accessibilityIdentifier("canvas-school-search")
+                    ForEach(self.model.schools) { school in
+                        Button {
+                            self.model.choose(school)
+                            self.schoolQuery = ""
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(school.name).foregroundStyle(.primary)
+                                Text(school.domain).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 }
             } header: {
-                Text("Account")
+                Text("School")
             } footer: {
-                Text("In Canvas: Account > Settings > Approved Integrations > New Access Token. Saving makes one request to confirm it. The token is stored only in this iPhone's Keychain and never logged.")
+                if self.model.chosenSchool == nil {
+                    Text("Type a name and pick your school, or type the Canvas address if you know it (canvas.illinois.edu).")
+                }
+            }
+
+            if !self.model.isConnected {
+                Section {
+                    Button {
+                        self.isGuidedSetupPresented = true
+                    } label: {
+                        Label("Sign in and connect", systemImage: "person.badge.key")
+                    }
+                    .disabled(self.model.guidedURL == nil || self.isWorking)
+                    .accessibilityIdentifier("canvas-sign-in")
+                    DisclosureGroup("Have a token already?", isExpanded: self.$isPasteShown) {
+                        SecureField("Paste access token", text: self.$pastedToken)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Button("Save token") {
+                            guard let school = self.model.chosenSchool else { return }
+                            Task { if await self.model.save(address: school.domain, token: self.pastedToken) { self.pastedToken = "" } }
+                        }
+                        .disabled(self.model.chosenSchool == nil || self.pastedToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || self.isWorking)
+                    }
+                } header: {
+                    Text("Connect")
+                } footer: {
+                    Text("Sign in opens your school's Canvas inside Operator, goes to the token page and fills it in; you tap Generate. The session is not kept. If you would rather make the token yourself: Canvas > Account > Settings > Approved Integrations > New Access Token.")
+                }
+            }
+
+            if let message = self.model.message {
+                Section { Text(message).font(.footnote).foregroundStyle(.red) }
             }
 
             if self.model.isConnected {
                 Section {
+                    Text(self.model.statusText).foregroundStyle(.secondary)
                     Button("Remove token", role: .destructive) { self.isClearConfirmationPresented = true }
                         .disabled(self.isWorking)
                 }
@@ -185,15 +283,19 @@ struct CanvasAccountSetupView: View {
         }
         .navigationTitle("Canvas")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await self.model.check()
-            if self.address.isEmpty, let host = self.model.baseURL?.host { self.address = host }
+        .task { await self.model.check() }
+        .sheet(isPresented: self.$isGuidedSetupPresented) {
+            if let url = self.model.guidedURL {
+                CanvasGuidedTokenSetupView(baseURL: url) { token in
+                    await self.model.saveCapturedToken(token)
+                }
+            }
         }
         .alert("Remove Canvas token?", isPresented: self.$isClearConfirmationPresented) {
             Button("Remove token", role: .destructive) { Task { await self.model.clearToken() } }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Reading stops until a token is saved again. Delete the token in Canvas too if it should no longer work anywhere.")
+            Text("Reading stops until you connect again. Delete the token in Canvas too (Account > Settings > Approved Integrations) if it should no longer work anywhere.")
         }
     }
 

@@ -99,8 +99,9 @@ each behind the person's confirmation tap:
   anything past due with nothing handed in. canvas_announcements is the
   recent announcements across those courses, newest first, with links.
   All three are read-only: nothing can be submitted or posted from here.
-  If one comes back NOT_CONNECTED, Canvas is set up under Connect accounts
-  > Canvas; say so and stop.
+  If one comes back NOT_CONNECTED, tell the person: Connect accounts >
+  Canvas > pick your school > Sign in and connect (Operator makes the token
+  for them; they only tap Generate). Then stop.
 - Texts: sms.compose sends to one person or a group of up to ten; with the
   "sent for you" grant it goes out with no tap, otherwise the composer opens.
 - WhatsApp: whatsapp.compose sends one message to someone the person has

@@ -237,7 +237,7 @@ final class ForegroundCanvasServiceTests: XCTestCase {
 
 @MainActor
 final class CanvasAccountSetupModelTests: XCTestCase {
-    private final class Storage: @unchecked Sendable {
+    final class Storage: @unchecked Sendable {
         var token: String?
         var url: URL?
         var storage: CanvasAccountStorage {
@@ -284,5 +284,84 @@ final class CanvasAccountSetupModelTests: XCTestCase {
         let count = await transport.requests.count
         XCTAssertEqual(count, 0)
         XCTAssertNil(storage.token)
+    }
+}
+
+@MainActor
+final class CanvasSchoolFinderTests: XCTestCase {
+    private let searchBody = #"""
+    [{"id":1,"name":"University of Illinois at Springfield","domain":"uispringfield.instructure.com"},
+     {"id":2,"name":"College of Lake County","domain":"clcillinois.instructure.com"},
+     {"id":3,"name":"College of Lake County","domain":"clcillinois.instructure.com"},
+     {"id":4,"name":"University of Illinois at Urbana-Champaign","domain":"canvas.illinois.edu"},
+     {"id":5,"name":"Broken","domain":"not a host"},
+     {"id":6,"name":"","domain":"empty.instructure.com"}]
+    """#
+
+    func testSearchAsksCanvasPublicFinderAndDedupesByHost() async throws {
+        let transport = RoutedTransport(["/api/v1/accounts/search": [.ok(self.searchBody)]])
+        let schools = await CanvasSchoolFinder(transport: transport).search("illinois")
+        XCTAssertEqual(schools.map(\.domain), ["uispringfield.instructure.com", "clcillinois.instructure.com", "canvas.illinois.edu"])
+        XCTAssertEqual(schools[2].name, "University of Illinois at Urbana-Champaign")
+        let urls = await transport.urls()
+        XCTAssertEqual(urls, ["https://canvas.instructure.com/api/v1/accounts/search?search_term=illinois"])
+        let requests = await transport.requests
+        XCTAssertNil(requests.first?.value(forHTTPHeaderField: "Authorization"), "the finder is public; no token goes anywhere")
+    }
+
+    func testATypedAddressIsOfferedFirstEvenWhenTheFinderIsDown() async throws {
+        let transport = RoutedTransport([:])
+        let schools = await CanvasSchoolFinder(transport: transport).search("canvas.illinois.edu")
+        XCTAssertEqual(schools.map(\.domain), ["canvas.illinois.edu"])
+        XCTAssertEqual(schools.first?.baseURL?.absoluteString, "https://canvas.illinois.edu")
+        let short = await CanvasSchoolFinder(transport: transport).search("i")
+        XCTAssertTrue(short.isEmpty)
+    }
+
+    func testTheGuidedScriptAndTheClientAgreeOnWhatATokenLooksLike() throws {
+        // The script only reports text shaped like a Canvas token; the client
+        // only sends one. A token the script would capture must be one the
+        // client accepts, or the guided flow ends in "did not accept".
+        let pattern = try XCTUnwrap(CanvasGuidedTokenScript.source.range(of: #"tokenPattern = /(.+?)/;"#, options: .regularExpression)
+            .map { String(CanvasGuidedTokenScript.source[$0]) })
+        let regex = try NSRegularExpression(pattern: String(pattern.dropFirst("tokenPattern = /".count).dropLast(2)))
+        let real = "1234~" + String(repeating: "aB3", count: 22)
+        XCTAssertNotNil(regex.firstMatch(in: real, range: NSRange(real.startIndex..., in: real)))
+        XCTAssertTrue(CanvasClient.plausibleToken(real))
+        for bad in ["Generate Token", "1234~short", "no tilde at all here but long enough to pass"] {
+            XCTAssertNil(regex.firstMatch(in: bad, range: NSRange(bad.startIndex..., in: bad)), bad)
+        }
+        XCTAssertTrue(CanvasGuidedTokenScript.source.contains(".add_access_token_link"))
+        XCTAssertTrue(CanvasGuidedTokenScript.source.contains("[role=dialog][aria-label='New Access Token']"))
+        XCTAssertTrue(CanvasGuidedTokenScript.source.contains("[data-testid='visible_token']"))
+        XCTAssertFalse(CanvasGuidedTokenScript.source.contains("submit()"), "the person taps Generate; the script never does")
+    }
+
+    func testChoosingASchoolThenSavingACapturedTokenConnects() async throws {
+        let storage = CanvasAccountSetupModelTests.Storage()
+        let transport = RoutedTransport([
+            "/api/v1/accounts/search": [.ok(self.searchBody)],
+            "/api/v1/users/self": [.ok(#"{"id":1,"name":"Surya S"}"#)],
+        ])
+        let model = CanvasAccountSetupModel(storage: storage.storage, transport: transport)
+        await model.check()
+        XCTAssertNil(model.chosenSchool)
+        XCTAssertNil(model.guidedURL)
+        model.searchSchools("illinois")
+        let end = Date().addingTimeInterval(2)
+        while model.schools.isEmpty, Date() < end { await Task.yield() }
+        XCTAssertEqual(model.schools.count, 3)
+        model.choose(model.schools[2])
+        XCTAssertEqual(model.guidedURL?.absoluteString, "https://canvas.illinois.edu")
+        XCTAssertTrue(model.schools.isEmpty)
+
+        let result = await model.saveCapturedToken(fixtureToken)
+        XCTAssertTrue(result.ok)
+        XCTAssertEqual(result.name, "Surya S")
+        XCTAssertEqual(storage.url?.absoluteString, "https://canvas.illinois.edu")
+        XCTAssertEqual(storage.token, fixtureToken)
+        XCTAssertTrue(model.isConnected)
+        model.clearChosenSchool()
+        XCTAssertNotNil(model.chosenSchool, "a connected school is not un-chosen")
     }
 }

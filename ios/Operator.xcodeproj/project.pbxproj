@@ -70,6 +70,7 @@
 		6B15C5E70ADCEF61435BF35F /* ForegroundMediaNodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E260410CCF3BEE7038F1C3C /* ForegroundMediaNodeService.swift */; };
 		6BC1F46B1CC557DBF99034C8 /* NotionMCPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA31C7EBC7EC9ECF4CBE9267 /* NotionMCPClient.swift */; };
 		6C9023EB6B08D517592E775B /* ChatSessionModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1593E68D6DA83F3D5323D640 /* ChatSessionModelTests.swift */; };
+		6F7C298CE357A811ECDE14F0 /* CanvasSchoolFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60EC1BB7DB0F5BA6E7B552BD /* CanvasSchoolFinder.swift */; };
 		712D9DC4FDCABF688DC15ED6 /* ForegroundWhatsAppComposeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 024EB25ABFAFDEDC1DC27761 /* ForegroundWhatsAppComposeService.swift */; };
 		76ACD6E1A4470AC81B451EE2 /* android-handoff-catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = E10DAC4EEE0D33DB1BF4B953 /* android-handoff-catalog.json */; };
 		772E73F811680AF7BE4D6BBC /* AppLaunchByNameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EF10EFF9B95D4B5220783B /* AppLaunchByNameTests.swift */; };
@@ -124,6 +125,7 @@
 		C016266ACFDCD5A85D125BD3 /* ForegroundLocationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201F5539139E8F77225201B4 /* ForegroundLocationServiceTests.swift */; };
 		C3512DBBB74F4E7B8460FC83 /* LocalModelSetupGatewayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86ECCDBC4B74E8E94BD31A7B /* LocalModelSetupGatewayTests.swift */; };
 		C4FDFB65B65F048157366310 /* ChatActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D77EFF62D4E8D94BF0C1BF91 /* ChatActivity.swift */; };
+		C6CEC4DB03E3C4AD0F4E4BBF /* CanvasGuidedTokenSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A0C43953E827ADD2C2E944 /* CanvasGuidedTokenSetup.swift */; };
 		C769F0BD6B3A535DF4FBF71B /* ConnectionDiscoveryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A2457FCFD27BD44CF915A1 /* ConnectionDiscoveryServiceTests.swift */; };
 		C9D45110C5178A6F86207EB0 /* ForegroundCanvasService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530D8C279F7F52727CCFC026 /* ForegroundCanvasService.swift */; };
 		CBD80759C8879BA1902DE495 /* ChatEndToEndUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8494D608BFF220294347A7F /* ChatEndToEndUITests.swift */; };
@@ -293,6 +295,7 @@
 		5D948A92F925544B8869DDB2 /* app-links.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "app-links.json"; sourceTree = "<group>"; };
 		5E260410CCF3BEE7038F1C3C /* ForegroundMediaNodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMediaNodeService.swift; sourceTree = "<group>"; };
 		5F5454686119833200D7DBB5 /* ForegroundContactsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundContactsService.swift; sourceTree = "<group>"; };
+		60EC1BB7DB0F5BA6E7B552BD /* CanvasSchoolFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasSchoolFinder.swift; sourceTree = "<group>"; };
 		61FC1CAA927881E1E5A7D049 /* ScenarioDriverUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioDriverUITests.swift; sourceTree = "<group>"; };
 		66E68FE88088C4AE52ED6FDD /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		6B6D712F69ADF6344534D5B5 /* NativeAccountSetupCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAccountSetupCoordinator.swift; sourceTree = "<group>"; };
@@ -360,6 +363,7 @@
 		CE395A0D665898A3DEE8B501 /* ForegroundMessageComposeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMessageComposeService.swift; sourceTree = "<group>"; };
 		CF4E7F6DCFD0B1441C04DF8C /* SystemContactCreatePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemContactCreatePresenter.swift; sourceTree = "<group>"; };
 		CFD68089BBBF22747CF5D120 /* SystemMessageComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemMessageComposer.swift; sourceTree = "<group>"; };
+		D1A0C43953E827ADD2C2E944 /* CanvasGuidedTokenSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasGuidedTokenSetup.swift; sourceTree = "<group>"; };
 		D442566C1D40BDCD8DCD8459 /* ForegroundAppHandoffService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundAppHandoffService.swift; sourceTree = "<group>"; };
 		D490F4DB23A72D1FB9731241 /* NativeNotionSetupCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNotionSetupCoordinator.swift; sourceTree = "<group>"; };
 		D5BBE65B3C8115DF59F3CA4E /* OperatorWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorWidget.swift; sourceTree = "<group>"; };
@@ -510,6 +514,8 @@
 			children = (
 				78355A2CF91696F2762EA1FF /* CanvasAccountSetup.swift */,
 				A8770BA2B59B9D7357626FC3 /* CanvasClient.swift */,
+				D1A0C43953E827ADD2C2E944 /* CanvasGuidedTokenSetup.swift */,
+				60EC1BB7DB0F5BA6E7B552BD /* CanvasSchoolFinder.swift */,
 				530D8C279F7F52727CCFC026 /* ForegroundCanvasService.swift */,
 			);
 			path = canvas;
@@ -1437,7 +1443,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_5764264A-BD37-44EA-A78D-53F01BA1714D" /* embedded */ = {
+		"TEMP_181B2BFC-A032-4ACB-AB8A-9DA78F523B94" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1679,6 +1685,8 @@
 				7F60B70FA0D27F75B3B3B109 /* AppLaunchByName.swift in Sources */,
 				45E5E9EB6C31C3C03F4A9E4A /* CanvasAccountSetup.swift in Sources */,
 				5A47B05B547DA8F74C543B96 /* CanvasClient.swift in Sources */,
+				C6CEC4DB03E3C4AD0F4E4BBF /* CanvasGuidedTokenSetup.swift in Sources */,
+				6F7C298CE357A811ECDE14F0 /* CanvasSchoolFinder.swift in Sources */,
 				C4FDFB65B65F048157366310 /* ChatActivity.swift in Sources */,
 				FD66FBAF132FD1B8830F9CF4 /* ChatContracts.swift in Sources */,
 				8DAA325B2CE2A7D6BB1A96AC /* ChatScreen.swift in Sources */,
