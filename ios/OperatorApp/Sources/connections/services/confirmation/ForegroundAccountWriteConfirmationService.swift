@@ -128,6 +128,8 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         case .googleDriveRenameFile: required = ["operation", "fileID", "name"]; optional = []
         case .googleDriveMoveFile: required = ["operation", "fileID", "fromFolderID", "toFolderID"]; optional = []
         case .googleDriveCreateFile: required = ["operation", "name", "kind"]; optional = []
+        case .googleTasksCreateTask: required = ["operation", "title"]; optional = ["list", "notes", "due"]
+        case .googleTasksUpdateTask: required = ["operation", "taskID"]; optional = ["list", "title", "notes", "due", "completed"]
         case .outlookCreateDraft: required = ["operation", "subject", "body"]; optional = []
         case .outlookSendMail: required = ["operation", "to", "subject", "body"]; optional = []
         case .slackPostMessage: required = ["operation", "channelID", "text"]; optional = []
@@ -179,6 +181,17 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         case .googleDriveRenameFile: guard let id=string("fileID"),let name=string("name") else{return nil}; request = .googleDriveRenameFile(.init(fileID:id,name:name))
         case .googleDriveMoveFile: guard let id=string("fileID"),let from=string("fromFolderID"),let to=string("toFolderID") else{return nil}; request = .googleDriveMoveFile(.init(fileID:id,fromFolderID:from,toFolderID:to))
         case .googleDriveCreateFile: guard let name=string("name"),let kind=string("kind").flatMap(GoogleDriveCreateFileWrite.Kind.init(rawValue:)) else{return nil}; request = .googleDriveCreateFile(.init(name:name,kind:kind))
+        case .googleTasksCreateTask:
+            guard let title=string("title"),let list=optionalString("list"),let notes=optionalString("notes"),let due=optionalString("due") else{return nil}
+            request = .googleTasksCreateTask(.init(list:list,title:title,notes:notes,due:due))
+        case .googleTasksUpdateTask:
+            guard let id=string("taskID"),let list=optionalString("list"),let title=optionalString("title"),let notes=optionalString("notes"),let due=optionalString("due") else{return nil}
+            var completed: Bool?
+            if let value = object["completed"], !(value is NSNull) {
+                guard let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() else { return nil }
+                completed = number.boolValue
+            }
+            request = .googleTasksUpdateTask(.init(list:list,taskID:id,title:title,notes:notes,due:due,completed:completed))
         case .outlookCreateDraft: guard let a=string("subject"),let b=string("body") else{return nil}; request = .outlookCreateDraft(.init(subject:a,body:b))
         case .outlookSendMail: guard let a=string("to"),let b=string("subject"),let c=string("body") else{return nil}; request = .outlookSendMail(.init(to:a,subject:b,body:c))
         case .slackPostMessage: guard let a=string("channelID"),let b=string("text") else{return nil}; request = .slackPostMessage(.init(channelID:a,text:b))
@@ -204,6 +217,11 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         case let .googleDriveRenameFile(v): "Rename Drive file \(v.fileID)\nNew name: \(v.name)"
         case let .googleDriveMoveFile(v): "Move Drive file \(v.fileID)\nFrom folder: \(v.fromFolderID)\nTo folder: \(v.toFolderID)"
         case let .googleDriveCreateFile(v): "New Google \(v.kind.rawValue) in Drive\nName: \(v.name)"
+        case let .googleTasksCreateTask(v):
+            "New Google task\nTitle: \(v.title)" + (v.notes.map { "\nNotes: \($0)" } ?? "") + (v.due.map { "\nDue: \($0)" } ?? "")
+        case let .googleTasksUpdateTask(v):
+            "Change Google task \(v.taskID)" + (v.title.map { "\nNew title: \($0)" } ?? "") + (v.notes.map { "\nNew notes: \($0)" } ?? "")
+                + (v.due.map { "\nNew due day: \($0)" } ?? "") + (v.completed.map { $0 ? "\nMark it done" : "\nMark it not done" } ?? "")
         case let .outlookCreateDraft(v): "Outlook draft\nSubject: \(v.subject)\nBody: \(v.body)"
         case let .outlookSendMail(v): "Send email to \(v.to)\nSubject: \(v.subject)\nBody: \(v.body)"
         case let .slackPostMessage(v): "Slack channel \(v.channelID)\nMessage: \(v.text)"
@@ -235,6 +253,7 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         case let .googleDriveFile(id): "\"kind\":\"googleDriveFile\",\"id\":\"\(id)\""
         case let .googleSheetCells(range, cells): "\"kind\":\"googleSheetCells\",\"range\":\(Self.jsonString(range)),\"cells\":\(cells)"
         case let .googleFileEdited(id, occurrences): "\"kind\":\"googleFileEdited\",\"id\":\"\(id)\"" + (occurrences.map { ",\"occurrencesChanged\":\($0)" } ?? "")
+        case let .googleTask(id): "\"kind\":\"googleTask\",\"id\":\"\(id)\""
         case let .outlookDraft(id): "\"kind\":\"outlookDraft\",\"id\":\"\(id)\""
         case .outlookMailAccepted: "\"kind\":\"outlookMailAccepted\""
         case let .slackMessage(channelID, timestamp): "\"kind\":\"slackMessage\",\"channelID\":\"\(channelID)\",\"timestamp\":\"\(timestamp)\""

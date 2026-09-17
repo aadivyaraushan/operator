@@ -18,6 +18,8 @@ enum AccountWriteOperation: String, CaseIterable, Sendable {
     case googleDriveRenameFile
     case googleDriveMoveFile
     case googleDriveCreateFile
+    case googleTasksCreateTask
+    case googleTasksUpdateTask
     case outlookCreateDraft
     case outlookSendMail
     case slackPostMessage
@@ -28,7 +30,7 @@ enum AccountWriteOperation: String, CaseIterable, Sendable {
         case .googleCalendarCreateEvent, .googleCalendarUpdateEvent, .googleDriveCreateTextFile,
              .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
              .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
-             .googleDriveMoveFile, .googleDriveCreateFile:
+             .googleDriveMoveFile, .googleDriveCreateFile, .googleTasksCreateTask, .googleTasksUpdateTask:
             .google
         case .outlookCreateDraft, .outlookSendMail:
             .microsoftOutlook
@@ -131,6 +133,8 @@ enum AccountWriteRequest: Sendable {
     case googleDriveRenameFile(GoogleDriveRenameFileWrite)
     case googleDriveMoveFile(GoogleDriveMoveFileWrite)
     case googleDriveCreateFile(GoogleDriveCreateFileWrite)
+    case googleTasksCreateTask(GoogleTasksCreateTaskWrite)
+    case googleTasksUpdateTask(GoogleTasksUpdateTaskWrite)
     case outlookCreateDraft(OutlookCreateDraftWrite)
     case outlookSendMail(OutlookSendMailWrite)
     case slackPostMessage(SlackPostMessageWrite)
@@ -151,6 +155,8 @@ enum AccountWriteRequest: Sendable {
         case .googleDriveRenameFile: .googleDriveRenameFile
         case .googleDriveMoveFile: .googleDriveMoveFile
         case .googleDriveCreateFile: .googleDriveCreateFile
+        case .googleTasksCreateTask: .googleTasksCreateTask
+        case .googleTasksUpdateTask: .googleTasksUpdateTask
         case .outlookCreateDraft: .outlookCreateDraft
         case .outlookSendMail: .outlookSendMail
         case .slackPostMessage: .slackPostMessage
@@ -168,6 +174,7 @@ enum AccountWriteReceipt: Equatable, Sendable {
     /// A Doc or Slides deck was changed. occurrences is how many matches a
     /// replace changed (0 means nothing matched); nil for an edit that is not a replace.
     case googleFileEdited(id: String, occurrences: Int?)
+    case googleTask(id: String)
     case outlookDraft(id: String)
     case outlookMailAccepted
     case slackMessage(channelID: String, timestamp: String)
@@ -297,7 +304,7 @@ actor DirectAccountWriter {
             (2, value.name.utf8.count + value.content.utf8.count)
         case .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
              .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
-             .googleDriveMoveFile, .googleDriveCreateFile:
+             .googleDriveMoveFile, .googleDriveCreateFile, .googleTasksCreateTask, .googleTasksUpdateTask:
             self.workspaceInputShape(input)
         case let .outlookCreateDraft(value):
             (2, value.subject.utf8.count + value.body.utf8.count)
@@ -342,7 +349,7 @@ actor DirectAccountWriter {
                 && self.validBody(value.content, maxBytes: 262_144)
         case .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
              .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
-             .googleDriveMoveFile, .googleDriveCreateFile:
+             .googleDriveMoveFile, .googleDriveCreateFile, .googleTasksCreateTask, .googleTasksUpdateTask:
             return self.workspaceIsValid(input)
         case let .outlookCreateDraft(value):
             return self.validSingleLine(value.subject, maxBytes: 512, required: true)
@@ -476,7 +483,7 @@ actor DirectAccountWriter {
             contentType = "multipart/related; boundary=\(boundary)"
         case .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
              .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
-             .googleDriveMoveFile, .googleDriveCreateFile:
+             .googleDriveMoveFile, .googleDriveCreateFile, .googleTasksCreateTask, .googleTasksUpdateTask:
             // Built by workspaceRequest above.
             throw AccountWriteError.invalidRequest
         case let .outlookCreateDraft(value):
@@ -553,7 +560,7 @@ actor DirectAccountWriter {
         case .googleCalendarCreateEvent, .googleCalendarUpdateEvent, .googleDriveCreateTextFile, .slackPostMessage,
              .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
              .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
-             .googleDriveMoveFile, .googleDriveCreateFile:
+             .googleDriveMoveFile, .googleDriveCreateFile, .googleTasksCreateTask, .googleTasksUpdateTask:
             expected = 200
         case .outlookCreateDraft:
             expected = 201
@@ -588,7 +595,7 @@ actor DirectAccountWriter {
             let link = (object["hangoutLink"] as? String).flatMap { self.matches($0, pattern: #"^https://meet\.google\.com/[A-Za-z0-9-]{1,64}$"#) ? $0 : nil }
             return .googleCalendarEvent(id: id, meetLink: link)
         case .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
-             .googleSlidesReplaceText, .googleSlidesAddSlide:
+             .googleSlidesReplaceText, .googleSlidesAddSlide, .googleTasksCreateTask, .googleTasksUpdateTask:
             return try self.workspaceReceipt(for: input, object: try self.responseObject(data))
         case .googleDriveCreateTextFile, .googleDriveUpdateTextFile, .googleDriveRenameFile, .googleDriveMoveFile, .googleDriveCreateFile:
             let object = try self.responseObject(data)
@@ -635,7 +642,7 @@ actor DirectAccountWriter {
 
     private static func receiptFieldCount(_ receipt: AccountWriteReceipt) -> Int {
         switch receipt {
-        case .googleCalendarEvent, .googleDriveFile, .outlookDraft:
+        case .googleCalendarEvent, .googleDriveFile, .googleTask, .outlookDraft:
             1
         case .googleSheetCells, .googleFileEdited:
             2

@@ -414,10 +414,7 @@ final class DirectAccountReaderTests: XCTestCase {
         XCTAssertEqual(page.payloadJSON, "[]")
     }
 
-    func testGoogleTasksScopeIsReadOnlyAndOnTheExistingClient() {
-        let scopes = OAuthProvider.google.scopes
-        XCTAssertTrue(scopes.contains("https://www.googleapis.com/auth/tasks.readonly"))
-        XCTAssertFalse(scopes.contains { $0.contains("tasks") && !$0.hasSuffix(".readonly") })
+    func testGoogleTasksUsesTheExistingClient() {
         XCTAssertEqual(OAuthProvider.allCases.count, 4, "no new OAuth client was introduced")
         XCTAssertEqual(AccountReadOperation.googleTasks.provider, .google)
     }

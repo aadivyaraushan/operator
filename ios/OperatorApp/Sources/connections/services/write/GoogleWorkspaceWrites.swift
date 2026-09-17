@@ -62,6 +62,26 @@ struct GoogleDriveCreateFileWrite: Sendable {
     let kind: Kind
 }
 
+/// list is a task list id from a Tasks read; nil means the person's default
+/// list. due is a day, YYYY-MM-DD: Google Tasks keeps no time of day.
+struct GoogleTasksCreateTaskWrite: Sendable {
+    let list: String?
+    let title: String
+    let notes: String?
+    let due: String?
+}
+
+/// Only the fields given are changed. completed true ticks the task off,
+/// false reopens it.
+struct GoogleTasksUpdateTaskWrite: Sendable {
+    let list: String?
+    let taskID: String
+    let title: String?
+    let notes: String?
+    let due: String?
+    let completed: Bool?
+}
+
 extension DirectAccountWriter {
     static let sheetMaximumRows = 500
     static let sheetMaximumColumns = 50
@@ -84,6 +104,10 @@ extension DirectAccountWriter {
             (3, 0)
         case let .googleDriveCreateFile(value):
             (2, value.name.utf8.count)
+        case let .googleTasksCreateTask(value):
+            (4, [value.list, value.title, value.notes, value.due].compactMap { $0 }.reduce(0) { $0 + $1.utf8.count })
+        case let .googleTasksUpdateTask(value):
+            (6, [value.list, value.taskID, value.title, value.notes, value.due].compactMap { $0 }.reduce(0) { $0 + $1.utf8.count })
         default:
             (0, 0)
         }
@@ -116,6 +140,12 @@ extension DirectAccountWriter {
                 && value.fromFolderID != value.toFolderID
         case let .googleDriveCreateFile(value):
             return self.validSingleLine(value.name, maxBytes: 255, required: true)
+        case let .googleTasksCreateTask(value):
+            return self.validTaskFields(list: value.list, title: value.title, notes: value.notes, due: value.due)
+        case let .googleTasksUpdateTask(value):
+            return self.validFileID(value.taskID)
+                && self.validTaskFields(list: value.list, title: value.title, notes: value.notes, due: value.due)
+                && (value.title != nil || value.notes != nil || value.due != nil || value.completed != nil)
         default:
             return false
         }
@@ -186,6 +216,14 @@ extension DirectAccountWriter {
                 "POST", host: "www.googleapis.com", path: "/drive/v3/files",
                 query: [("fields", "id")],
                 body: ["name": value.name, "mimeType": value.kind.mimeType])
+        case let .googleTasksCreateTask(value):
+            return try self.jsonRequest(
+                "POST", host: "tasks.googleapis.com", path: "/tasks/v1/lists/\(value.list ?? "@default")/tasks",
+                body: self.taskBody(title: value.title, notes: value.notes, due: value.due, completed: nil))
+        case let .googleTasksUpdateTask(value):
+            return try self.jsonRequest(
+                "PATCH", host: "tasks.googleapis.com", path: "/tasks/v1/lists/\(value.list ?? "@default")/tasks/\(value.taskID)",
+                body: self.taskBody(title: value.title, notes: value.notes, due: value.due, completed: value.completed))
         default:
             return nil
         }
@@ -208,6 +246,11 @@ extension DirectAccountWriter {
             return .googleFileEdited(id: try self.echoedID(object["presentationId"], expected: value.fileID), occurrences: self.occurrencesChanged(object))
         case let .googleSlidesAddSlide(value):
             return .googleFileEdited(id: try self.echoedID(object["presentationId"], expected: value.fileID), occurrences: nil)
+        case .googleTasksCreateTask:
+            guard let id = object["id"] as? String, self.validFileID(id) else { throw AccountWriteError.invalidResponse }
+            return .googleTask(id: id)
+        case let .googleTasksUpdateTask(value):
+            return .googleTask(id: try self.echoedID(object["id"], expected: value.taskID))
         default:
             throw AccountWriteError.invalidResponse
         }
@@ -216,6 +259,23 @@ extension DirectAccountWriter {
     /// Drive file and folder ids; nothing else is accepted into a URL path.
     private static func validFileID(_ value: String) -> Bool {
         self.matches(value, pattern: #"^[A-Za-z0-9_-]{1,256}$"#)
+    }
+
+    private static func validTaskFields(list: String?, title: String?, notes: String?, due: String?) -> Bool {
+        if let list, !self.validFileID(list) { return false }
+        if let title, !self.validSingleLine(title, maxBytes: 1_024, required: true) { return false }
+        if let notes, !self.validBody(notes, maxBytes: 8_192) { return false }
+        if let due, !self.matches(due, pattern: #"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"#) { return false }
+        return true
+    }
+
+    private static func taskBody(title: String?, notes: String?, due: String?, completed: Bool?) -> [String: Any] {
+        var body: [String: Any] = [:]
+        if let title { body["title"] = title }
+        if let notes { body["notes"] = notes }
+        if let due { body["due"] = "\(due)T00:00:00.000Z" }
+        if let completed { body["status"] = completed ? "completed" : "needsAction" }
+        return body
     }
 
     private static func cellBytes(_ rows: [[String]]) -> Int {

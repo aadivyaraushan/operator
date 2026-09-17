@@ -119,7 +119,7 @@ struct ChatActivityLabel: Equatable, Sendable {
         case "googleSheetsUpdateCells", "googleSheetsAppendRows": "Google Sheets"
         case "googleDocsAppendText", "googleDocsReplaceText": "Google Docs"
         case "googleSlidesReplaceText", "googleSlidesAddSlide": "Google Slides"
-        case "googleTasks": "Google Tasks"
+        case "googleTasks", "googleTasksCreateTask", "googleTasksUpdateTask": "Google Tasks"
         case "outlookInbox", "outlookCreateDraft", "outlookSendMail": "Outlook"
         case "outlookCalendarEvents": "Outlook Calendar"
         case "slackChannels", "slackHistory", "slackPostMessage": "Slack"

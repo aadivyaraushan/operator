@@ -97,6 +97,19 @@ import XCTest
         XCTAssertEqual(calls, 1)
     }
 
+    func testATaskCardSaysWhatWillChangeAndRefusesACompletedThatIsNotTrueOrFalse() async {
+        let presenter = FakePresenter(); let writer = FakeWriter()
+        let service = ForegroundAccountWriteConfirmationService(writer: writer, presenter: presenter, isAppActive: { true })
+        _ = await service.handleNodeCommand("connections.write", paramsJSON: #"{"operation":"googleTasksCreateTask","title":"Finish connectors","due":"2026-09-20"}"#, timeoutMilliseconds: 1000)
+        XCTAssertEqual(presenter.requests.last?.preview, "New Google task\nTitle: Finish connectors\nDue: 2026-09-20")
+        _ = await service.handleNodeCommand("connections.write", paramsJSON: #"{"operation":"googleTasksUpdateTask","taskID":"T1","completed":true}"#, timeoutMilliseconds: 1000)
+        XCTAssertEqual(presenter.requests.last?.preview, "Change Google task T1\nMark it done")
+        let result = await service.handleNodeCommand("connections.write", paramsJSON: #"{"operation":"googleTasksUpdateTask","taskID":"T1","completed":"yes"}"#, timeoutMilliseconds: 1000)
+        XCTAssertEqual(result, .failure(code: "INVALID_REQUEST", message: "Connection write parameters were invalid"))
+        let calls = await writer.callCount()
+        XCTAssertEqual(calls, 2)
+    }
+
     func testOptionalKeysMayBeAbsentOrNullButNeverTheWrongType() async {
         let presenter = FakePresenter(); let writer = FakeWriter()
         let service = ForegroundAccountWriteConfirmationService(writer: writer, presenter: presenter, isAppActive: { true })

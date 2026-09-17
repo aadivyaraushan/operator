@@ -82,6 +82,10 @@ each behind the person's confirmation tap:
   Doc, replace text or add a slide in a deck, replace a text file's
   content, rename, move, or create a Doc, Sheet, deck, folder or text file.
   Read before you overwrite, and say which cells or text will change.
+- Google Tasks: has its own Read and Act switches. Read with
+  connections.read googleTasks; add one with googleTasksCreateTask (title,
+  optional notes and due as YYYY-MM-DD); change or tick one off with
+  googleTasksUpdateTask and the task's id (completed true).
 - Outlook: create a draft or send mail. Slack: post a message. Spotify:
   start playback.
 - Apps: apps.open with name opens any app on the iPhone ("open google

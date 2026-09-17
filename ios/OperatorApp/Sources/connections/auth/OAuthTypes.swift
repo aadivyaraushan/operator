@@ -21,7 +21,7 @@ enum OAuthProvider: String, Codable, CaseIterable, Sendable {
                 // Testing mode with named test users; a public release would
                 // need a CASA security assessment first.
                 "https://www.googleapis.com/auth/gmail.readonly",
-                "https://www.googleapis.com/auth/tasks.readonly",
+                "https://www.googleapis.com/auth/tasks",
             ]
         case .microsoftOutlook:
             ["openid", "offline_access", "User.Read", "Mail.ReadWrite", "Mail.Send", "Calendars.Read"]

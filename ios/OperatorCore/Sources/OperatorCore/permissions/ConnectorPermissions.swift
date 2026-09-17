@@ -14,7 +14,7 @@ public enum ConnectorID: String, Codable, CaseIterable, Sendable, Hashable {
     case messages, messagesAutosend, maps, apps
     case whatsapp
     case discord
-    case google, microsoft, slack, spotify
+    case google, googleTasks, microsoft, slack, spotify
     case notion
     case media
 }
@@ -216,8 +216,13 @@ public enum ConnectorCatalog {
                   ],
                   confirmLabel: "Turn on anyway")),
         .init(id: .google, title: "Google",
-              readSummary: "Calendar events, every file in your Drive (Docs, Sheets and Slides included), Gmail messages and Tasks.",
+              readSummary: "Calendar events, every file in your Drive (Docs, Sheets and Slides included), and Gmail messages.",
               writeSummary: "Create or change calendar events, and create, edit, rename or move Drive files (Docs, Sheets and Slides included), each after you approve it.",
+              readCommands: ["connections.read"], writeCommands: ["connections.write"],
+              systemPermission: nil, requiresAccount: true),
+        .init(id: .googleTasks, title: "Google Tasks",
+              readSummary: "Your open tasks, with their notes and due days. Uses your Google sign-in.",
+              writeSummary: "Add a task, change one, or tick one off, each after you approve it.",
               readCommands: ["connections.read"], writeCommands: ["connections.write"],
               systemPermission: nil, requiresAccount: true),
         .init(id: .microsoft, title: "Microsoft",
@@ -290,6 +295,7 @@ public enum ConnectorCatalog {
     }
 
     private static func provider(forAccountOperation operation: String) -> ConnectorID? {
+        if operation.hasPrefix("googleTasks") { return .googleTasks }
         if operation.hasPrefix("google") || operation.hasPrefix("gmail") { return .google }
         if operation.hasPrefix("outlook") { return .microsoft }
         if operation.hasPrefix("slack") { return .slack }

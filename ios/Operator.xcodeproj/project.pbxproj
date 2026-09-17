@@ -81,6 +81,7 @@
 		83270C28B3F1CB55A10B7BA1 /* ForegroundPhotosService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE38C1B2FB3BF54DDE0660B /* ForegroundPhotosService.swift */; };
 		86356378289DD18125034702 /* DirectAccountWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19B41231B05CA6BD56434A3E /* DirectAccountWriter.swift */; };
 		868F76BF1E099DCFE41C2F69 /* ForegroundAccountReadServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 777FA2CF77340DA64BF18129 /* ForegroundAccountReadServiceTests.swift */; };
+		883BE94393CC1A2817CAE32D /* GoogleTasksWriterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E140F545EE051D6A69144BE /* GoogleTasksWriterTests.swift */; };
 		88573980BCFBB4421850EC00 /* MediaServicesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366689038FC12DFA9FED5ADF /* MediaServicesTests.swift */; };
 		89D055D2916B2971C0A8CDBF /* DiscordUserClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96968C6A248ADD05BE80FE86 /* DiscordUserClient.swift */; };
 		8CA2E8E840C22B680681DD6E /* LocalModelSetupGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C13CFDD2D788E106F260D4B /* LocalModelSetupGateway.swift */; };
@@ -318,6 +319,7 @@
 		996961BE0B62984DE5354052 /* ChatScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatScreen.swift; sourceTree = "<group>"; };
 		99855B0C6E936DE7EB41178B /* GoogleWorkspaceWrites.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleWorkspaceWrites.swift; sourceTree = "<group>"; };
 		9C1F2FCE90E94275E45355B3 /* SystemPermissionStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemPermissionStatus.swift; sourceTree = "<group>"; };
+		9E140F545EE051D6A69144BE /* GoogleTasksWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleTasksWriterTests.swift; sourceTree = "<group>"; };
 		A1AF3111A40D0B89366D2550 /* runtime */ = {isa = PBXFileReference; lastKnownFileType = folder; name = runtime; path = "build/native-node/runtime"; sourceTree = SOURCE_ROOT; };
 		A581AD98B385D8742659A2E8 /* ForegroundRemindersService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundRemindersService.swift; sourceTree = "<group>"; };
 		A6029915570905414A2A5FF2 /* EventKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = EventKit.framework; path = System/Library/Frameworks/EventKit.framework; sourceTree = SDKROOT; };
@@ -635,6 +637,7 @@
 			isa = PBXGroup;
 			children = (
 				059336F82AB0485220F98599 /* DirectAccountWriterTests.swift */,
+				9E140F545EE051D6A69144BE /* GoogleTasksWriterTests.swift */,
 				028DD4F85059B37A93EF215A /* GoogleWorkspaceWriterTests.swift */,
 			);
 			path = write;
@@ -1406,7 +1409,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_ACC9FC5E-10D9-4CCB-B1F7-D89AC42C856A" /* embedded */ = {
+		"TEMP_0985B91C-C11A-4736-A703-4DFF64730DA5" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1612,6 +1615,7 @@
 				E205AB20591B7E22AF0D49D3 /* ForegroundRemindersServiceTests.swift in Sources */,
 				67340DD05E564E6821CAC8FF /* ForegroundWhatsAppComposeServiceTests.swift in Sources */,
 				5796006793180C597B6B0F5C /* GoogleDriveContentReaderTests.swift in Sources */,
+				883BE94393CC1A2817CAE32D /* GoogleTasksWriterTests.swift in Sources */,
 				BBAFA93187CFBB8642677EC7 /* GoogleWorkspaceWriterTests.swift in Sources */,
 				ED982CFD460E1DDFC4C260EC /* IncomingMessageStoreTests.swift in Sources */,
 				BC5AEB0A44E7AC11D8E001D1 /* LiveConnectorTests.swift in Sources */,
