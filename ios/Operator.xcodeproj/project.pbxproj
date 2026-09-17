@@ -62,6 +62,7 @@
 		633541E440BAE8B0C293DB0A /* ForegroundCalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94B5D658BC0E97C5F41DC347 /* ForegroundCalendarService.swift */; };
 		633C1C667A412FAB052A71CD /* SystemWhatsAppComposePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA855847FA0C15621EBE0F2F /* SystemWhatsAppComposePresenter.swift */; };
 		63EB0E9E3C22DE2DF6E0B512 /* PhoneOAuthClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3277E59E6676EB7FEE74EA91 /* PhoneOAuthClientTests.swift */; };
+		63F6381315CE1CB19E16FAD2 /* CanvasSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9EA752385A976E46390F62C /* CanvasSessionStore.swift */; };
 		6551EE48C76C89D0F9603C76 /* ForegroundMapsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0A121D6D416362695FBAFB /* ForegroundMapsService.swift */; };
 		67340DD05E564E6821CAC8FF /* ForegroundWhatsAppComposeServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 934D8DE92F97F8CB84008AFA /* ForegroundWhatsAppComposeServiceTests.swift */; };
 		6861395555DACD63E7AD4EA4 /* PendingSendCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B8002FEC9D1765CF413F9F /* PendingSendCenter.swift */; };
@@ -387,6 +388,7 @@
 		F656AC5615EE768928E80646 /* ForegroundWeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundWeatherService.swift; sourceTree = "<group>"; };
 		F99549BA4EBA88FDC4012A55 /* EmbeddedNodeBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EmbeddedNodeBridge.h; sourceTree = "<group>"; };
 		F9A2457FCFD27BD44CF915A1 /* ConnectionDiscoveryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionDiscoveryServiceTests.swift; sourceTree = "<group>"; };
+		F9EA752385A976E46390F62C /* CanvasSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasSessionStore.swift; sourceTree = "<group>"; };
 		FA31C7EBC7EC9ECF4CBE9267 /* NotionMCPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotionMCPClient.swift; sourceTree = "<group>"; };
 		FAF730BF4D6B886A2B60A3D1 /* NativeWhatsAppLinkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWhatsAppLinkClient.swift; sourceTree = "<group>"; };
 		FBE38C1B2FB3BF54DDE0660B /* ForegroundPhotosService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundPhotosService.swift; sourceTree = "<group>"; };
@@ -516,6 +518,7 @@
 				A8770BA2B59B9D7357626FC3 /* CanvasClient.swift */,
 				D1A0C43953E827ADD2C2E944 /* CanvasGuidedTokenSetup.swift */,
 				60EC1BB7DB0F5BA6E7B552BD /* CanvasSchoolFinder.swift */,
+				F9EA752385A976E46390F62C /* CanvasSessionStore.swift */,
 				530D8C279F7F52727CCFC026 /* ForegroundCanvasService.swift */,
 			);
 			path = canvas;
@@ -1443,7 +1446,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_181B2BFC-A032-4ACB-AB8A-9DA78F523B94" /* embedded */ = {
+		"TEMP_0853798C-1677-4B13-98B6-9037CBF7F0D2" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1687,6 +1690,7 @@
 				5A47B05B547DA8F74C543B96 /* CanvasClient.swift in Sources */,
 				C6CEC4DB03E3C4AD0F4E4BBF /* CanvasGuidedTokenSetup.swift in Sources */,
 				6F7C298CE357A811ECDE14F0 /* CanvasSchoolFinder.swift in Sources */,
+				63F6381315CE1CB19E16FAD2 /* CanvasSessionStore.swift in Sources */,
 				C4FDFB65B65F048157366310 /* ChatActivity.swift in Sources */,
 				FD66FBAF132FD1B8830F9CF4 /* ChatContracts.swift in Sources */,
 				8DAA325B2CE2A7D6BB1A96AC /* ChatScreen.swift in Sources */,

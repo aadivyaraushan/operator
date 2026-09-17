@@ -59,10 +59,20 @@ enum CanvasClientError: Error, Equatable, Sendable {
     case unavailable
 }
 
-/// Canvas's REST API with the person's own access token, the way Canvas
-/// documents it: `Authorization: Bearer`, `https://<school>/api/v1`, pages
-/// linked by the `Link` header. GETs only. Every read is bounded in pages
-/// and bytes so a large school cannot overrun the reply.
+/// How a read is signed: an access token the person made (or Operator made
+/// for them), or the browser session from signing in inside Operator, for
+/// schools that do not let students make tokens. Canvas's API takes either;
+/// with a session it prefixes JSON with `while(1);`, which is stripped.
+enum CanvasCredentials: Equatable, Sendable {
+    case token(String)
+    case session(cookies: [HTTPCookie])
+}
+
+/// Canvas's REST API with the person's own credentials, the way Canvas
+/// documents it: `Authorization: Bearer` or the signed-in session,
+/// `https://<school>/api/v1`, pages linked by the `Link` header. GETs only.
+/// Every read is bounded in pages and bytes so a large school cannot
+/// overrun the reply.
 actor CanvasClient {
     static let maxBodyBytes = 2_097_152
     static let pageSize = 50
@@ -71,17 +81,28 @@ actor CanvasClient {
 
     private let transport: any PhoneHTTPTransport
     private let baseURL: @Sendable () -> URL?
-    private let token: @Sendable () async throws -> String?
+    private let credentials: @Sendable () async throws -> CanvasCredentials?
     private let logger = Logger(subsystem: "app.operator.ios", category: "canvas-client")
 
     init(
         transport: any PhoneHTTPTransport = URLSessionPhoneHTTPTransport(),
         baseURL: @escaping @Sendable () -> URL?,
-        token: @escaping @Sendable () async throws -> String?)
+        credentials: @escaping @Sendable () async throws -> CanvasCredentials?)
     {
         self.transport = transport
         self.baseURL = baseURL
-        self.token = token
+        self.credentials = credentials
+    }
+
+    /// A token-only client, for setup and tests.
+    init(
+        transport: any PhoneHTTPTransport = URLSessionPhoneHTTPTransport(),
+        baseURL: @escaping @Sendable () -> URL?,
+        token: @escaping @Sendable () async throws -> String?)
+    {
+        self.init(transport: transport, baseURL: baseURL, credentials: {
+            try await token().map { CanvasCredentials.token($0) }
+        })
     }
 
     /// The signed-in person's name. Once, when a token is saved, to prove
@@ -249,11 +270,23 @@ actor CanvasClient {
     }
 
     private func get(_ url: URL) async throws -> (Data, HTTPURLResponse) {
-        guard let token = try await self.token(), Self.plausibleToken(token) else { throw CanvasClientError.notConnected }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        switch try await self.credentials() {
+        case let .token(token):
+            guard Self.plausibleToken(token) else { throw CanvasClientError.notConnected }
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        case let .session(cookies):
+            // Only the school's own cookies, only over https, and only the
+            // Cookie header: the session is never sent anywhere else.
+            let mine = cookies.filter { cookie in Self.cookie(cookie, matches: url) }
+            guard !mine.isEmpty, let header = HTTPCookie.requestHeaderFields(with: mine)["Cookie"] else { throw CanvasClientError.notConnected }
+            request.setValue(header, forHTTPHeaderField: "Cookie")
+            request.httpShouldHandleCookies = false
+        case nil:
+            throw CanvasClientError.notConnected
+        }
         let data: Data
         let response: URLResponse
         do { (data, response) = try await self.transport.data(for: request) } catch { throw CanvasClientError.unavailable }
@@ -269,7 +302,24 @@ actor CanvasClient {
         default: throw CanvasClientError.unavailable
         }
         guard data.count <= Self.maxBodyBytes else { throw CanvasClientError.invalidResponse }
-        return (data, http)
+        return (Self.stripSessionPrefix(data), http)
+    }
+
+    /// Session-authenticated JSON comes back as `while(1);[...]`, Canvas's
+    /// guard against JSON hijacking in a browser. It is not JSON until the
+    /// prefix is gone.
+    static func stripSessionPrefix(_ data: Data) -> Data {
+        let prefix = Data("while(1);".utf8)
+        guard data.count > prefix.count, data.prefix(prefix.count) == prefix else { return data }
+        return data.dropFirst(prefix.count)
+    }
+
+    static func cookie(_ cookie: HTTPCookie, matches url: URL) -> Bool {
+        guard let host = url.host?.lowercased() else { return false }
+        let domain = cookie.domain.lowercased()
+        let bare = domain.hasPrefix(".") ? String(domain.dropFirst()) : domain
+        guard host == bare || host.hasSuffix("." + bare) else { return false }
+        return !cookie.isSecure || url.scheme == "https"
     }
 
     static func nextLink(in header: String?) -> URL? {

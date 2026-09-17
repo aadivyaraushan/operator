@@ -4,13 +4,26 @@ import OSLog
 import SwiftUI
 
 /// The token in the Keychain; the school's address beside it, in
-/// UserDefaults, since it is not a secret.
+/// UserDefaults, since it is not a secret; and, when the school allows no
+/// tokens, the sign-in kept as a browser session (`sessionCookies`).
 struct CanvasAccountStorage: Sendable {
     let loadToken: @Sendable () async throws -> String?
     let saveToken: @Sendable (String) async throws -> Void
     let clearToken: @Sendable () async throws -> Void
     let loadBaseURL: @Sendable () -> URL?
     let saveBaseURL: @Sendable (URL?) -> Void
+    /// The school's cookies from the kept sign-in; empty when there is none.
+    var sessionCookies: @Sendable (_ host: String) async -> [HTTPCookie] = { _ in [] }
+    var clearSession: @Sendable () async -> Void = {}
+
+    /// What signs a read right now: a token when one is saved, else the
+    /// kept sign-in, else nothing.
+    func credentials() async throws -> CanvasCredentials? {
+        if let token = try await self.loadToken(), CanvasClient.plausibleToken(token) { return .token(token) }
+        guard let host = self.loadBaseURL()?.host else { return nil }
+        let cookies = await self.sessionCookies(host)
+        return cookies.isEmpty ? nil : .session(cookies: cookies)
+    }
 }
 
 final class UserDefaultsCanvasBaseURLStore: @unchecked Sendable {
@@ -48,11 +61,12 @@ final class CanvasAccountSetupModel: ObservableObject {
     private let finder: CanvasSchoolFinder
     private let logger = Logger(subsystem: "app.operator.ios", category: "canvas-setup")
     private var hasToken = false
+    private var hasSession = false
     private var searchTask: Task<Void, Never>?
 
     init(storage: CanvasAccountStorage, transport: any PhoneHTTPTransport = URLSessionPhoneHTTPTransport()) {
         self.storage = storage
-        self.client = CanvasClient(transport: transport, baseURL: { storage.loadBaseURL() }, token: { try await storage.loadToken() })
+        self.client = CanvasClient(transport: transport, baseURL: { storage.loadBaseURL() }, credentials: { try await storage.credentials() })
         self.finder = CanvasSchoolFinder(transport: transport)
         self.baseURL = storage.loadBaseURL()
         if let host = self.baseURL?.host { self.chosenSchool = CanvasSchool(name: host, domain: host) }
@@ -89,11 +103,49 @@ final class CanvasAccountSetupModel: ObservableObject {
     var guidedURL: URL? { self.chosenSchool?.baseURL }
 
     /// Saves a token the guided sign-in captured, for the chosen school.
+    /// The web session that made it is dropped: the token is the credential.
     func saveCapturedToken(_ token: String) async -> (ok: Bool, name: String?, message: String?) {
         guard let school = self.chosenSchool else { return (false, nil, "Choose your school first.") }
         let ok = await self.save(address: school.domain, token: token)
+        if ok { await self.storage.clearSession() }
         let name: String? = if case let .connected(name) = self.state { name } else { nil }
         return (ok, name, ok ? nil : self.message)
+    }
+
+    /// Keeps the guided sign-in as the credential, for a school that lets
+    /// students make no tokens. One GET /users/self with the session proves
+    /// it, exactly as a token is proved.
+    func keepSession() async -> (ok: Bool, name: String?, message: String?) {
+        guard let school = self.chosenSchool, let url = school.baseURL, let host = url.host else { return (false, nil, "Choose your school first.") }
+        self.state = .working
+        self.message = nil
+        let previousURL = self.storage.loadBaseURL()
+        self.storage.saveBaseURL(url)
+        self.baseURL = url
+        let cookies = await self.storage.sessionCookies(host)
+        guard !cookies.isEmpty else {
+            self.storage.saveBaseURL(previousURL)
+            self.baseURL = previousURL
+            self.restore(message: "The sign-in did not finish. Try again.")
+            return (false, nil, self.message)
+        }
+        do {
+            try? await self.storage.clearToken()
+            let name = try await self.client.me()
+            self.hasToken = false
+            self.hasSession = true
+            self.state = .connected(name: name)
+            self.logger.info("[canvas-setup] session kept and verified")
+            return (true, name, nil)
+        } catch {
+            await self.storage.clearSession()
+            self.storage.saveBaseURL(previousURL)
+            self.baseURL = previousURL
+            self.hasSession = false
+            self.restore(message: "Canvas did not accept the sign-in. Try again.")
+            self.logger.info("[canvas-setup] session rejected")
+            return (false, nil, self.message)
+        }
     }
 
     var isConnected: Bool { if case .connected = self.state { return true } else { return false } }
@@ -102,13 +154,14 @@ final class CanvasAccountSetupModel: ObservableObject {
         switch self.state {
         case .checking: "Checking…"
         case .setupRequired: "Setup required"
-        case let .connected(name): name.map { "Signed in as \($0)" } ?? "Token saved"
+        case let .connected(name): name.map { "Signed in as \($0)" } ?? self.statusDetail
         case .working: "Working…"
         case .failed: "Could not check"
         }
     }
 
-    /// Whether an address and a token are saved. No request.
+    /// Whether an address and a token, or a kept sign-in, are saved. No
+    /// request to the school.
     func check() async {
         self.state = .checking
         self.message = nil
@@ -116,7 +169,8 @@ final class CanvasAccountSetupModel: ObservableObject {
             let token = try await self.storage.loadToken()
             self.baseURL = self.storage.loadBaseURL()
             self.hasToken = token.map(CanvasClient.plausibleToken) ?? false
-            self.state = self.hasToken && self.baseURL != nil ? .connected(name: nil) : .setupRequired
+            self.hasSession = if let host = self.baseURL?.host, !self.hasToken { await !self.storage.sessionCookies(host).isEmpty } else { false }
+            self.state = (self.hasToken || self.hasSession) && self.baseURL != nil ? .connected(name: nil) : .setupRequired
         } catch {
             self.hasToken = false
             self.state = .failed
@@ -175,7 +229,9 @@ final class CanvasAccountSetupModel: ObservableObject {
         self.state = .working
         do {
             try await self.storage.clearToken()
+            await self.storage.clearSession()
             self.hasToken = false
+            self.hasSession = false
             self.state = .setupRequired
             self.message = nil
             self.logger.info("[canvas-setup] token removed")
@@ -185,13 +241,18 @@ final class CanvasAccountSetupModel: ObservableObject {
     }
 
     private func restore(message: String?) {
-        self.state = self.hasToken && self.baseURL != nil ? .connected(name: nil) : .setupRequired
+        self.state = (self.hasToken || self.hasSession) && self.baseURL != nil ? .connected(name: nil) : .setupRequired
         self.message = message
+    }
+
+    var statusDetail: String {
+        self.hasSession ? "Signed in (kept in Operator)" : "Token saved"
     }
 }
 
 struct CanvasAccountSetupView: View {
     @ObservedObject var model: CanvasAccountSetupModel
+    let sessionStore: CanvasSessionStore
     @State private var schoolQuery = ""
     @State private var pastedToken = ""
     @State private var isGuidedSetupPresented = false
@@ -201,7 +262,7 @@ struct CanvasAccountSetupView: View {
     var body: some View {
         Form {
             Section {
-                Text("Reads your courses, what is due and announcements. Sign in to Canvas once here; Operator makes the access token for you and keeps it on this iPhone. Reading is turned on separately on the Permissions page.")
+                Text("Reads your courses, what is due and announcements. Sign in to Canvas once here; Operator makes an access token for you, or keeps the sign-in where a school allows no tokens, on this iPhone only. Reading is turned on separately on the Permissions page.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 if let school = self.model.chosenSchool {
@@ -276,7 +337,7 @@ struct CanvasAccountSetupView: View {
             if self.model.isConnected {
                 Section {
                     Text(self.model.statusText).foregroundStyle(.secondary)
-                    Button("Remove token", role: .destructive) { self.isClearConfirmationPresented = true }
+                    Button("Sign out", role: .destructive) { self.isClearConfirmationPresented = true }
                         .disabled(self.isWorking)
                 }
             }
@@ -286,16 +347,17 @@ struct CanvasAccountSetupView: View {
         .task { await self.model.check() }
         .sheet(isPresented: self.$isGuidedSetupPresented) {
             if let url = self.model.guidedURL {
-                CanvasGuidedTokenSetupView(baseURL: url) { token in
-                    await self.model.saveCapturedToken(token)
-                }
+                CanvasGuidedTokenSetupView(
+                    baseURL: url, dataStore: self.sessionStore.dataStore(),
+                    onToken: { token in await self.model.saveCapturedToken(token) },
+                    onSession: { await self.model.keepSession() })
             }
         }
-        .alert("Remove Canvas token?", isPresented: self.$isClearConfirmationPresented) {
-            Button("Remove token", role: .destructive) { Task { await self.model.clearToken() } }
+        .alert("Sign out of Canvas in Operator?", isPresented: self.$isClearConfirmationPresented) {
+            Button("Sign out", role: .destructive) { Task { await self.model.clearToken() } }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Reading stops until you connect again. Delete the token in Canvas too (Account > Settings > Approved Integrations) if it should no longer work anywhere.")
+            Text("Reading stops until you connect again. If Operator made a token, delete it in Canvas too (Account > Settings > Approved Integrations) so it works nowhere.")
         }
     }
 

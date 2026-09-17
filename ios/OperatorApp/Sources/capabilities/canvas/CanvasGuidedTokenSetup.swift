@@ -10,8 +10,9 @@ import WebKit
 /// shows it. The one tap left is Generate, so a credential is never made
 /// without the person doing it.
 ///
-/// The web view's data store is not persisted: the Canvas session lives
-/// only as long as this sheet. The selectors are the ones Canvas's own
+/// When the school has turned student tokens off (the button is disabled),
+/// the sign-in itself becomes the credential: the session stays in a data
+/// store of Operator's own and signs the reads. The selectors are the ones Canvas's own
 /// Selenium suite drives (`spec/selenium/profile/profile_spec.rb`); when
 /// they are not found, the sheet says so and the manual path stays.
 enum CanvasGuidedTokenScript {
@@ -64,6 +65,11 @@ enum CanvasGuidedTokenScript {
         }
         if (!opened) {
           var link = document.querySelector(".add_access_token_link");
+          if (link && (link.hasAttribute("disabled") || link.getAttribute("aria-disabled") === "true")) {
+            // The school does not let students make tokens; the signed-in
+            // session is the way in instead.
+            opened = true; reported = true; post({ stage: "token-creation-disabled" }); return;
+          }
           if (link) { opened = true; link.scrollIntoView({ block: "center" }); link.click(); post({ stage: "opened" }); }
         }
         if (opened && !filled && fillPurpose()) { filled = true; post({ stage: "filled" }); }
@@ -80,28 +86,34 @@ enum CanvasGuidedTokenStage: Equatable {
     case opening
     case readyToGenerate
     case saving
+    case keepingSession
     case notFound
     case saved(name: String?)
     case failed(String)
 
     var text: String {
         switch self {
-        case .signingIn: "Sign in to Canvas. Operator will open the token page for you."
+        case .signingIn: "Sign in to Canvas. Operator will do the rest."
         case .opening: "Opening New Access Token…"
         case .readyToGenerate: "Tap Generate Token. Operator will pick it up from there; you don't need to copy anything."
         case .saving: "Saving the token…"
-        case .notFound: "This page has no New Access Token button - your school may not let students make tokens. Ask them, or paste a token if you have one."
-        case let .saved(name): name.map { "Signed in as \($0)." } ?? "Token saved."
+        case .keepingSession: "Your school doesn't let students make tokens, so Operator is keeping this sign-in instead…"
+        case .notFound: "This page has no New Access Token button and no sign-in to keep. Ask your school, or paste a token if you have one."
+        case let .saved(name): name.map { "Signed in as \($0)." } ?? "Connected."
         case let .failed(reason): reason
         }
     }
 }
 
-/// The guided sheet. `onToken` saves and reports; the sheet closes itself
-/// once the save succeeds.
+/// The guided sheet. `onToken` saves a captured token; `onSession` keeps
+/// the sign-in when tokens are not allowed. Both report, and the sheet
+/// closes itself once a save succeeds.
 struct CanvasGuidedTokenSetupView: View {
+    typealias SaveResult = (ok: Bool, name: String?, message: String?)
     let baseURL: URL
-    let onToken: (String) async -> (ok: Bool, name: String?, message: String?)
+    let dataStore: WKWebsiteDataStore
+    let onToken: (String) async -> SaveResult
+    let onSession: () async -> SaveResult
     @Environment(\.dismiss) private var dismiss
     @State private var stage: CanvasGuidedTokenStage = .signingIn
 
@@ -116,7 +128,7 @@ struct CanvasGuidedTokenSetupView: View {
                     .padding(.vertical, 10)
                     .accessibilityIdentifier("canvas-guided-stage")
                 Divider()
-                CanvasTokenWebView(url: self.baseURL.appendingPathComponent("profile/settings")) { message in
+                CanvasTokenWebView(url: self.baseURL.appendingPathComponent("profile/settings"), dataStore: self.dataStore) { message in
                     self.handle(message)
                 }
             }
@@ -130,44 +142,55 @@ struct CanvasGuidedTokenSetupView: View {
         switch self.stage { case .notFound, .failed: true; default: false }
     }
 
+    private var isSettling: Bool {
+        switch self.stage { case .saving, .keepingSession, .saved: true; default: false }
+    }
+
     private func handle(_ message: [String: Any]) {
+        guard !self.isSettling else { return }
         if let token = message["token"] as? String {
-            guard case .saving = self.stage else {
-                self.stage = .saving
-                Task {
-                    let result = await self.onToken(token)
-                    if result.ok {
-                        self.stage = .saved(name: result.name)
-                        try? await Task.sleep(for: .seconds(1))
-                        self.dismiss()
-                    } else {
-                        self.stage = .failed(result.message ?? "Canvas did not accept the token it just made. Try again.")
-                    }
-                }
-                return
-            }
+            self.stage = .saving
+            self.finish { await self.onToken(token) }
             return
         }
         switch message["stage"] as? String {
         case "opened": if self.stage == .signingIn { self.stage = .opening }
         case "filled": if self.stage == .signingIn || self.stage == .opening { self.stage = .readyToGenerate }
+        case "token-creation-disabled":
+            self.stage = .keepingSession
+            self.finish { await self.onSession() }
         case "not-found": if self.stage == .signingIn { self.stage = .notFound }
         default: break
         }
     }
+
+    private func finish(_ save: @escaping () async -> SaveResult) {
+        Task {
+            let result = await save()
+            if result.ok {
+                self.stage = .saved(name: result.name)
+                try? await Task.sleep(for: .seconds(1))
+                self.dismiss()
+            } else {
+                self.stage = .failed(result.message ?? "Canvas did not accept the sign-in. Try again.")
+            }
+        }
+    }
 }
 
-/// A WKWebView with the guided script and a non-persistent store, so the
-/// Canvas session is gone when the sheet is.
+/// A WKWebView with the guided script, in Operator's own Canvas data store:
+/// kept when the sign-in is the credential, cleared by the model when a
+/// token is.
 struct CanvasTokenWebView: UIViewRepresentable {
     let url: URL
+    let dataStore: WKWebsiteDataStore
     let onMessage: @MainActor ([String: Any]) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(onMessage: self.onMessage) }
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
-        configuration.websiteDataStore = .nonPersistent()
+        configuration.websiteDataStore = self.dataStore
         let controller = WKUserContentController()
         controller.addUserScript(WKUserScript(source: CanvasGuidedTokenScript.source, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         controller.add(context.coordinator, name: CanvasGuidedTokenScript.messageName)

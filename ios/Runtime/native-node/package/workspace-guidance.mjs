@@ -100,8 +100,9 @@ each behind the person's confirmation tap:
   recent announcements across those courses, newest first, with links.
   All three are read-only: nothing can be submitted or posted from here.
   If one comes back NOT_CONNECTED, tell the person: Connect accounts >
-  Canvas > pick your school > Sign in and connect (Operator makes the token
-  for them; they only tap Generate). Then stop.
+  Canvas > pick your school > Sign in and connect; signing in once is all
+  it takes (a kept sign-in can expire, and then it is the same step again).
+  Then stop.
 - Texts: sms.compose sends to one person or a group of up to ten; with the
   "sent for you" grant it goes out with no tap, otherwise the composer opens.
 - WhatsApp: whatsapp.compose sends one message to someone the person has

@@ -7,6 +7,7 @@ struct NativeAccountConnectionSheet: View {
     @ObservedObject var youtube: YouTubeAPIKeySetupModel
     @ObservedObject var discord: DiscordAccountSetupModel
     @ObservedObject var canvas: CanvasAccountSetupModel
+    let canvasSession: CanvasSessionStore
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
@@ -34,7 +35,7 @@ struct NativeAccountConnectionSheet: View {
                 }
                 Section("School") {
                     NavigationLink {
-                        CanvasAccountSetupView(model: self.canvas)
+                        CanvasAccountSetupView(model: self.canvas, sessionStore: self.canvasSession)
                     } label: {
                         HStack {
                             Text("Canvas")

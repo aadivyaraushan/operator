@@ -56,6 +56,7 @@ struct OperatorApp: App {
     @StateObject private var youtube: YouTubeAPIKeySetupModel
     @StateObject private var discord: DiscordAccountSetupModel
     @StateObject private var canvas: CanvasAccountSetupModel
+    private let canvasSession: CanvasSessionStore
     @StateObject private var permissions: ConnectorPermissionCenter
     private let locationNode: LocalLocationNodeGateway
     /// Answers the "Send to X on WhatsApp?" and "Operator has a question"
@@ -166,6 +167,7 @@ struct OperatorApp: App {
             service: "app.operator.ios.canvas",
             account: "access-token")
         let canvasBaseURL = UserDefaultsCanvasBaseURLStore()
+        let canvasSession = CanvasSessionStore()
         let canvasStorage = CanvasAccountStorage(
             loadToken: {
                 guard let data = try await canvasTokenStore.load(), let value = String(data: data, encoding: .utf8) else { return nil }
@@ -174,11 +176,13 @@ struct OperatorApp: App {
             saveToken: { try await canvasTokenStore.save(Data($0.utf8)) },
             clearToken: { try await canvasTokenStore.remove() },
             loadBaseURL: { canvasBaseURL.load() },
-            saveBaseURL: { canvasBaseURL.save($0) })
+            saveBaseURL: { canvasBaseURL.save($0) },
+            sessionCookies: { host in await canvasSession.cookies(for: host) },
+            clearSession: { await canvasSession.clear() })
         let canvasSetup = CanvasAccountSetupModel(storage: canvasStorage)
         let canvasService = ForegroundCanvasService(client: CanvasClient(
             baseURL: { canvasBaseURL.load() },
-            token: { try await canvasStorage.loadToken() }))
+            credentials: { try await canvasStorage.credentials() }))
         let contactDirectory = SystemContactDirectory()
         let discordService = ForegroundDiscordAnnouncementsService(
             client: DiscordUserClient(token: {
@@ -332,6 +336,7 @@ struct OperatorApp: App {
         _youtube = StateObject(wrappedValue: youtubeSetup)
         _discord = StateObject(wrappedValue: discordSetup)
         _canvas = StateObject(wrappedValue: canvasSetup)
+        self.canvasSession = canvasSession
         _permissions = StateObject(wrappedValue: permissions)
         _whatsapp = StateObject(wrappedValue: WhatsAppLinkFlowModel(
             gateway: NativeWhatsAppLinkClient(supportDirectory: supportDirectory)))
@@ -339,7 +344,7 @@ struct OperatorApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, discord: self.discord, canvas: self.canvas, permissions: self.permissions)
+            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, discord: self.discord, canvas: self.canvas, canvasSession: self.canvasSession, permissions: self.permissions)
                 .onOpenURL { url in
                     // Shortcuts returning from sms.send. The only thing known
                     // is what Shortcuts reported; it goes in the session log.

@@ -365,3 +365,111 @@ final class CanvasSchoolFinderTests: XCTestCase {
         XCTAssertNotNil(model.chosenSchool, "a connected school is not un-chosen")
     }
 }
+
+private func canvasCookie(_ name: String, domain: String, secure: Bool = true) -> HTTPCookie {
+    HTTPCookie(properties: [.name: name, .value: "v-\(name)", .domain: domain, .path: "/", .secure: secure ? "TRUE" : "FALSE"])!
+}
+
+/// A token that may change under a closure; the closure reads it on the
+/// actor's turn, so the change is visible.
+private final class TokenBox: @unchecked Sendable { var value: String? }
+
+@MainActor
+final class CanvasSessionCredentialTests: XCTestCase {
+
+    func testASessionReadSendsOnlyTheSchoolsCookiesAndStripsCanvasJSONGuard() async throws {
+        let transport = RoutedTransport(["/api/v1/courses": [.ok("while(1);" + coursesBody)]])
+        let cookies = [
+            canvasCookie("canvas_session", domain: "canvas.illinois.edu"),
+            canvasCookie("_csrf_token", domain: ".illinois.edu"),
+            canvasCookie("other", domain: "evil.example"),
+        ]
+        let client = CanvasClient(transport: transport, baseURL: { school }, credentials: { .session(cookies: cookies) })
+        let courses = try await client.courses()
+        XCTAssertEqual(courses.map(\.id), [101, 102])
+        let requests = await transport.requests
+        let request = try XCTUnwrap(requests.first)
+        let header = try XCTUnwrap(request.value(forHTTPHeaderField: "Cookie"))
+        XCTAssertTrue(header.contains("canvas_session=v-canvas_session") && header.contains("_csrf_token=v-_csrf_token"), header)
+        XCTAssertFalse(header.contains("other="), "a cookie for another host is never sent")
+        XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+        XCTAssertFalse(request.httpShouldHandleCookies, "the shared cookie jar is not consulted or written")
+    }
+
+    func testNoCookiesForTheSchoolIsNotConnectedWithoutARequest() async throws {
+        let transport = RoutedTransport([:])
+        let client = CanvasClient(transport: transport, baseURL: { school }, credentials: { .session(cookies: [canvasCookie("x", domain: "elsewhere.edu")]) })
+        do { _ = try await client.courses(); XCTFail() } catch let error as CanvasClientError { XCTAssertEqual(error, .notConnected) }
+        let count = await transport.requests.count
+        XCTAssertEqual(count, 0)
+        XCTAssertEqual(CanvasClient.stripSessionPrefix(Data("[]".utf8)), Data("[]".utf8), "a token reply has no prefix and is left alone")
+    }
+
+    func testStorageCredentialsPreferATokenAndFallBackToTheKeptSignIn() async throws {
+        let token = TokenBox()
+        let storage = CanvasAccountStorage(
+            loadToken: { token.value }, saveToken: { _ in }, clearToken: {},
+            loadBaseURL: { school }, saveBaseURL: { _ in },
+            sessionCookies: { host in host == "canvas.illinois.edu" ? [canvasCookie("canvas_session", domain: host)] : [] })
+        guard case let .session(cookies)? = try await storage.credentials() else { return XCTFail("session expected") }
+        XCTAssertEqual(cookies.map(\.name), ["canvas_session"])
+        token.value = fixtureToken
+        guard case .token(fixtureToken)? = try await storage.credentials() else { return XCTFail("token expected") }
+    }
+
+    func testKeepSessionProvesTheSignInWithOneRequestAndDropsAnyToken() async throws {
+        final class Storage: @unchecked Sendable {
+            var token: String? = fixtureToken
+            var url: URL?
+            var cookies: [HTTPCookie] = []
+            var sessionCleared = 0
+        }
+        let storage = Storage()
+        storage.cookies = [canvasCookie("canvas_session", domain: "canvas.illinois.edu")]
+        let accountStorage = CanvasAccountStorage(
+            loadToken: { storage.token }, saveToken: { storage.token = $0 }, clearToken: { storage.token = nil },
+            loadBaseURL: { storage.url }, saveBaseURL: { storage.url = $0 },
+            sessionCookies: { host in host == "canvas.illinois.edu" ? storage.cookies : [] },
+            clearSession: { storage.sessionCleared += 1 })
+        let transport = RoutedTransport(["/api/v1/users/self": [.ok(#"while(1);{"id":1,"name":"Surya S"}"#)]])
+        let model = CanvasAccountSetupModel(storage: accountStorage, transport: transport)
+        model.choose(CanvasSchool(name: "UIUC", domain: "canvas.illinois.edu"))
+
+        let result = await model.keepSession()
+
+        XCTAssertTrue(result.ok)
+        XCTAssertEqual(result.name, "Surya S")
+        XCTAssertNil(storage.token, "the kept sign-in is the credential; a stale token would shadow it")
+        XCTAssertEqual(storage.url?.host, "canvas.illinois.edu")
+        XCTAssertEqual(model.state, .connected(name: "Surya S"))
+        XCTAssertEqual(storage.sessionCleared, 0)
+        let requests = await transport.requests
+        XCTAssertEqual(requests.count, 1)
+        XCTAssertNotNil(requests.first?.value(forHTTPHeaderField: "Cookie"))
+
+        await model.check()
+        XCTAssertEqual(model.state, .connected(name: nil))
+        XCTAssertEqual(model.statusText, "Signed in (kept in Operator)")
+        await model.clearToken()
+        XCTAssertEqual(storage.sessionCleared, 1)
+        XCTAssertEqual(model.state, .setupRequired)
+    }
+
+    func testKeepSessionWithNoSignInSaysSoAndChangesNothing() async throws {
+        let transport = RoutedTransport([:])
+        let storage = CanvasAccountStorage(loadToken: { nil }, saveToken: { _ in }, clearToken: {}, loadBaseURL: { nil }, saveBaseURL: { _ in })
+        let model = CanvasAccountSetupModel(storage: storage, transport: transport)
+        model.choose(CanvasSchool(name: "UIUC", domain: "canvas.illinois.edu"))
+        let result = await model.keepSession()
+        XCTAssertFalse(result.ok)
+        XCTAssertEqual(result.message, "The sign-in did not finish. Try again.")
+        let count = await transport.requests.count
+        XCTAssertEqual(count, 0)
+    }
+
+    func testTheGuidedScriptReportsADisabledButtonInsteadOfClickingIt() {
+        XCTAssertTrue(CanvasGuidedTokenScript.source.contains(#"link.hasAttribute("disabled")"#))
+        XCTAssertTrue(CanvasGuidedTokenScript.source.contains(#"post({ stage: "token-creation-disabled" }); return;"#))
+        XCTAssertEqual(CanvasGuidedTokenStage.keepingSession.text.contains("doesn't let students make tokens"), true)
+    }
+}

@@ -163,7 +163,7 @@ final class ForegroundCanvasService: GatewayNodeCommandHandler {
     private static func failure(for error: CanvasClientError) -> GatewayNodeCommandResult {
         switch error {
         case .notConnected:
-            .failure(code: "NOT_CONNECTED", message: "Canvas is not connected on this iPhone, or did not accept the saved token. The person can set it up under Connect accounts > Canvas.")
+            .failure(code: "NOT_CONNECTED", message: "Canvas is not connected on this iPhone, or the saved sign-in has expired. The person can sign in again under Connect accounts > Canvas.")
         case .notVisible:
             .failure(code: "NOT_VISIBLE", message: "Canvas answered that this is not visible to the person's account.")
         case let .rateLimited(seconds):
