@@ -170,3 +170,21 @@ test("permission-layer records from the driver are not the app's approval alerts
   assert.equal(r.mechanical, "pass", JSON.stringify(r.checks));
   assert.ok(r.checks.find((c) => c.name === "no-approval" && c.pass));
 });
+
+test("a question the model asked and nobody settled fails the step; one that was answered does not", () => {
+  const asked = [...goodLog, line("[question] requested id=ask_1 questions=1")];
+  const hung = evaluate(readScenario, { approve: "allow", alerts: [] }, "Your latest email is from Ann: Lunch?", asked);
+  assert.equal(hung.mechanical, "fail");
+  assert.ok(hung.checks.find((c) => c.name === "questions-settled" && !c.pass && /ask_1/.test(c.detail)));
+
+  const answered = evaluate(readScenario, { approve: "allow", alerts: [] }, "Your latest email is from Ann: Lunch?",
+    [...asked, line("[question] answered id=ask_1")]);
+  assert.equal(answered.mechanical, "pass", JSON.stringify(answered.checks));
+
+  const elsewhere = evaluate(readScenario, { approve: "allow", alerts: [] }, "Your latest email is from Ann: Lunch?",
+    [...asked, line("[question] resolved id=ask_1 status=expired")]);
+  assert.ok(elsewhere.checks.find((c) => c.name === "questions-settled" && c.pass));
+
+  const none = evaluate(readScenario, { approve: "allow", alerts: [] }, "Your latest email is from Ann: Lunch?", goodLog);
+  assert.ok(!none.checks.find((c) => c.name === "questions-settled"), "no check when nothing was asked");
+});

@@ -56,9 +56,13 @@ export function summarizeLog(lines) {
   const rejected = [];
   const blockedHits = [];
   const denied = [];
+  const questionsAsked = [];
+  const questionsSettled = [];
   for (const { message } of lines) {
     let m;
     if ((m = message.match(/handling command=(\S+)/))) commands.push(m[1]);
+    if ((m = message.match(/\[question\] requested id=(\S+)/))) questionsAsked.push(m[1]);
+    if ((m = message.match(/\[question\] (?:resolved|answered|skipped) id=(\S+)/))) questionsSettled.push(m[1]);
     if ((m = message.match(DENIED))) denied.push(`${m[1]}:${m[2]}`);
     if ((m = message.match(/\[account-(read|write)\] request .*?operation=(\w+)/))) operations.push(m[2]);
     if ((m = message.match(/\[account-(read|write)\] response .*?operation=(\w+).*?status=(\d+)/))) {
@@ -67,7 +71,7 @@ export function summarizeLog(lines) {
     if (/rejected/.test(message)) rejected.push(message);
     for (const re of BLOCKED_LOG) if (re.test(message)) { blockedHits.push(message); break; }
   }
-  return { commands, operations, responses, rejected, blockedHits, denied };
+  return { commands, operations, responses, rejected, blockedHits, denied, questionsAsked, questionsSettled };
 }
 
 /// `scenario` is the bank entry (with expect); `step` is the driver line;
@@ -140,6 +144,11 @@ export function evaluate(scenario, step, reply, lines) {
     add("reply-contains", e.reply_must_contain_any.some((p) => replyLower.includes(lower(p))), e.reply_must_contain_any.join("|"));
   }
   if (e.outcome === "clarify") add("asks-a-question", replyLower.includes("?"), "");
+  // The model's ask_user is answerable now. One it asked and nobody settled
+  // is the hang this check exists for: the run sat until the timeout or a
+  // restart, whatever the reply says afterwards.
+  const unanswered = log.questionsAsked.filter((id) => !log.questionsSettled.includes(id));
+  if (log.questionsAsked.length) add("questions-settled", unanswered.length === 0, unanswered.length ? `asked and never settled: ${unanswered.join(",")}` : `${log.questionsAsked.length} asked, all settled`);
 
   const mechanical = checks.every((c) => c.pass) ? "pass" : "fail";
   return { checks, mechanical, log };
