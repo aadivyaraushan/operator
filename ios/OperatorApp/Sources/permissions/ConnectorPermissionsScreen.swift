@@ -154,6 +154,7 @@ private struct ConnectorRow: View {
     let descriptor: ConnectorDescriptor
     @ObservedObject var center: ConnectorPermissionCenter
     let status: String?
+    @Environment(\.openURL) private var openURL
 
     private var readGranted: Bool { self.center.isGranted(self.descriptor.id, .read) }
     private var writeGranted: Bool { self.center.isGranted(self.descriptor.id, .write) }
@@ -197,7 +198,11 @@ private struct ConnectorRow: View {
                         .foregroundStyle(.secondary)
                     HStack(spacing: 16) {
                         if self.descriptor.id == .messagesAutosend {
-                            Link("Install shortcut", destination: ForegroundMessageSendService.installURL)
+                            Button("Install shortcut") {
+                                self.center.shortcutInstallStarted(for: self.descriptor.id)
+                                self.openURL(ForegroundMessageSendService.installURL)
+                            }
+                                .buttonStyle(.borderless)
                                 .font(.caption.weight(.semibold))
                                 .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-install")
                         }

@@ -329,6 +329,7 @@ struct OperatorApp: App {
                     self.lifecycleLogger.info("[scene] phase=\(String(describing: phase), privacy: .public) continuation=\(self.continuation.isActive)")
                     if phase == .active {
                         self.runtimeIsForeground = true
+                        self.permissions.ownerReturnedToApp()
                     } else if phase == .background, !self.continuation.isActive {
                         self.runtimeIsForeground = false
                     }

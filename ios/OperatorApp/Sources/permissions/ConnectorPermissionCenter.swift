@@ -113,6 +113,8 @@ final class ConnectorPermissionCenter: ObservableObject {
 
     // MARK: Editing
 
+    private var shortcutInstallInProgress: ConnectorID?
+
     func isGranted(_ id: ConnectorID, _ access: ConnectorAccess) -> Bool { self.grants.isGranted(id, access) }
 
     /// The one entry point for turning a grant on or off from the UI. A grant
@@ -125,6 +127,22 @@ final class ConnectorPermissionCenter: ObservableObject {
             return
         }
         self.set(id, access, allowed: allowed)
+    }
+
+    /// iOS has no way to ask whether a shortcut is installed. The closest
+    /// signal is the owner tapping Install and then coming back to Operator,
+    /// so that return asks for the grant the shortcut was installed for.
+    func shortcutInstallStarted(for id: ConnectorID) {
+        self.shortcutInstallInProgress = id
+        self.logger.info("[permissions] shortcut install opened connector=\(id.rawValue, privacy: .public)")
+    }
+
+    func ownerReturnedToApp() {
+        guard let id = self.shortcutInstallInProgress else { return }
+        self.shortcutInstallInProgress = nil
+        let already = self.isGranted(id, .write)
+        self.logger.info("[permissions] back from shortcut install connector=\(id.rawValue, privacy: .public) alreadyGranted=\(already)")
+        if !already { self.requestGrant(id, .write, allowed: true) }
     }
 
     func acceptAcknowledgement() {
