@@ -86,8 +86,8 @@ targets:
     preBuildScripts:
       # The staged runtime is ignored by git; a stale copy ships an app that
       # crashes on its first segmented reply. Fail the build instead.
-      - name: Check staged runtime carries the Intl.Segmenter replacement
-        script: sh "$SRCROOT/Runtime/native-node/package/check-staged-shim.sh"
+      - name: Check staged runtime matches the source
+        script: sh "$SRCROOT/Runtime/native-node/package/check-staged-runtime.sh"
         basedOnDependencyAnalysis: false
     dependencies:
       # The wacli WhatsApp archive is deliberately NOT listed here. It is built
