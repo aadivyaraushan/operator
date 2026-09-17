@@ -227,10 +227,18 @@ public struct GatewayEventReducer: Sendable {
             return []
         }
         var run = self.runs[event.runID] ?? Run()
-        guard event.sequence > run.lastSequence else {
-            return []
+        // Only streamed text is order-checked. OpenClaw can restart its count
+        // for the closing event, and a dropped closing event leaves the chat
+        // working forever; a run that already closed is refused above.
+        switch event.state {
+        case .status, .delta:
+            guard event.sequence > run.lastSequence else {
+                return []
+            }
+            run.lastSequence = event.sequence
+        case .final, .error, .aborted:
+            break
         }
-        run.lastSequence = event.sequence
         var output: [GatewayConversationEvent] = []
         if !run.announcedWorking {
             run.announcedWorking = true

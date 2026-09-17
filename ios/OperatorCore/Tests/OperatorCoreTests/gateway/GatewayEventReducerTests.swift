@@ -216,6 +216,18 @@ final class GatewayEventReducerTests: XCTestCase {
             [.reply(runID: "final-message", text: "Readable final")])
     }
 
+    // OpenClaw can restart its count for the closing event: the reply streamed
+    // as 40, 41 and then "final" arrived numbered 1. Dropping it left the chat
+    // on "working" forever with every later message queued behind it.
+    func testAFinalNumberedLowerThanTheStreamStillEndsTheRun() {
+        var reducer = GatewayEventReducer(sessionKey: "main")
+        _ = reducer.apply(.init(runID: "run", sessionKey: "main", sequence: 40, state: .delta, deltaText: "Sent."))
+        XCTAssertEqual(
+            reducer.apply(.init(runID: "run", sessionKey: "main", sequence: 1, state: .final)),
+            [.reply(runID: "run", text: "Sent.")])
+        XCTAssertEqual(reducer.apply(.init(runID: "run", sessionKey: "main", sequence: 2, state: .final)), [])
+    }
+
     func testWrongSessionAndOutOfOrderEventsAreIgnored() {
         var reducer = GatewayEventReducer(sessionKey: "main")
 

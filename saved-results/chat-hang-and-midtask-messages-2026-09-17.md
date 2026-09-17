@@ -45,3 +45,25 @@
 - No gateway-level tests for `addToRunningRequest` / `letGoOfConnection`.
 - If a joined message waits over 5 minutes (OpenClaw forgets the send) and
   its empty ending was never seen, it could be sent twice.
+
+## Follow-up the same day: replies that never "finish" (looked like a slow model)
+- Input: "Wait are you sure you sent it?" at 13:30. The model answered in 14 s
+  (transcript entry 1064, 13:30:34) but the chat stayed on "working"; two more
+  messages queued behind it and were also answered in seconds, unseen.
+- What went wrong: the app drops any chat event numbered no higher than the
+  last one it saw for that run. OpenClaw sometimes restarts the count for the
+  closing "final" event (it clears its per-run counter when the run's
+  lifecycle ends, then numbers the final as 1: dist `chat-send-handler` 
+  `nextChatSeq`, `server-chat` `finalizeLifecycleEvent`). The final was dropped
+  with no log line. Evidence: log shows first-text then nothing for that run;
+  transcript shows the reply complete. The OpenClaw numbering cause is read
+  from its code, not seen on the wire.
+- Fix: `GatewayEventReducer` order-checks only streamed text; final, error and
+  aborted always count (a run already closed is still ignored). Test:
+  `testAFinalNumberedLowerThanTheStreamStillEndsTheRun`.
+- Verified: after installing, the three stuck replies were recovered on launch
+  ("recovered saved completion before send" x3). Not yet seen: a live run
+  where the low-numbered final arrives and is now accepted.
+- Outlook "zero messages" earlier the same day: Microsoft returned 200 with an
+  empty list; once a mail was sent to that account the read returned it. Sign-in
+  uses Microsoft's personal-accounts-only address (`/consumers`).
