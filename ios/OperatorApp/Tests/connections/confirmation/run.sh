@@ -9,6 +9,7 @@ sed "s|CORE_PACKAGE_PATH|$ios_dir/OperatorCore|" "$test_dir/Package.template" > 
 cp "$ios_dir/OperatorApp/Sources/connections/auth/OAuthTypes.swift" "$scratch/Sources/OperatorApp/"
 cp "$ios_dir/OperatorApp/Sources/connections/auth/OAuthTransport.swift" "$scratch/Sources/OperatorApp/"
 cp "$ios_dir/OperatorApp/Sources/connections/services/write/DirectAccountWriter.swift" "$scratch/Sources/OperatorApp/"
+cp "$ios_dir/OperatorApp/Sources/connections/services/write/GoogleWorkspaceWrites.swift" "$scratch/Sources/OperatorApp/"
 cp "$ios_dir/OperatorApp/Sources/connections/services/confirmation/ForegroundAccountWriteConfirmationService.swift" "$scratch/Sources/OperatorApp/"
 cp "$test_dir/ForegroundAccountWriteConfirmationServiceTests.swift" "$scratch/Tests/AccountWriteConfirmationProofTests/"
 CLANG_MODULE_CACHE_PATH="$scratch/module-cache" SWIFTPM_MODULECACHE_OVERRIDE="$scratch/module-cache" swift test --package-path "$scratch" --scratch-path "$scratch/.build"

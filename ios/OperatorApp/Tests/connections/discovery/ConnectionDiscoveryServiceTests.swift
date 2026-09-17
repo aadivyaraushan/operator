@@ -22,7 +22,7 @@ final class ConnectionDiscoveryServiceTests: XCTestCase {
         XCTAssertEqual(object["appHandoffIDs"] as? [String], ["spotify"])
         let account = try XCTUnwrap(object["accountOperations"] as? [String: Any])
         XCTAssertEqual(Set(account["read"] as? [String] ?? []), Set([
-            "googleCalendarEvents", "googleDriveFiles", "gmailMessages", "googleTasks",
+            "googleCalendarEvents", "googleDriveFiles", "googleDriveFileContent", "gmailMessages", "googleTasks",
             "outlookInbox", "outlookCalendarEvents", "slackChannels",
             "slackHistory", "spotifySearch", "spotifyPlayback",
         ]))
@@ -30,6 +30,7 @@ final class ConnectionDiscoveryServiceTests: XCTestCase {
         XCTAssertEqual(account["readParameters"] as? [String: [String]], [
             "googleCalendarEvents": ["timeMin", "timeMax", "limit", "query?", "cursor?"],
             "googleDriveFiles": ["query", "limit", "cursor?"],
+            "googleDriveFileContent": ["fileID", "limit", "query?"],
             "gmailMessages": ["limit", "query?", "cursor?"],
             "googleTasks": ["limit", "channel?", "cursor?"],
             "outlookInbox": ["limit", "query?", "cursor?"],
@@ -56,6 +57,16 @@ final class ConnectionDiscoveryServiceTests: XCTestCase {
         }
         XCTAssertTrue(optional.isSuperset(of: ["eventID", "attendees", "addMeetLink"]))
         XCTAssertTrue((write["note"] as? String ?? "").contains("addMeetLink"))
+        // Same for reads: fileID was once missing here, so a file could be
+        // found but the model saw no way to open it.
+        let read = try XCTUnwrap(details.first { $0["name"] as? String == "connections.read" })
+        let readOptional = Set(try XCTUnwrap((read["parameters"] as? [String: Any])?["optional"] as? [String]))
+        let readParameters = try XCTUnwrap((object["accountOperations"] as? [String: Any])?["readParameters"] as? [String: [String]])
+        for name in readParameters.values.flatMap({ $0 }).map({ $0.hasSuffix("?") ? String($0.dropLast()) : $0 }) {
+            XCTAssertTrue(readOptional.contains(name), name)
+        }
+        XCTAssertTrue((read["note"] as? String ?? "").contains("googleDriveFileContent"))
+        XCTAssertTrue((write["note"] as? String ?? "").contains("googleSheetsAppendRows"))
         XCTAssertLessThan(try JSONSerialization.data(withJSONObject: object).count, 48_000)
     }
 

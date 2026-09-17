@@ -76,7 +76,7 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
     }
 
     private static let readOperations: [AccountReadOperation] = [
-        .googleCalendarEvents, .googleDriveFiles, .gmailMessages, .googleTasks, .outlookInbox, .outlookCalendarEvents, .slackChannels,
+        .googleCalendarEvents, .googleDriveFiles, .googleDriveFileContent, .gmailMessages, .googleTasks, .outlookInbox, .outlookCalendarEvents, .slackChannels,
         .slackHistory, .spotifySearch, .spotifyPlayback,
     ]
 
@@ -136,15 +136,17 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
             parameters = schema(required: ["recipientJID", "body"], optional: [])
             note = "Shows an immutable native preview and sends once only after owner confirmation; in the background the result has askedByNotification true and nothing is sent until the owner taps Send on the notification."
         case "connections.read":
-            parameters = schema(required: ["operation"], optional: ["query", "channel", "timeMin", "timeMax", "limit", "cursor"])
-            note = "Reads from a connected account; choose operation from accountOperations.read."
+            // A union for the same reason as connections.write below.
+            let union = Self.readOperationParameters.values.flatMap { $0 }.map { $0.hasSuffix("?") ? String($0.dropLast()) : $0 }
+            parameters = schema(required: ["operation"], optional: Array(Set(union)).sorted())
+            note = "Reads from a connected account; choose operation from accountOperations.read. Google Drive: googleDriveFiles searches every file's name and text and returns id, mimeType and parents; googleDriveFileContent reads one file by that id as fileID (limit 1): a Sheet comes back as CSV of its first tab, or as rows when query is an A1 range such as Signups!A1:C50; a Doc or Slides deck as plain text."
         case "connections.write":
             // The union of every operation's parameters, so this list cannot
             // fall behind writeParameters and make the model believe a field
             // does not exist (it once decided Meet links were impossible that way).
             let union = Self.writeOperationParameters.values.flatMap { $0 }.map { $0.hasSuffix("?") ? String($0.dropLast()) : $0 }
             parameters = schema(required: ["operation"], optional: Array(Set(union)).sorted())
-            note = "Every write shows a native immutable preview and requires owner confirmation. Parameters per operation are in accountOperations.writeParameters (? marks optional). Google Calendar: googleCalendarCreateEvent takes attendees (invitations are emailed) and addMeetLink (a Google Meet room; its URL comes back as meetLink); googleCalendarUpdateEvent changes an existing event's summary, description, time, guest list, or adds a Meet room, by eventID from a read."
+            note = "Every write shows a native immutable preview and requires owner confirmation. Parameters per operation are in accountOperations.writeParameters (? marks optional). Google Calendar: googleCalendarCreateEvent takes attendees (invitations are emailed) and addMeetLink (a Google Meet room; its URL comes back as meetLink); googleCalendarUpdateEvent changes an existing event's summary, description, time, guest list, or adds a Meet room, by eventID from a read. Google Drive files are edited by fileID from a Drive search: googleSheetsUpdateCells and googleSheetsAppendRows take rows as a list of rows of cell text (numbers and =formulas are entered as typed); googleDocsReplaceText and googleSlidesReplaceText replace every case-sensitive match and return occurrencesChanged; googleDriveMoveFile takes fromFolderID from the file's parents; googleDriveCreateFile kind is document, spreadsheet, presentation or folder."
         case "connections.describe":
             parameters = schema(required: [], optional: [])
             note = "Describes the current native commands, account setup states, and supported app handoffs without network access."
@@ -189,6 +191,7 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
     private static let readOperationParameters: [String: [String]] = [
         "googleCalendarEvents": ["timeMin", "timeMax", "limit", "query?", "cursor?"],
         "googleDriveFiles": ["query", "limit", "cursor?"],
+        "googleDriveFileContent": ["fileID", "limit", "query?"],
         "gmailMessages": ["limit", "query?", "cursor?"],
         "googleTasks": ["limit", "channel?", "cursor?"],
         "outlookInbox": ["limit", "query?", "cursor?"],
@@ -203,6 +206,16 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
         "googleCalendarCreateEvent": ["summary", "description", "startRFC3339", "endRFC3339", "attendees?", "addMeetLink?"],
         "googleCalendarUpdateEvent": ["eventID", "summary?", "description?", "startRFC3339?", "endRFC3339?", "attendees?", "addMeetLink?"],
         "googleDriveCreateTextFile": ["name", "content"],
+        "googleSheetsUpdateCells": ["fileID", "range", "rows"],
+        "googleSheetsAppendRows": ["fileID", "range", "rows"],
+        "googleDocsAppendText": ["fileID", "text"],
+        "googleDocsReplaceText": ["fileID", "find", "replacement"],
+        "googleSlidesReplaceText": ["fileID", "find", "replacement"],
+        "googleSlidesAddSlide": ["fileID", "title", "body"],
+        "googleDriveUpdateTextFile": ["fileID", "content"],
+        "googleDriveRenameFile": ["fileID", "name"],
+        "googleDriveMoveFile": ["fileID", "fromFolderID", "toFolderID"],
+        "googleDriveCreateFile": ["name", "kind"],
         "outlookCreateDraft": ["subject", "body"],
         "outlookSendMail": ["to", "subject", "body"],
         "slackPostMessage": ["channelID", "text"],

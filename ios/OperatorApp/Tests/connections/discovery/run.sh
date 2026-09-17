@@ -9,6 +9,7 @@ cp "$ios_dir/OperatorApp/Sources/connections/auth/OAuthTypes.swift" "$scratch/So
 cp "$ios_dir/OperatorApp/Sources/connections/auth/OAuthTransport.swift" "$scratch/Sources/OperatorApp/"
 cp "$ios_dir/OperatorApp/Sources/connections/services/read/DirectAccountReader.swift" "$scratch/Sources/OperatorApp/"
 cp "$ios_dir/OperatorApp/Sources/connections/services/write/DirectAccountWriter.swift" "$scratch/Sources/OperatorApp/"
+cp "$ios_dir/OperatorApp/Sources/connections/services/write/GoogleWorkspaceWrites.swift" "$scratch/Sources/OperatorApp/"
 cp "$ios_dir/OperatorApp/Sources/capabilities/handoff/ForegroundAppHandoffService.swift" "$scratch/Sources/OperatorApp/"
 cp "$ios_dir/OperatorApp/Sources/capabilities/node/ForegroundNodeCommandRouter.swift" "$scratch/Sources/OperatorApp/"
 cp "$ios_dir/OperatorApp/Sources/connections/discovery/ForegroundConnectionDiscoveryService.swift" "$scratch/Sources/OperatorApp/"

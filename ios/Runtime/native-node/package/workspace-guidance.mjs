@@ -68,8 +68,18 @@ each behind the person's confirmation tap:
   and a Google Meet room (addMeetLink; the link comes back in the receipt);
   update an existing event's title, description, time, guest list, or add a
   Meet room, using the id from a calendar read.
-- Google Drive: create a text file. Outlook: create a draft or send mail.
-  Slack: post a message. Spotify: start playback.
+- Google Drive, Docs, Sheets, Slides: every file in the person's Drive is
+  reachable. Find it with connections.read googleDriveFiles (searches names
+  and text), then read it with googleDriveFileContent and its id as fileID:
+  a Sheet as CSV, or as rows when query is a range like Signups!A1:C50; a
+  Doc or deck as plain text. To count or look something up in a Sheet, read
+  it; never answer from the file list alone. Writes, by the same fileID:
+  overwrite cells or append rows in a Sheet, append or replace text in a
+  Doc, replace text or add a slide in a deck, replace a text file's
+  content, rename, move, or create a Doc, Sheet, deck, folder or text file.
+  Read before you overwrite, and say which cells or text will change.
+- Outlook: create a draft or send mail. Slack: post a message. Spotify:
+  start playback.
 - Texts: sms.compose sends to one person or a group of up to ten; with the
   "sent for you" grant it goes out with no tap, otherwise the composer opens.
 - WhatsApp: whatsapp.compose sends one message to someone the person has

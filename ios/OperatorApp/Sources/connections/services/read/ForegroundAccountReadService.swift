@@ -65,15 +65,15 @@ final class ForegroundAccountReadService: GatewayNodeCommandHandler {
     private enum InputError: Error { case missingLimit }
 
     private static func input(_ json: String?) throws -> AccountReadRequest? {
-        guard let json, Data(json.utf8).count <= 16_384, let raw = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any], Set(raw.keys).isSubset(of:["operation","query","channel","timeMin","timeMax","limit","cursor"]), let opText=raw["operation"] as? String, let op=AccountReadOperation(rawValue:opText) else { return nil }
+        guard let json, Data(json.utf8).count <= 16_384, let raw = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any], Set(raw.keys).isSubset(of:["operation","query","channel","timeMin","timeMax","limit","cursor","fileID"]), let opText=raw["operation"] as? String, let op=AccountReadOperation(rawValue:opText) else { return nil }
         guard raw["limit"] != nil else { throw InputError.missingLimit }
         guard let limitNumber = raw["limit"] as? NSNumber, String(cString: limitNumber.objCType) != "c", limitNumber.doubleValue.rounded() == limitNumber.doubleValue else { return nil }
         let limit = limitNumber.intValue
-        guard ["query", "channel", "timeMin", "timeMax", "cursor"].allSatisfy({ key in
+        guard ["query", "channel", "timeMin", "timeMax", "cursor", "fileID"].allSatisfy({ key in
             raw[key] == nil || raw[key] is String
         }) else { return nil }
         func string(_ key: String) -> String? { guard let v=raw[key] else{return nil}; return v as? String }
-        let request=AccountReadRequest(operation:op,query:string("query"),channel:string("channel"),timeMin:string("timeMin"),timeMax:string("timeMax"),limit:limit,cursor:string("cursor"))
+        let request=AccountReadRequest(operation:op,query:string("query"),channel:string("channel"),timeMin:string("timeMin"),timeMax:string("timeMax"),limit:limit,cursor:string("cursor"),fileID:string("fileID"))
         return request
     }
 }

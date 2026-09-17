@@ -77,6 +77,14 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         case .googleCalendarCreateEvent: required = ["operation", "summary", "description", "startRFC3339", "endRFC3339"]; optional = ["attendees", "addMeetLink"]
         case .googleCalendarUpdateEvent: required = ["operation", "eventID"]; optional = ["summary", "description", "startRFC3339", "endRFC3339", "attendees", "addMeetLink"]
         case .googleDriveCreateTextFile: required = ["operation", "name", "content"]; optional = []
+        case .googleSheetsUpdateCells, .googleSheetsAppendRows: required = ["operation", "fileID", "range", "rows"]; optional = []
+        case .googleDocsAppendText: required = ["operation", "fileID", "text"]; optional = []
+        case .googleDocsReplaceText, .googleSlidesReplaceText: required = ["operation", "fileID", "find", "replacement"]; optional = []
+        case .googleSlidesAddSlide: required = ["operation", "fileID", "title", "body"]; optional = []
+        case .googleDriveUpdateTextFile: required = ["operation", "fileID", "content"]; optional = []
+        case .googleDriveRenameFile: required = ["operation", "fileID", "name"]; optional = []
+        case .googleDriveMoveFile: required = ["operation", "fileID", "fromFolderID", "toFolderID"]; optional = []
+        case .googleDriveCreateFile: required = ["operation", "name", "kind"]; optional = []
         case .outlookCreateDraft: required = ["operation", "subject", "body"]; optional = []
         case .outlookSendMail: required = ["operation", "to", "subject", "body"]; optional = []
         case .slackPostMessage: required = ["operation", "channelID", "text"]; optional = []
@@ -113,6 +121,21 @@ extension DirectAccountWriter: AccountWriteExecuting {}
                   let start=optionalString("startRFC3339"), let end=optionalString("endRFC3339"), let attendees=optionalStrings("attendees"), let meet=optionalFlag("addMeetLink") else{return nil}
             request = .googleCalendarUpdateEvent(.init(eventID:id,summary:summary,description:description,startRFC3339:start,endRFC3339:end,attendees:attendees,addMeetLink:meet))
         case .googleDriveCreateTextFile: guard let a=string("name"),let b=string("content") else{return nil}; request = .googleDriveCreateTextFile(.init(name:a,content:b))
+        case .googleSheetsUpdateCells, .googleSheetsAppendRows:
+            // Cells are text only; a number or formula is written as its text.
+            guard let id=string("fileID"), let range=string("range"), let rows=object["rows"] as? [[String]] else{return nil}
+            let cells = GoogleSheetsCellsWrite(fileID:id,range:range,rows:rows)
+            request = operation == .googleSheetsUpdateCells ? .googleSheetsUpdateCells(cells) : .googleSheetsAppendRows(cells)
+        case .googleDocsAppendText: guard let id=string("fileID"),let text=string("text") else{return nil}; request = .googleDocsAppendText(.init(fileID:id,text:text))
+        case .googleDocsReplaceText, .googleSlidesReplaceText:
+            guard let id=string("fileID"),let find=string("find"),let replacement=string("replacement") else{return nil}
+            let replace = GoogleReplaceTextWrite(fileID:id,find:find,replacement:replacement)
+            request = operation == .googleDocsReplaceText ? .googleDocsReplaceText(replace) : .googleSlidesReplaceText(replace)
+        case .googleSlidesAddSlide: guard let id=string("fileID"),let title=string("title"),let body=string("body") else{return nil}; request = .googleSlidesAddSlide(.init(fileID:id,title:title,body:body))
+        case .googleDriveUpdateTextFile: guard let id=string("fileID"),let content=string("content") else{return nil}; request = .googleDriveUpdateTextFile(.init(fileID:id,content:content))
+        case .googleDriveRenameFile: guard let id=string("fileID"),let name=string("name") else{return nil}; request = .googleDriveRenameFile(.init(fileID:id,name:name))
+        case .googleDriveMoveFile: guard let id=string("fileID"),let from=string("fromFolderID"),let to=string("toFolderID") else{return nil}; request = .googleDriveMoveFile(.init(fileID:id,fromFolderID:from,toFolderID:to))
+        case .googleDriveCreateFile: guard let name=string("name"),let kind=string("kind").flatMap(GoogleDriveCreateFileWrite.Kind.init(rawValue:)) else{return nil}; request = .googleDriveCreateFile(.init(name:name,kind:kind))
         case .outlookCreateDraft: guard let a=string("subject"),let b=string("body") else{return nil}; request = .outlookCreateDraft(.init(subject:a,body:b))
         case .outlookSendMail: guard let a=string("to"),let b=string("subject"),let c=string("body") else{return nil}; request = .outlookSendMail(.init(to:a,subject:b,body:c))
         case .slackPostMessage: guard let a=string("channelID"),let b=string("text") else{return nil}; request = .slackPostMessage(.init(channelID:a,text:b))
@@ -128,11 +151,26 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         case let .googleCalendarCreateEvent(v): "Calendar event\nSummary: \(v.summary)\nStarts: \(v.startRFC3339)\nEnds: \(v.endRFC3339)\nDescription: \(v.description)" + (v.attendees.isEmpty ? "" : "\nInvites sent to: \(v.attendees.joined(separator: ", "))") + (v.addMeetLink ? "\nGoogle Meet link: added" : "")
         case let .googleCalendarUpdateEvent(v): Self.updatePreview(v)
         case let .googleDriveCreateTextFile(v): "Drive file \(v.name)\nContent: \(v.content)"
+        case let .googleSheetsUpdateCells(v): "Overwrite cells \(v.range) in Google Sheet \(v.fileID)\n" + Self.table(v.rows)
+        case let .googleSheetsAppendRows(v): "Add \(v.rows.count) row\(v.rows.count == 1 ? "" : "s") to \(v.range) in Google Sheet \(v.fileID)\n" + Self.table(v.rows)
+        case let .googleDocsAppendText(v): "Add to the end of Google Doc \(v.fileID)\nText: \(v.text)"
+        case let .googleDocsReplaceText(v): "In Google Doc \(v.fileID), replace every\n\(v.find)\nwith\n\(v.replacement)"
+        case let .googleSlidesReplaceText(v): "In Google Slides deck \(v.fileID), replace every\n\(v.find)\nwith\n\(v.replacement)"
+        case let .googleSlidesAddSlide(v): "Add a slide to the end of Google Slides deck \(v.fileID)\nTitle: \(v.title)\nBody: \(v.body)"
+        case let .googleDriveUpdateTextFile(v): "Replace all the content of Drive file \(v.fileID)\nNew content: \(v.content)"
+        case let .googleDriveRenameFile(v): "Rename Drive file \(v.fileID)\nNew name: \(v.name)"
+        case let .googleDriveMoveFile(v): "Move Drive file \(v.fileID)\nFrom folder: \(v.fromFolderID)\nTo folder: \(v.toFolderID)"
+        case let .googleDriveCreateFile(v): "New Google \(v.kind.rawValue) in Drive\nName: \(v.name)"
         case let .outlookCreateDraft(v): "Outlook draft\nSubject: \(v.subject)\nBody: \(v.body)"
         case let .outlookSendMail(v): "Send email to \(v.to)\nSubject: \(v.subject)\nBody: \(v.body)"
         case let .slackPostMessage(v): "Slack channel \(v.channelID)\nMessage: \(v.text)"
         case let .spotifyStartPlayback(v): "Play Spotify track \(v.trackURI)\(v.deviceID.map { "\nDevice: \($0)" } ?? "")"
         }
+    }
+
+    /// Every row is shown: the owner is approving exactly these cells.
+    private static func table(_ rows: [[String]]) -> String {
+        rows.map { $0.joined(separator: " | ") }.joined(separator: "\n")
     }
 
     /// Only what changes is shown, so an unchanged field is not mistaken for
@@ -152,12 +190,18 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         let detail: String = switch receipt {
         case let .googleCalendarEvent(id, meetLink): "\"kind\":\"googleCalendarEvent\",\"id\":\"\(id)\"" + (meetLink.map { ",\"meetLink\":\"\($0)\"" } ?? "")
         case let .googleDriveFile(id): "\"kind\":\"googleDriveFile\",\"id\":\"\(id)\""
+        case let .googleSheetCells(range, cells): "\"kind\":\"googleSheetCells\",\"range\":\(Self.jsonString(range)),\"cells\":\(cells)"
+        case let .googleFileEdited(id, occurrences): "\"kind\":\"googleFileEdited\",\"id\":\"\(id)\"" + (occurrences.map { ",\"occurrencesChanged\":\($0)" } ?? "")
         case let .outlookDraft(id): "\"kind\":\"outlookDraft\",\"id\":\"\(id)\""
         case .outlookMailAccepted: "\"kind\":\"outlookMailAccepted\""
         case let .slackMessage(channelID, timestamp): "\"kind\":\"slackMessage\",\"channelID\":\"\(channelID)\",\"timestamp\":\"\(timestamp)\""
         case .spotifyPlaybackStarted: "\"kind\":\"spotifyPlaybackStarted\""
         }
         return "{\"ok\":true,\"operation\":\"\(operation.rawValue)\",\"receipt\":{\(detail)}}"
+    }
+    /// A sheet tab name can hold quotes and backslashes.
+    private static func jsonString(_ value: String) -> String {
+        (try? JSONEncoder().encode(value)).map { String(decoding: $0, as: UTF8.self) } ?? "\"\""
     }
     private static func result(for error: AccountWriteError) -> GatewayNodeCommandResult { switch error { case .notConnected: .failure(code:"NOT_CONNECTED",message:"Connect this account before writing"); case .permissionDenied: .failure(code:"PERMISSION_DENIED",message:"This account did not grant the needed write permission"); case .rateLimited: .failure(code:"RATE_LIMITED",message:"This account is temporarily rate limited"); case .outcomeUnknownNotSafeToRetry: .failure(code:"OUTCOME_UNKNOWN",message:"The account write outcome is unknown; do not retry"); default: .failure(code:"ACCOUNT_WRITE_FAILED",message:"The account write could not complete") } }
 }

@@ -56,6 +56,25 @@ import XCTest
         let calls = await writer.callCount(); XCTAssertEqual(calls, 0)
     }
 
+    func testASheetEditShowsEveryCellOnTheCardAndRefusesCellsThatAreNotText() async {
+        let presenter = FakePresenter(); let writer = FakeWriter()
+        let service = ForegroundAccountWriteConfirmationService(writer: writer, presenter: presenter, isAppActive: { true })
+        _ = await service.handleNodeCommand("connections.write", paramsJSON: #"{"operation":"googleSheetsAppendRows","fileID":"S1","range":"Signups","rows":[["a@example.com","mon"],["b@example.com","tue"]]}"#, timeoutMilliseconds: 1000)
+        XCTAssertEqual(presenter.requests.first?.preview, "Add 2 rows to Signups in Google Sheet S1\na@example.com | mon\nb@example.com | tue")
+        let last = await writer.lastRequest()
+        XCTAssertEqual(last?.operation, .googleSheetsAppendRows)
+
+        for bad in [#"{"operation":"googleSheetsUpdateCells","fileID":"S1","range":"A1","rows":[[1,2]]}"#,
+                    #"{"operation":"googleSheetsUpdateCells","fileID":"S1","range":"A1","rows":"x"}"#,
+                    #"{"operation":"googleDriveCreateFile","name":"Plan","kind":"pdf"}"#,
+                    #"{"operation":"googleDocsReplaceText","fileID":"D1","find":"a"}"#] {
+            let result = await service.handleNodeCommand("connections.write", paramsJSON: bad, timeoutMilliseconds: 1000)
+            XCTAssertEqual(result, .failure(code: "INVALID_REQUEST", message: "Connection write parameters were invalid"), bad)
+        }
+        let calls = await writer.callCount()
+        XCTAssertEqual(calls, 1)
+    }
+
     func testOptionalKeysMayBeAbsentOrNullButNeverTheWrongType() async {
         let presenter = FakePresenter(); let writer = FakeWriter()
         let service = ForegroundAccountWriteConfirmationService(writer: writer, presenter: presenter, isAppActive: { true })

@@ -64,7 +64,7 @@ final class DirectAccountReaderTests: XCTestCase {
         let request = try XCTUnwrap(captured)
         let items = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)?.queryItems
         // Spaces survive untouched into the Drive query-language clause.
-        XCTAssertEqual(items?.value(for: "q"), "name contains 'budget report q1' and trashed = false")
+        XCTAssertEqual(items?.value(for: "q"), "(name contains 'budget report q1' or fullText contains 'budget report q1') and trashed = false")
     }
 
     func testGoogleDriveEscapesApostropheAndBackslashRatherThanRejecting() async throws {
@@ -77,7 +77,7 @@ final class DirectAccountReaderTests: XCTestCase {
         let request = try XCTUnwrap(captured)
         let items = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)?.queryItems
         // Drive metacharacters are escaped (\\ and \'), not grounds for refusal.
-        XCTAssertEqual(items?.value(for: "q"), #"name contains 'o\'brien\\notes' and trashed = false"#)
+        XCTAssertEqual(items?.value(for: "q"), #"(name contains 'o\'brien\\notes' or fullText contains 'o\'brien\\notes') and trashed = false"#)
     }
 
     func testSpotifySearchRoundTripsAMultiWordQueryLosslessly() async throws {

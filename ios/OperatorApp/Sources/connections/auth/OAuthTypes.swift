@@ -12,7 +12,11 @@ enum OAuthProvider: String, Codable, CaseIterable, Sendable {
         case .google:
             [
                 "https://www.googleapis.com/auth/calendar.events",
-                "https://www.googleapis.com/auth/drive.file",
+                // All of Drive, read and write, which the Docs, Sheets and
+                // Slides APIs accept too. drive.file showed only files
+                // Operator had made itself, so the owner's own sheet could
+                // not be found. Restricted, like gmail.readonly below.
+                "https://www.googleapis.com/auth/drive",
                 // Restricted scope. Works today because the project is in
                 // Testing mode with named test users; a public release would
                 // need a CASA security assessment first.

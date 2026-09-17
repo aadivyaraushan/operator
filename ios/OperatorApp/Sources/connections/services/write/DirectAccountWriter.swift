@@ -8,6 +8,16 @@ enum AccountWriteOperation: String, CaseIterable, Sendable {
     case googleCalendarCreateEvent
     case googleCalendarUpdateEvent
     case googleDriveCreateTextFile
+    case googleSheetsUpdateCells
+    case googleSheetsAppendRows
+    case googleDocsAppendText
+    case googleDocsReplaceText
+    case googleSlidesReplaceText
+    case googleSlidesAddSlide
+    case googleDriveUpdateTextFile
+    case googleDriveRenameFile
+    case googleDriveMoveFile
+    case googleDriveCreateFile
     case outlookCreateDraft
     case outlookSendMail
     case slackPostMessage
@@ -15,7 +25,10 @@ enum AccountWriteOperation: String, CaseIterable, Sendable {
 
     var provider: OAuthProvider {
         switch self {
-        case .googleCalendarCreateEvent, .googleCalendarUpdateEvent, .googleDriveCreateTextFile:
+        case .googleCalendarCreateEvent, .googleCalendarUpdateEvent, .googleDriveCreateTextFile,
+             .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
+             .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
+             .googleDriveMoveFile, .googleDriveCreateFile:
             .google
         case .outlookCreateDraft, .outlookSendMail:
             .microsoftOutlook
@@ -108,6 +121,16 @@ enum AccountWriteRequest: Sendable {
     case googleCalendarCreateEvent(GoogleCalendarCreateEventWrite)
     case googleCalendarUpdateEvent(GoogleCalendarUpdateEventWrite)
     case googleDriveCreateTextFile(GoogleDriveCreateTextFileWrite)
+    case googleSheetsUpdateCells(GoogleSheetsCellsWrite)
+    case googleSheetsAppendRows(GoogleSheetsCellsWrite)
+    case googleDocsAppendText(GoogleDocsAppendTextWrite)
+    case googleDocsReplaceText(GoogleReplaceTextWrite)
+    case googleSlidesReplaceText(GoogleReplaceTextWrite)
+    case googleSlidesAddSlide(GoogleSlidesAddSlideWrite)
+    case googleDriveUpdateTextFile(GoogleDriveUpdateTextFileWrite)
+    case googleDriveRenameFile(GoogleDriveRenameFileWrite)
+    case googleDriveMoveFile(GoogleDriveMoveFileWrite)
+    case googleDriveCreateFile(GoogleDriveCreateFileWrite)
     case outlookCreateDraft(OutlookCreateDraftWrite)
     case outlookSendMail(OutlookSendMailWrite)
     case slackPostMessage(SlackPostMessageWrite)
@@ -118,6 +141,16 @@ enum AccountWriteRequest: Sendable {
         case .googleCalendarCreateEvent: .googleCalendarCreateEvent
         case .googleCalendarUpdateEvent: .googleCalendarUpdateEvent
         case .googleDriveCreateTextFile: .googleDriveCreateTextFile
+        case .googleSheetsUpdateCells: .googleSheetsUpdateCells
+        case .googleSheetsAppendRows: .googleSheetsAppendRows
+        case .googleDocsAppendText: .googleDocsAppendText
+        case .googleDocsReplaceText: .googleDocsReplaceText
+        case .googleSlidesReplaceText: .googleSlidesReplaceText
+        case .googleSlidesAddSlide: .googleSlidesAddSlide
+        case .googleDriveUpdateTextFile: .googleDriveUpdateTextFile
+        case .googleDriveRenameFile: .googleDriveRenameFile
+        case .googleDriveMoveFile: .googleDriveMoveFile
+        case .googleDriveCreateFile: .googleDriveCreateFile
         case .outlookCreateDraft: .outlookCreateDraft
         case .outlookSendMail: .outlookSendMail
         case .slackPostMessage: .slackPostMessage
@@ -130,6 +163,11 @@ enum AccountWriteReceipt: Equatable, Sendable {
     /// meetLink is the event's Google Meet URL when the event has one.
     case googleCalendarEvent(id: String, meetLink: String? = nil)
     case googleDriveFile(id: String)
+    /// The range Google says it wrote, and how many cells.
+    case googleSheetCells(range: String, cells: Int)
+    /// A Doc or Slides deck was changed. occurrences is how many matches a
+    /// replace changed (0 means nothing matched); nil for an edit that is not a replace.
+    case googleFileEdited(id: String, occurrences: Int?)
     case outlookDraft(id: String)
     case outlookMailAccepted
     case slackMessage(channelID: String, timestamp: String)
@@ -257,6 +295,10 @@ actor DirectAccountWriter {
              [value.eventID, value.summary ?? "", value.description ?? "", value.startRFC3339 ?? "", value.endRFC3339 ?? ""].reduce(0) { $0 + $1.utf8.count } + (value.attendees ?? []).reduce(0) { $0 + $1.utf8.count })
         case let .googleDriveCreateTextFile(value):
             (2, value.name.utf8.count + value.content.utf8.count)
+        case .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
+             .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
+             .googleDriveMoveFile, .googleDriveCreateFile:
+            self.workspaceInputShape(input)
         case let .outlookCreateDraft(value):
             (2, value.subject.utf8.count + value.body.utf8.count)
         case let .outlookSendMail(value):
@@ -298,6 +340,10 @@ actor DirectAccountWriter {
         case let .googleDriveCreateTextFile(value):
             return self.validSingleLine(value.name, maxBytes: 255, required: true)
                 && self.validBody(value.content, maxBytes: 262_144)
+        case .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
+             .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
+             .googleDriveMoveFile, .googleDriveCreateFile:
+            return self.workspaceIsValid(input)
         case let .outlookCreateDraft(value):
             return self.validSingleLine(value.subject, maxBytes: 512, required: true)
                 && self.validBody(value.body, maxBytes: 32_768)
@@ -319,14 +365,14 @@ actor DirectAccountWriter {
         !token.isEmpty && token.utf8.count <= 16_384 && !token.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
     }
 
-    private static func validSingleLine(_ value: String, maxBytes: Int, required: Bool) -> Bool {
+    static func validSingleLine(_ value: String, maxBytes: Int, required: Bool) -> Bool {
         guard value.utf8.count <= maxBytes,
               !value.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) })
         else { return false }
         return !required || !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private static func validBody(_ value: String, maxBytes: Int, required: Bool = false) -> Bool {
+    static func validBody(_ value: String, maxBytes: Int, required: Bool = false) -> Bool {
         guard value.utf8.count <= maxBytes,
               !value.unicodeScalars.contains(where: { $0.value == 0 })
         else { return false }
@@ -351,7 +397,7 @@ actor DirectAccountWriter {
             && self.matches(value, pattern: #"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$"#)
     }
 
-    private static func matches(_ value: String, pattern: String) -> Bool {
+    static func matches(_ value: String, pattern: String) -> Bool {
         value.range(of: pattern, options: .regularExpression) != nil
     }
 
@@ -364,6 +410,7 @@ actor DirectAccountWriter {
     }
 
     private static func request(for input: AccountWriteRequest) throws -> URLRequest {
+        if let workspace = try self.workspaceRequest(for: input) { return workspace }
         let url: URL
         let method: String
         let body: Data
@@ -427,6 +474,11 @@ actor DirectAccountWriter {
             let metadata = try self.jsonData(["name": value.name, "mimeType": "text/plain"])
             body = self.multipartRelated(metadata: metadata, content: Data(value.content.utf8), boundary: boundary)
             contentType = "multipart/related; boundary=\(boundary)"
+        case .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
+             .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
+             .googleDriveMoveFile, .googleDriveCreateFile:
+            // Built by workspaceRequest above.
+            throw AccountWriteError.invalidRequest
         case let .outlookCreateDraft(value):
             url = URL(string: "https://graph.microsoft.com/v1.0/me/messages")!
             method = "POST"
@@ -477,7 +529,7 @@ actor DirectAccountWriter {
         ["createRequest": ["requestId": UUID().uuidString.lowercased(), "conferenceSolutionKey": ["type": "hangoutsMeet"]]]
     }
 
-    private static func jsonData(_ object: Any) throws -> Data {
+    static func jsonData(_ object: Any) throws -> Data {
         do {
             return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
         } catch {
@@ -498,7 +550,10 @@ actor DirectAccountWriter {
     private static func checkStatus(_ response: HTTPURLResponse, operation: AccountWriteOperation) throws {
         let expected: Int
         switch operation {
-        case .googleCalendarCreateEvent, .googleCalendarUpdateEvent, .googleDriveCreateTextFile, .slackPostMessage:
+        case .googleCalendarCreateEvent, .googleCalendarUpdateEvent, .googleDriveCreateTextFile, .slackPostMessage,
+             .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
+             .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
+             .googleDriveMoveFile, .googleDriveCreateFile:
             expected = 200
         case .outlookCreateDraft:
             expected = 201
@@ -532,7 +587,10 @@ actor DirectAccountWriter {
             // Only a Meet URL is passed on; anything else in hangoutLink is dropped.
             let link = (object["hangoutLink"] as? String).flatMap { self.matches($0, pattern: #"^https://meet\.google\.com/[A-Za-z0-9-]{1,64}$"#) ? $0 : nil }
             return .googleCalendarEvent(id: id, meetLink: link)
-        case .googleDriveCreateTextFile:
+        case .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
+             .googleSlidesReplaceText, .googleSlidesAddSlide:
+            return try self.workspaceReceipt(for: input, object: try self.responseObject(data))
+        case .googleDriveCreateTextFile, .googleDriveUpdateTextFile, .googleDriveRenameFile, .googleDriveMoveFile, .googleDriveCreateFile:
             let object = try self.responseObject(data)
             guard let id = object["id"] as? String, self.validRemoteID(id, maxBytes: 2_048) else {
                 throw AccountWriteError.invalidResponse
@@ -569,7 +627,7 @@ actor DirectAccountWriter {
         return object
     }
 
-    private static func validRemoteID(_ value: String, maxBytes: Int) -> Bool {
+    static func validRemoteID(_ value: String, maxBytes: Int) -> Bool {
         !value.isEmpty
             && value.utf8.count <= maxBytes
             && !value.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
@@ -579,6 +637,8 @@ actor DirectAccountWriter {
         switch receipt {
         case .googleCalendarEvent, .googleDriveFile, .outlookDraft:
             1
+        case .googleSheetCells, .googleFileEdited:
+            2
         case .outlookMailAccepted, .spotifyPlaybackStarted:
             0
         case .slackMessage:

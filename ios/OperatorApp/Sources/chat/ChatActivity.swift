@@ -114,7 +114,11 @@ struct ChatActivityLabel: Equatable, Sendable {
         let service: String = switch operation {
         case "gmailMessages": "Gmail"
         case "googleCalendarEvents", "googleCalendarCreateEvent", "googleCalendarUpdateEvent": "Google Calendar"
-        case "googleDriveFiles", "googleDriveCreateTextFile": "Google Drive"
+        case "googleDriveFiles", "googleDriveFileContent", "googleDriveCreateTextFile", "googleDriveUpdateTextFile",
+             "googleDriveRenameFile", "googleDriveMoveFile", "googleDriveCreateFile": "Google Drive"
+        case "googleSheetsUpdateCells", "googleSheetsAppendRows": "Google Sheets"
+        case "googleDocsAppendText", "googleDocsReplaceText": "Google Docs"
+        case "googleSlidesReplaceText", "googleSlidesAddSlide": "Google Slides"
         case "googleTasks": "Google Tasks"
         case "outlookInbox", "outlookCreateDraft", "outlookSendMail": "Outlook"
         case "outlookCalendarEvents": "Outlook Calendar"

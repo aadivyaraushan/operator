@@ -2,11 +2,11 @@ import Foundation
 import OSLog
 
 enum AccountReadOperation: String, Sendable {
-    case googleCalendarEvents, googleDriveFiles, gmailMessages, googleTasks, outlookInbox,
+    case googleCalendarEvents, googleDriveFiles, googleDriveFileContent, gmailMessages, googleTasks, outlookInbox,
          outlookCalendarEvents, slackChannels, slackHistory, spotifySearch, spotifyPlayback
     var provider: OAuthProvider {
         switch self {
-        case .googleCalendarEvents, .googleDriveFiles, .gmailMessages, .googleTasks: .google
+        case .googleCalendarEvents, .googleDriveFiles, .googleDriveFileContent, .gmailMessages, .googleTasks: .google
         case .outlookInbox, .outlookCalendarEvents: .microsoftOutlook
         case .slackChannels, .slackHistory: .slack
         case .spotifySearch, .spotifyPlayback: .spotify
@@ -16,6 +16,8 @@ enum AccountReadOperation: String, Sendable {
 
 struct AccountReadRequest: Sendable {
     let operation: AccountReadOperation; let query: String?; let channel: String?; let timeMin: String?; let timeMax: String?; let limit: Int; let cursor: String?
+    /// Which Drive file googleDriveFileContent reads; no other operation takes one.
+    var fileID: String? = nil
 }
 
 struct AccountReadPage: Sendable {
@@ -39,6 +41,7 @@ actor DirectAccountReader {
         // has its own path. See gmailPage.
         self.logger.info("[account-read] request provider=\(input.operation.provider.rawValue, privacy: .public) operation=\(input.operation.rawValue, privacy: .public) limit=\(input.limit)")
         if input.operation == .gmailMessages { return try await self.gmailPage(input) }
+        if input.operation == .googleDriveFileContent { return try await self.driveContentPage(input) }
         let url = try self.url(for: input)
         let token: String
         do { token = try await self.bearer(input.operation.provider) } catch { throw AccountReadError.notConnected }
@@ -57,11 +60,16 @@ actor DirectAccountReader {
         guard (1...20).contains(r.limit), (r.query?.count ?? 0) <= 200, (r.channel?.count ?? 0) <= 100, (r.cursor?.count ?? 0) <= 500 else { return false }
         if (r.operation == .spotifySearch || r.operation == .spotifyPlayback) && r.limit > 10 { return false }
         if let cursor = r.cursor, cursor.contains("://") { return false }
+        guard (r.fileID == nil) == (r.operation != .googleDriveFileContent) else { return false }
         switch r.operation {
         case .googleCalendarEvents, .outlookCalendarEvents:
             guard let minText = r.timeMin, let maxText = r.timeMax, r.channel == nil,
                   let min = Self.rfc3339(minText), let max = Self.rfc3339(maxText) else { return false }
             return min < max
+        case .googleDriveFileContent:
+            // query is an optional A1 range, used only when the file is a Sheet.
+            return Self.isSafePathSegment(r.fileID ?? "") && !(r.fileID ?? "").contains(".") && r.limit == 1 && r.channel == nil && r.cursor == nil && r.timeMin == nil && r.timeMax == nil
+                && (r.query.map { !$0.isEmpty && !$0.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) } ?? true)
         case .googleDriveFiles: return !(r.query?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) && r.channel == nil
         case .googleTasks:
             guard r.query == nil, r.timeMin == nil, r.timeMax == nil else { return false }
@@ -186,7 +194,70 @@ actor DirectAccountReader {
 
     /// One authenticated GET, with the same status mapping the single-request
     /// path applies inline.
-    private func fetch(_ url: URL, provider: OAuthProvider) async throws -> Data {
+    /// The most text one content read hands the model. A longer file is cut
+    /// here and marked, rather than refused: the start of a long document is
+    /// still an answer, and a sheet can be re-read by range.
+    static let driveContentMaximumCharacters = 200_000
+
+    /// What is inside one Drive file, as text. Two requests: the file's type,
+    /// then the one export that type has. A Sheet with a range goes through
+    /// the Sheets API instead and comes back as rows, which is how a tab
+    /// other than the first is reached; with no range it is the CSV of the
+    /// first tab. A file with no text form is named as unsupported instead of
+    /// being downloaded.
+    private func driveContentPage(_ input: AccountReadRequest) async throws -> AccountReadPage {
+        let id = Self.pathSegment(input.fileID!)
+        var metadataURL = URLComponents(string: "https://www.googleapis.com/drive/v3/files/\(id)")!
+        metadataURL.queryItems = [.init(name: "fields", value: "id,name,mimeType"), .init(name: "supportsAllDrives", value: "true")]
+        let metadata = try await self.fetch(metadataURL.url!, provider: .google, operation: .googleDriveFileContent)
+        guard let file = try? JSONSerialization.jsonObject(with: metadata) as? [String: Any],
+              let name = file["name"] as? String, let mime = file["mimeType"] as? String
+        else { throw AccountReadError.invalidResponse }
+        var row: [String: Any] = ["id": input.fileID!, "name": String(name.prefix(1_024)), "mimeType": String(mime.prefix(256))]
+
+        let isSheet = mime == "application/vnd.google-apps.spreadsheet"
+        let contentURL: URL
+        if isSheet, let range = input.query {
+            let allowed = CharacterSet.urlPathAllowed.subtracting(CharacterSet(charactersIn: "/?#"))
+            guard let escaped = range.addingPercentEncoding(withAllowedCharacters: allowed),
+                  let url = URL(string: "https://sheets.googleapis.com/v4/spreadsheets/\(id)/values/\(escaped)")
+            else { throw AccountReadError.invalidRequest }
+            let data = try await self.fetch(url, provider: .google, operation: .googleDriveFileContent, maximumBytes: 2_000_000)
+            guard let values = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw AccountReadError.invalidResponse }
+            let rows = (values["values"] as? [[Any]] ?? []).map { $0.map { ($0 as? String) ?? "\($0)" } }
+            row["range"] = (values["range"] as? String) ?? range
+            row["rows"] = rows
+            self.logger.info("[account-read] drive content branch=sheet-range rows=\(rows.count)")
+            return try Self.driveContentResult(row)
+        }
+        let export: String?
+        switch mime {
+        case "application/vnd.google-apps.spreadsheet": export = "text/csv"
+        case "application/vnd.google-apps.document", "application/vnd.google-apps.presentation": export = "text/plain"
+        case _ where mime.hasPrefix("text/") || ["application/json", "application/xml", "application/x-yaml"].contains(mime): export = nil
+        default:
+            row["unsupported"] = true
+            self.logger.info("[account-read] drive content branch=unsupported mime=\(mime, privacy: .public)")
+            return try Self.driveContentResult(row)
+        }
+        var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files/\(id)\(export == nil ? "" : "/export")")!
+        components.queryItems = [export.map { .init(name: "mimeType", value: $0) } ?? .init(name: "alt", value: "media")]
+        contentURL = components.url!
+        // Google refuses an export over 10 MB itself; this cap is ours.
+        let data = try await self.fetch(contentURL, provider: .google, operation: .googleDriveFileContent, maximumBytes: 2_000_000)
+        let text = String(decoding: data, as: UTF8.self)
+        row["content"] = String(text.prefix(Self.driveContentMaximumCharacters))
+        row["truncated"] = text.count > Self.driveContentMaximumCharacters
+        self.logger.info("[account-read] drive content branch=\(export ?? "download", privacy: .public) characters=\(text.count)")
+        return try Self.driveContentResult(row)
+    }
+
+    private static func driveContentResult(_ row: [String: Any]) throws -> AccountReadPage {
+        guard let encoded = try? JSONSerialization.data(withJSONObject: [row], options: [.sortedKeys]) else { throw AccountReadError.invalidResponse }
+        return .init(payloadJSON: String(decoding: encoded, as: UTF8.self), count: 1, nextCursor: nil)
+    }
+
+    private func fetch(_ url: URL, provider: OAuthProvider, operation: AccountReadOperation = .gmailMessages, maximumBytes: Int = 512_000) async throws -> Data {
         let token: String
         do { token = try await self.bearer(provider) } catch { throw AccountReadError.notConnected }
         var request = URLRequest(url: url)
@@ -196,8 +267,8 @@ actor DirectAccountReader {
         let response: URLResponse
         do { (data, response) = try await self.transport.data(for: request) } catch { throw AccountReadError.unavailable }
         guard let http = response as? HTTPURLResponse else { throw AccountReadError.unavailable }
-        self.logger.info("[account-read] response provider=\(provider.rawValue, privacy: .public) operation=gmailMessages status=\(http.statusCode) response_bytes=\(data.count)")
-        guard data.count <= 512_000 else { throw AccountReadError.invalidResponse }
+        self.logger.info("[account-read] response provider=\(provider.rawValue, privacy: .public) operation=\(operation.rawValue, privacy: .public) status=\(http.statusCode) response_bytes=\(data.count)")
+        guard data.count <= maximumBytes else { throw AccountReadError.invalidResponse }
         switch http.statusCode {
         case 200: return data
         case 401: throw AccountReadError.notConnected
@@ -231,8 +302,9 @@ actor DirectAccountReader {
         switch r.operation {
         case .googleCalendarEvents:
             base = "https://www.googleapis.com"; path = "/calendar/v3/calendars/primary/events"; items = [.init(name:"singleEvents",value:"true"),.init(name:"orderBy",value:"startTime"),.init(name:"timeMin",value:r.timeMin),.init(name:"timeMax",value:r.timeMax),.init(name:"maxResults",value:String(r.limit))]; if let q=r.query { items.append(.init(name:"q",value:q)) }; if let c=r.cursor { items.append(.init(name:"pageToken",value:c)) }
+        case .googleDriveFileContent: throw AccountReadError.invalidRequest
         case .googleDriveFiles:
-            base = "https://www.googleapis.com"; path = "/drive/v3/files"; let safe = r.query!.replacingOccurrences(of:"\\",with:"\\\\").replacingOccurrences(of:"'",with:"\\'"); items=[.init(name:"q",value:"name contains '\(safe)' and trashed = false"),.init(name:"spaces",value:"drive"),.init(name:"pageSize",value:String(r.limit)),.init(name:"fields",value:"nextPageToken,files(id,name,mimeType)")]; if let c=r.cursor { items.append(.init(name:"pageToken",value:c)) }
+            base = "https://www.googleapis.com"; path = "/drive/v3/files"; let safe = r.query!.replacingOccurrences(of:"\\",with:"\\\\").replacingOccurrences(of:"'",with:"\\'"); items=[.init(name:"q",value:"(name contains '\(safe)' or fullText contains '\(safe)') and trashed = false"),.init(name:"spaces",value:"drive"),.init(name:"pageSize",value:String(r.limit)),.init(name:"fields",value:"nextPageToken,files(id,name,mimeType,modifiedTime,webViewLink,parents)")]; if let c=r.cursor { items.append(.init(name:"pageToken",value:c)) }
         case .gmailMessages:
             base = "https://gmail.googleapis.com"; path = "/gmail/v1/users/me/messages"; items=[.init(name:"maxResults",value:String(r.limit))]; if let q=r.query { items.append(.init(name:"q",value:q)) }; if let c=r.cursor { items.append(.init(name:"pageToken",value:c)) }
         case .googleTasks:
@@ -264,7 +336,7 @@ actor DirectAccountReader {
         // empty result rather than a malformed one.
         case .googleTasks: array=(object["items"] as? [Any]) ?? []; next=object["nextPageToken"] as? String
         // Unreachable: read() routes .gmailMessages to gmailPage before here.
-        case .gmailMessages: throw AccountReadError.invalidResponse
+        case .gmailMessages, .googleDriveFileContent: throw AccountReadError.invalidResponse
         case .outlookInbox:
             array=object["value"] as? [Any]; next=try self.microsoftCursor(object["@odata.nextLink"] as? String, path:"/v1.0/me/mailFolders/inbox/messages")
         case .outlookCalendarEvents:
@@ -296,7 +368,8 @@ actor DirectAccountReader {
         // attendees is returned so an update that changes the guest list can
         // carry the existing guests; the PATCH replaces the whole list.
         case .googleCalendarEvents: keys = ["id", "summary", "description", "start", "end", "htmlLink", "attendees", "hangoutLink"]
-        case .googleDriveFiles: keys = ["id", "name", "mimeType"]
+        case .googleDriveFiles: keys = ["id", "name", "mimeType", "modifiedTime", "webViewLink", "parents"]
+        case .googleDriveFileContent: keys = []
         case .googleTasks: keys = ["id", "title", "notes", "due", "status", "updated", "webViewLink"]
         // Unreachable for the same reason; Gmail rows are constructed field
         // by field in gmailRow rather than filtered from a response.
