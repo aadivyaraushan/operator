@@ -6,6 +6,7 @@ struct NativeAccountConnectionSheet: View {
     @ObservedObject var model: NativeAccountSetupCoordinator
     @ObservedObject var youtube: YouTubeAPIKeySetupModel
     @ObservedObject var discord: DiscordAccountSetupModel
+    @ObservedObject var canvas: CanvasAccountSetupModel
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
@@ -31,6 +32,19 @@ struct NativeAccountConnectionSheet: View {
                         }
                     }
                 }
+                Section("School") {
+                    NavigationLink {
+                        CanvasAccountSetupView(model: self.canvas)
+                    } label: {
+                        HStack {
+                            Text("Canvas")
+                            Spacer()
+                            Text(self.canvas.statusText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
                 Section("Media") {
                     NavigationLink {
                         YouTubeAPIKeySetupView(model: self.youtube)
@@ -50,7 +64,8 @@ struct NativeAccountConnectionSheet: View {
                 async let accounts: Void = self.model.checkConnections()
                 async let youtube: Void = self.youtube.check()
                 async let discord: Void = self.discord.check()
-                _ = await (accounts, youtube, discord)
+                async let canvas: Void = self.canvas.check()
+                _ = await (accounts, youtube, discord, canvas)
             }
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { model.cancel(); dismiss() } } }
         }

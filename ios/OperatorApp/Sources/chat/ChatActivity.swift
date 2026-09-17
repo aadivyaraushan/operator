@@ -58,6 +58,9 @@ struct ChatActivityLabel: Equatable, Sendable {
     private static let known: [String: ChatActivityLabel] = [
         // Phone commands, as the node bridge names them.
         "discord.announcements": .init(live: "Checking Discord announcements", done: "Checked Discord announcements"),
+        "canvas.courses": .init(live: "Checking Canvas courses", done: "Checked Canvas courses"),
+        "canvas.upcoming": .init(live: "Checking what's due on Canvas", done: "Checked what's due on Canvas"),
+        "canvas.announcements": .init(live: "Checking Canvas announcements", done: "Checked Canvas announcements"),
         "messages.incoming": .init(live: "Checking your texts", done: "Checked your texts"),
         "location.get": .init(live: "Getting your location", done: "Got your location"),
         "calendar.events": .init(live: "Checking your calendar", done: "Checked your calendar"),
@@ -86,6 +89,9 @@ struct ChatActivityLabel: Equatable, Sendable {
         "connections.describe": .init(live: "Checking connected accounts", done: "Checked connected accounts"),
         // The same capabilities when published to the model as tools.
         "discord_announcements": .init(live: "Checking Discord announcements", done: "Checked Discord announcements"),
+        "canvas_courses": .init(live: "Checking Canvas courses", done: "Checked Canvas courses"),
+        "canvas_upcoming": .init(live: "Checking what's due on Canvas", done: "Checked what's due on Canvas"),
+        "canvas_announcements": .init(live: "Checking Canvas announcements", done: "Checked Canvas announcements"),
         "messages_incoming": .init(live: "Checking your texts", done: "Checked your texts"),
         "calendar_events": .init(live: "Checking your calendar", done: "Checked your calendar"),
         "reminders_list": .init(live: "Checking your reminders", done: "Checked your reminders"),

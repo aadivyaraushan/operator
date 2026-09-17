@@ -165,6 +165,15 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
         case "discord.announcements":
             parameters = schema(required: [], optional: ["sinceRFC3339", "limit"], limits: ["limit": "1...50", "sinceRFC3339": "RFC3339"])
             note = "Reads the Discord announcement channels the person listed in Operator, through their own account. Rationed to a few passes a day; a refusal names when the next is possible. Read-only; channels cannot be chosen by the agent."
+        case "canvas.courses":
+            parameters = schema(required: [], optional: [])
+            note = "The person's active Canvas courses with the current grade where shown. Needs Canvas set up under Connect accounts > Canvas. Read-only."
+        case "canvas.upcoming":
+            parameters = schema(required: [], optional: ["days"], limits: ["days": "1...30, default 7"])
+            note = "What is due in Canvas over the next days, with submission state, plus missing submissions. Read-only."
+        case "canvas.announcements":
+            parameters = schema(required: [], optional: ["days", "limit"], limits: ["days": "1...60, default 14", "limit": "1...50, default 20"])
+            note = "Recent announcements across the person's active Canvas courses, newest first. Read-only."
         case "contacts.create":
             parameters = schema(required: ["name"], optional: ["phones", "emails"], limits: ["name": "1...100 characters", "phones": "up to 3", "emails": "up to 3", "note": "at least one phone or email"])
             note = "Saves a new contact after the person sees it and taps Save. Refuses a number or email already in Contacts; never changes an existing contact."

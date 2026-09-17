@@ -60,6 +60,7 @@ struct ChatScreen: View {
     @ObservedObject var notion: NativeNotionSetupCoordinator
     @ObservedObject var youtube: YouTubeAPIKeySetupModel
     @ObservedObject var discord: DiscordAccountSetupModel
+    @ObservedObject var canvas: CanvasAccountSetupModel
     @ObservedObject var permissions: ConnectorPermissionCenter
     @State private var isConnectionsPresented = false
     @State private var isPermissionsPresented = false
@@ -91,6 +92,7 @@ struct ChatScreen: View {
         if id == .notion { return self.notion.state == .connected ? "Signed in" : "Not signed in" }
         if id == .whatsapp { return self.whatsapp.state == .linked ? "Linked" : "Not linked" }
         if id == .discord { return self.discord.isConnected ? "Token saved" : "No token" }
+        if id == .canvas { return self.canvas.isConnected ? "Token saved" : "No token" }
         return nil
     }
 
@@ -130,7 +132,7 @@ struct ChatScreen: View {
                     WhatsAppLinkSheet(model: self.whatsapp)
                 }
                 .sheet(isPresented: self.$isConnectionsPresented) {
-                    NativeAccountConnectionSheet(model: self.accounts, youtube: self.youtube, discord: self.discord)
+                    NativeAccountConnectionSheet(model: self.accounts, youtube: self.youtube, discord: self.discord, canvas: self.canvas)
                 }
                 .sheet(isPresented: self.$isPermissionsPresented) {
                     ConnectorPermissionsScreen(

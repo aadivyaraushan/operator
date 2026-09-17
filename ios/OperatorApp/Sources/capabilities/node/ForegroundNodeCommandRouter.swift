@@ -24,6 +24,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
     private let discord: (any GatewayNodeCommandHandler)?
     private let incomingMessages: (any GatewayNodeCommandHandler)?
     private let contactCreate: (any GatewayNodeCommandHandler)?
+    private let canvas: (any GatewayNodeCommandHandler)?
 
     init(
         location: any GatewayNodeCommandHandler,
@@ -47,7 +48,8 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         notion: any GatewayNodeCommandHandler,
         discord: (any GatewayNodeCommandHandler)? = nil,
         incomingMessages: (any GatewayNodeCommandHandler)? = nil,
-        contactCreate: (any GatewayNodeCommandHandler)? = nil)
+        contactCreate: (any GatewayNodeCommandHandler)? = nil,
+        canvas: (any GatewayNodeCommandHandler)? = nil)
     {
         self.location = location
         self.calendar = calendar
@@ -71,6 +73,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         self.discord = discord
         self.incomingMessages = incomingMessages
         self.contactCreate = contactCreate
+        self.canvas = canvas
     }
 
     func handleNodeCommand(_ command: String, paramsJSON: String?, timeoutMilliseconds: Int?) async -> GatewayNodeCommandResult {
@@ -158,6 +161,12 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         case "contacts.create":
             if let contactCreate {
                 await contactCreate.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
+            } else {
+                .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)")
+            }
+        case "canvas.courses", "canvas.upcoming", "canvas.announcements":
+            if let canvas {
+                await canvas.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
             } else {
                 .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)")
             }

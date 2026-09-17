@@ -55,6 +55,7 @@ struct OperatorApp: App {
     @StateObject private var notion: NativeNotionSetupCoordinator
     @StateObject private var youtube: YouTubeAPIKeySetupModel
     @StateObject private var discord: DiscordAccountSetupModel
+    @StateObject private var canvas: CanvasAccountSetupModel
     @StateObject private var permissions: ConnectorPermissionCenter
     private let locationNode: LocalLocationNodeGateway
     /// Answers the "Send to X on WhatsApp?" and "Operator has a question"
@@ -159,6 +160,25 @@ struct OperatorApp: App {
             clearToken: { try await discordTokenStore.remove() },
             loadChannels: { discordChannels.load() },
             saveChannels: { discordChannels.save($0) }))
+        // Canvas: the owner's own access token in the Keychain, the school's
+        // address beside it. Reads only; Canvas documents these tokens for this.
+        let canvasTokenStore = KeychainCredentialStore(
+            service: "app.operator.ios.canvas",
+            account: "access-token")
+        let canvasBaseURL = UserDefaultsCanvasBaseURLStore()
+        let canvasStorage = CanvasAccountStorage(
+            loadToken: {
+                guard let data = try await canvasTokenStore.load(), let value = String(data: data, encoding: .utf8) else { return nil }
+                return value
+            },
+            saveToken: { try await canvasTokenStore.save(Data($0.utf8)) },
+            clearToken: { try await canvasTokenStore.remove() },
+            loadBaseURL: { canvasBaseURL.load() },
+            saveBaseURL: { canvasBaseURL.save($0) })
+        let canvasSetup = CanvasAccountSetupModel(storage: canvasStorage)
+        let canvasService = ForegroundCanvasService(client: CanvasClient(
+            baseURL: { canvasBaseURL.load() },
+            token: { try await canvasStorage.loadToken() }))
         let contactDirectory = SystemContactDirectory()
         let discordService = ForegroundDiscordAnnouncementsService(
             client: DiscordUserClient(token: {
@@ -198,6 +218,10 @@ struct OperatorApp: App {
                     ConnectionDiscoverySetupStatus(
                         provider: "discord",
                         state: discordSetup.isConnected ? .connected : .needsSetup,
+                        registrationAvailable: true),
+                    ConnectionDiscoverySetupStatus(
+                        provider: "canvas",
+                        state: canvasSetup.isConnected ? .connected : .needsSetup,
                         registrationAvailable: true)]
             })
         let setupGateway = LocalModelSetupGateway(
@@ -287,7 +311,8 @@ struct OperatorApp: App {
                 contactCreate: ForegroundContactCreateService(
                     directory: contactDirectory,
                     presenter: SystemContactCreatePresenter(),
-                    isAppActive: { UIApplication.shared.applicationState == .active }))),
+                    isAppActive: { UIApplication.shared.applicationState == .active }),
+                canvas: canvasService)),
             agentTools: { permissions.currentPublishedTools() })
         permissions.grantsDidChange = { Task { await locationNode.republishAgentTools() } }
         self.locationNode = locationNode
@@ -306,6 +331,7 @@ struct OperatorApp: App {
         _notion = StateObject(wrappedValue: notionSetup)
         _youtube = StateObject(wrappedValue: youtubeSetup)
         _discord = StateObject(wrappedValue: discordSetup)
+        _canvas = StateObject(wrappedValue: canvasSetup)
         _permissions = StateObject(wrappedValue: permissions)
         _whatsapp = StateObject(wrappedValue: WhatsAppLinkFlowModel(
             gateway: NativeWhatsAppLinkClient(supportDirectory: supportDirectory)))
@@ -313,7 +339,7 @@ struct OperatorApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, discord: self.discord, permissions: self.permissions)
+            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, discord: self.discord, canvas: self.canvas, permissions: self.permissions)
                 .onOpenURL { url in
                     // Shortcuts returning from sms.send. The only thing known
                     // is what Shortcuts reported; it goes in the session log.
