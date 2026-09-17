@@ -476,6 +476,103 @@ final class ChatSessionModelTests: XCTestCase {
         XCTAssertNil(model.lastError)
     }
 
+    func testAQuestionReplayedOnConnectIsShownAnsweredAndCollapsed() async throws {
+        let record = try questionRecord(id: "ask_1")
+        let gateway = QuestioningGateway(replay: [record])
+        let model = self.readyModel(store: RecordingPersistence(), gateway: gateway)
+
+        model.restore()
+        await waitUntil { model.questions.map(\.id) == ["ask_1"] }
+        XCTAssertEqual(model.questions.first?.questions.first?.options.map(\.label), ["MVP update", "Call now", "Meet tomorrow"])
+
+        model.answerQuestion(id: "ask_1", answers: ["group_message": ["Call now"]])
+        await waitUntil { model.questions.isEmpty }
+
+        let answered = await gateway.answered()
+        XCTAssertEqual(answered.map(\.id), ["ask_1"])
+        XCTAssertEqual(answered.first?.answers.answers, ["group_message": ["Call now"]])
+        XCTAssertEqual(model.answeredQuestions["ask_1"]?.answers, ["group_message": ["Call now"]])
+        XCTAssertNil(model.lastError)
+    }
+
+    func testAQuestionRequestedDuringARunIsShownAndAResolvedEventFromElsewhereRemovesIt() async throws {
+        let record = try questionRecord(id: "ask_2")
+        let gateway = QuestioningGateway(replay: [], duringRun: record)
+        let model = self.readyModel(store: RecordingPersistence(), gateway: gateway)
+        model.restore()
+        await waitUntil { model.connectionState == .ready }
+        model.draft = "message them"
+        model.send()
+
+        await waitUntil { model.questions.map(\.id) == ["ask_2"] }
+        await gateway.resolveFromElsewhere(id: "ask_2", answers: ["group_message": ["Meet tomorrow"]])
+        await waitUntil { model.questions.isEmpty }
+
+        XCTAssertEqual(model.answeredQuestions["ask_2"]?.answers, ["group_message": ["Meet tomorrow"]])
+        let answered = await gateway.answered()
+        XCTAssertTrue(answered.isEmpty, "the phone did not answer; someone else did")
+    }
+
+    func testAnAnswerThatDoesNotFitTheQuestionIsRefusedLocally() async throws {
+        let record = try questionRecord(id: "ask_3")
+        let gateway = QuestioningGateway(replay: [record])
+        let model = self.readyModel(store: RecordingPersistence(), gateway: gateway)
+        model.restore()
+        await waitUntil { model.questions.map(\.id) == ["ask_3"] }
+
+        model.answerQuestion(id: "ask_3", answers: ["group_message": ["Something the model never offered"]])
+        await waitUntil { model.lastError != nil }
+        model.answerQuestion(id: "ask_3", answers: ["group_message": ["Call now", "Meet tomorrow"]])
+        model.answerQuestion(id: "ask_3", answers: [:])
+
+        let answered = await gateway.answered()
+        XCTAssertTrue(answered.isEmpty)
+        XCTAssertEqual(model.questions.map(\.id), ["ask_3"], "the card stays until a fitting answer")
+    }
+
+    func testAFreeTextQuestionTakesAnyNonEmptyAnswerAndSkipCancels() async throws {
+        let free = try questionRecord(id: "ask_4", options: false)
+        let other = try questionRecord(id: "ask_5")
+        let gateway = QuestioningGateway(replay: [free, other])
+        let model = self.readyModel(store: RecordingPersistence(), gateway: gateway)
+        model.restore()
+        await waitUntil { model.questions.count == 2 }
+
+        model.answerQuestion(id: "ask_4", answers: ["group_message": ["tell them I'm running late"]])
+        model.skipQuestion(id: "ask_5")
+        await waitUntil { model.questions.isEmpty }
+
+        let answered = await gateway.answered()
+        let cancelled = await gateway.cancelled()
+        XCTAssertEqual(answered.first?.answers.answers, ["group_message": ["tell them I'm running late"]])
+        XCTAssertEqual(cancelled, ["ask_5"])
+    }
+
+    func testASecretQuestionIsCancelledAtOnceAndNeverShown() async throws {
+        let secret = try questionRecord(id: "ask_6", secret: true)
+        let gateway = QuestioningGateway(replay: [secret])
+        let model = self.readyModel(store: RecordingPersistence(), gateway: gateway)
+        model.restore()
+        await waitUntil { model.connectionState == .ready }
+        var cancelled = await gateway.cancelled()
+        let end = Date().addingTimeInterval(1)
+        while cancelled.isEmpty, Date() < end {
+            await Task.yield()
+            cancelled = await gateway.cancelled()
+        }
+        XCTAssertEqual(cancelled, ["ask_6"])
+        XCTAssertTrue(model.questions.isEmpty)
+    }
+
+    func testAnExpiredQuestionInTheReplayIsNotShown() async throws {
+        let expired = try questionRecord(id: "ask_7", expiresAtMs: 1725000001000)
+        let gateway = QuestioningGateway(replay: [expired])
+        let model = self.readyModel(store: RecordingPersistence(), gateway: gateway)
+        model.restore()
+        await waitUntil { model.connectionState == .ready }
+        XCTAssertTrue(model.questions.isEmpty)
+    }
+
     func testAReplyInFlightIsKeptAliveByAContinuationAndReachesThePersonWhoLeft() async throws {
         final class Scheduler: ContinuedProcessingScheduling {
             var handler: (@MainActor (any ContinuedProcessingTask) -> Void)?
@@ -583,6 +680,16 @@ final class ChatSessionModelTests: XCTestCase {
         while !condition() && Date() < end {
             await Task.yield()
         }
+    }
+
+    private func questionRecord(id: String, options: Bool = true, secret: Bool = false, expiresAtMs: Int = 2725003600000) throws -> GatewayQuestionRecord {
+        let optionList = options
+            ? #"[{"label":"MVP update","description":"Coordinate Spotify testing."},{"label":"Call now"},{"label":"Meet tomorrow"}]"#
+            : "[]"
+        let json = """
+        {"id":"\(id)","questions":[{"questionId":"group_message","header":"Message","question":"What should I send in the group chat?","options":\(optionList),"isSecret":\(secret)}],"sessionKey":"agent:main:main","runId":"run-1","createdAtMs":1725000000000,"expiresAtMs":\(expiresAtMs),"status":"pending"}
+        """
+        return try JSONDecoder().decode(GatewayQuestionRecord.self, from: Data(json.utf8))
     }
 
     private func approvalSnapshot(status: String, decision: String? = nil) throws -> GatewayApprovalSnapshot {
@@ -799,6 +906,58 @@ private actor ReconnectingGateway: ChatGateway {
 
     func deliveredKeys() -> [String] { self.keys }
     func activationAttemptCount() -> Int { self.activationAttempts }
+}
+
+/// A gateway holding questions: some replayed on connect, one raised while a
+/// message is delivered. Answers and cancels are recorded, not acted on;
+/// `resolveFromElsewhere` plays the event another client's answer would cause.
+private actor QuestioningGateway: ChatGateway {
+    struct Answer: Equatable { let id: String; let answers: GatewayQuestionAnswers }
+    private let replay: [GatewayQuestionRecord]
+    private let duringRun: GatewayQuestionRecord?
+    private var questionUpdate: (@Sendable (ChatQuestionUpdate) async -> Void)?
+    private var answers: [Answer] = []
+    private var cancels: [String] = []
+
+    init(replay: [GatewayQuestionRecord], duringRun: GatewayQuestionRecord? = nil) {
+        self.replay = replay
+        self.duringRun = duringRun
+    }
+
+    func activateApprovalUpdates(_ update: @escaping @Sendable (ChatApprovalUpdate) async -> Void) async throws {}
+
+    func activateQuestionUpdates(_ update: @escaping @Sendable (ChatQuestionUpdate) async -> Void) async throws {
+        self.questionUpdate = update
+        await update(.replay(self.replay))
+    }
+
+    func deliver(_ entry: OutboxEntry, update: @escaping @Sendable (ChatDeliveryUpdate) async -> Void) async throws {
+        await update(.accepted)
+        if let duringRun { await self.questionUpdate?(.requested(duringRun)) }
+        // The run stays open until the question is settled, as the real one would.
+        while self.answers.isEmpty, self.cancels.isEmpty, !Task.isCancelled, self.duringRun != nil, !self.resolvedElsewhere {
+            await Task.yield()
+        }
+        await update(.reply("Done"))
+    }
+
+    private var resolvedElsewhere = false
+
+    func resolveFromElsewhere(id: String, answers: [String: [String]]) async {
+        self.resolvedElsewhere = true
+        await self.questionUpdate?(.resolved(.init(id: id, status: .answered, answers: .init(answers))))
+    }
+
+    func answerQuestion(id: String, answers: GatewayQuestionAnswers) async throws {
+        self.answers.append(Answer(id: id, answers: answers))
+    }
+
+    func cancelQuestion(id: String) async throws {
+        self.cancels.append(id)
+    }
+
+    func answered() -> [Answer] { self.answers }
+    func cancelled() -> [String] { self.cancels }
 }
 
 private actor DeliveryFailureReconnectGateway: ChatGateway {

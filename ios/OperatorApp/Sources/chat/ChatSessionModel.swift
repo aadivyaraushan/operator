@@ -44,6 +44,12 @@ final class ChatSessionModel: ObservableObject {
     /// Not persisted: it is a record of what was done, not of what was said.
     @Published private(set) var stepsByReply: [UUID: [ChatActivityStep]] = [:]
     @Published private(set) var approvals: [GatewayApprovalSnapshot] = []
+    /// Questions the model is waiting on, oldest first. Each is a card in the
+    /// thread; the reply cannot continue until it is answered or skipped.
+    @Published private(set) var questions: [GatewayQuestionRecord] = []
+    /// What the person chose, kept for the collapsed card after the answer
+    /// went in. Not persisted; the transcript carries the model's account.
+    @Published private(set) var answeredQuestions: [String: GatewayQuestionAnswers] = [:]
     @Published private(set) var connectionState: ConnectionState = .starting
     @Published private(set) var lastError: String?
 
@@ -72,6 +78,10 @@ final class ChatSessionModel: ObservableObject {
     private var isRuntimeReady = false
     private var gatewayReadyWaiters: [CheckedContinuation<Bool, Never>] = []
     private var approvalRecords: [String: GatewayApprovalSnapshot] = [:]
+    private var questionRecords: [String: GatewayQuestionRecord] = [:]
+    /// Ids whose answer is on its way to the gateway; a second tap must not
+    /// send a second answer.
+    private var questionsInFlight: Set<String> = []
 
     init(
         store: any ChatPersistence,
@@ -260,6 +270,69 @@ final class ChatSessionModel: ObservableObject {
         }
     }
 
+    /// Sends the person's answer. `answers` is keyed by each question's
+    /// `questionId` and must cover every question in the record; a question
+    /// with options accepts a chosen label, or free text when it allows one.
+    func answerQuestion(id: String, answers: [String: [String]]) {
+        guard let record = self.questionRecords[id], record.isActionable(),
+              !self.questionsInFlight.contains(id),
+              Self.answersComplete(answers, for: record)
+        else {
+            self.lastError = "That question can no longer be answered."
+            self.logger.error("[question] rejected local answer id=\(id, privacy: .public)")
+            return
+        }
+        let payload = GatewayQuestionAnswers(answers)
+        self.questionsInFlight.insert(id)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.questionsInFlight.remove(id) }
+            do {
+                try await self.gateway.answerQuestion(id: id, answers: payload)
+                self.answeredQuestions[id] = payload
+                self.questionRecords.removeValue(forKey: id)
+                self.refreshQuestions()
+                self.logger.info("[question] answered id=\(id, privacy: .public)")
+            } catch {
+                // Answered elsewhere, expired, or the socket is down. The
+                // resolved event or the next replay settles which; until
+                // then the card stays so the person can try again.
+                self.lastError = Self.userMessage(for: error, fallback: "Operator could not send that answer. Try again.")
+                self.logger.error("[question] answer failed id=\(id, privacy: .public)")
+            }
+        }
+    }
+
+    /// Declines to answer: the model is told there is no answer and carries on.
+    func skipQuestion(id: String) {
+        guard self.questionRecords[id] != nil, !self.questionsInFlight.contains(id) else { return }
+        self.questionsInFlight.insert(id)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.questionsInFlight.remove(id) }
+            do {
+                try await self.gateway.cancelQuestion(id: id)
+                self.questionRecords.removeValue(forKey: id)
+                self.refreshQuestions()
+                self.logger.info("[question] skipped id=\(id, privacy: .public)")
+            } catch {
+                self.lastError = Self.userMessage(for: error, fallback: "Operator could not skip that question. Try again.")
+                self.logger.error("[question] skip failed id=\(id, privacy: .public)")
+            }
+        }
+    }
+
+    private static func answersComplete(_ answers: [String: [String]], for record: GatewayQuestionRecord) -> Bool {
+        record.questions.allSatisfy { question in
+            guard let values = answers[question.questionId], !values.isEmpty,
+                  values.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+            else { return false }
+            if question.multiSelect || question.acceptsFreeText { return true }
+            // A single-choice question with options takes exactly one label.
+            return values.count == 1 && question.options.contains { $0.label == values[0] }
+        }
+    }
+
     func startDictation() {
         self.dictation.start(draft: self.draft) { [weak self] draft in
             self?.updateDraft(draft)
@@ -346,6 +419,9 @@ final class ChatSessionModel: ObservableObject {
                 self.isConnecting = true
                 try await self.gateway.activateApprovalUpdates { [weak self] update in
                     await self?.handleApproval(update)
+                }
+                try await self.gateway.activateQuestionUpdates { [weak self] update in
+                    await self?.handleQuestion(update)
                 }
                 self.isConnecting = false
                 guard self.isRuntimeReady, self.isForegroundActive, !Task.isCancelled else {
@@ -511,10 +587,57 @@ final class ChatSessionModel: ObservableObject {
             .sorted { $0.createdAtMilliseconds < $1.createdAtMilliseconds }
     }
 
+    private func handleQuestion(_ update: ChatQuestionUpdate) {
+        switch update {
+        case let .replay(records):
+            // The gateway's list is the truth on every reconnect: a question
+            // answered or expired while the socket was down is gone from it.
+            self.questionRecords.removeAll()
+            for record in records { self.admitQuestion(record) }
+            self.refreshQuestions()
+        case let .requested(record):
+            self.admitQuestion(record)
+            self.refreshQuestions()
+        case let .resolved(event):
+            self.questionRecords.removeValue(forKey: event.id)
+            if event.status == .answered, let answers = event.answers, self.answeredQuestions[event.id] == nil {
+                self.answeredQuestions[event.id] = answers
+            }
+            self.refreshQuestions()
+        }
+    }
+
+    private func admitQuestion(_ record: GatewayQuestionRecord) {
+        guard record.isActionable() else { return }
+        guard !record.questions.contains(where: \.isSecret) else {
+            // A masked answer cannot be shown here and the gateway does not
+            // support it either; cancelling at once beats a silent 15 minutes.
+            self.logger.error("[question] secret question cancelled id=\(record.id, privacy: .public)")
+            Task { @MainActor [weak self] in
+                try? await self?.gateway.cancelQuestion(id: record.id)
+            }
+            return
+        }
+        self.questionRecords[record.id] = record
+    }
+
+    private func refreshQuestions() {
+        self.questions = self.questionRecords.values
+            .filter { $0.isActionable() }
+            .sorted { $0.createdAtMilliseconds < $1.createdAtMilliseconds }
+    }
+
     private static func userMessage(for error: Error) -> String {
         if case let ChatGatewayError.gateway(message) = error {
             return message
         }
         return "Operator will send this automatically when the local runtime is ready."
+    }
+
+    private static func userMessage(for error: Error, fallback: String) -> String {
+        if case let ChatGatewayError.gateway(message) = error {
+            return message
+        }
+        return fallback
     }
 }

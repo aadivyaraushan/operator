@@ -336,6 +336,53 @@ final class LocalOpenClawChatGatewayTests: XCTestCase {
         XCTAssertEqual(freshMethods, ["connect", "sessions.messages.subscribe"])
     }
 
+    func testQuestionUpdatesReplayTheGatewayListAndAnswerOnAControlConnection() async throws {
+        let chat = ChatTestTransport(approvalID: "approval", questionID: "ask_1")
+        let control = ChatTestTransport(approvalID: "approval", questionID: "ask_1")
+        let factory = ChatConnectionFactory([chat, control])
+        let gateway = LocalOpenClawChatGateway(connectionFactory: { await factory.next() })
+        let replays = QuestionReplays()
+        try await gateway.activateApprovalUpdates { _ in }
+        try await gateway.activateQuestionUpdates { await replays.record($0) }
+
+        try await gateway.answerQuestion(id: "ask_1", answers: .init(["group_message": ["Call now"]]))
+
+        let replayed = await replays.replayedIDs
+        XCTAssertEqual(replayed, [["ask_1"]])
+        let chatMethods = await chat.methods
+        let controlMethods = await control.methods
+        XCTAssertEqual(chatMethods, ["connect", "sessions.messages.subscribe", "question.list"])
+        XCTAssertEqual(controlMethods, ["connect", "question.resolve"])
+        let chatClosed = await chat.closed
+        let controlClosed = await control.closed
+        XCTAssertFalse(chatClosed, "the chat reader keeps its connection")
+        XCTAssertTrue(controlClosed)
+    }
+
+    func testAQuestionRequestedDuringDeliveryReachesTheQuestionSinkAndDeliveryContinues() async throws {
+        let transport = TimingChatTransport(includeStream: false, questionID: "ask_9")
+        let replays = QuestionReplays()
+        let updates = TimingDeliveryUpdates()
+        let gateway = LocalOpenClawChatGateway(connectionFactory: {
+            OpenClawGatewayConnection(transport: transport, token: "test", identity: GatewayDeviceIdentity(),
+                metadata: .init(appVersion: "test", platform: "test", instanceID: "test"))
+        })
+        try await gateway.activateApprovalUpdates { _ in }
+        try await gateway.activateQuestionUpdates { await replays.record($0) }
+        let id = UUID()
+
+        try await gateway.deliver(
+            .init(id: id, messageID: id, text: "test", idempotencyKey: "test", state: .waiting)
+        ) { await updates.record($0) }
+
+        let requested = await replays.requestedIDs
+        let resolved = await replays.resolvedIDs
+        XCTAssertEqual(requested, ["ask_9"])
+        XCTAssertEqual(resolved, ["ask_9"])
+        let delivered = await updates.values
+        XCTAssertEqual(delivered.last, .reply("Hello"))
+    }
+
     func testStopWhileLiveApprovalPendingConsumesServerCancellation() async throws {
         let transport = TerminalApprovalTransport(waitForStop: true)
         let gateway = LocalOpenClawChatGateway(connectionFactory: {
@@ -542,6 +589,10 @@ private actor TimingChatTransport: GatewayTransport {
     /// How many chat.history reads report the recovery as still pending before
     /// it settles. nil: pending on every read.
     private let recoveryPendingHistoryReads: Int?
+    /// When set, the run asks this question and it is answered elsewhere
+    /// before the reply: a question.requested then a question.resolved
+    /// between the acknowledgement and the final chat event.
+    private let questionID: String?
     private(set) var methods: [String] = []
     private(set) var chatSendCount = 0
     private var historyReads = 0
@@ -555,8 +606,10 @@ private actor TimingChatTransport: GatewayTransport {
         historyMessages: [String] = [],
         historyAvailableBeforeSend: Bool = false,
         recoverySourceRunID: String? = nil,
-        recoveryPendingHistoryReads: Int? = nil)
+        recoveryPendingHistoryReads: Int? = nil,
+        questionID: String? = nil)
     {
+        self.questionID = questionID
         self.recoveryPendingHistoryReads = recoveryPendingHistoryReads
         self.includeStream = includeStream
         self.outcome = outcome
@@ -593,6 +646,10 @@ private actor TimingChatTransport: GatewayTransport {
                 : #"{"runId":"run","status":"\#(responseStatus)"}"#
             self.queue.append(Data(#"{"type":"res","id":"\#(id)","ok":true,"payload":\#(responsePayload)}"#.utf8))
             if self.terminalStatus != nil { return }
+            if let questionID {
+                self.queue.append(Data(#"{"type":"event","event":"question.requested","payload":{"id":"\#(questionID)","questions":[{"questionId":"group_message","header":"Message","question":"What should I send?","options":[{"label":"Call now"},{"label":"Meet tomorrow"}]}],"sessionKey":"agent:main:main","runId":"run","createdAtMs":1,"expiresAtMs":9999999999999,"status":"pending"}}"#.utf8))
+                self.queue.append(Data(#"{"type":"event","event":"question.resolved","payload":{"id":"\#(questionID)","status":"answered","answers":{"answers":{"group_message":["Call now"]}}}}"#.utf8))
+            }
             if self.outcome == .transportError {
                 return
             } else if self.outcome == .failed {
@@ -607,6 +664,10 @@ private actor TimingChatTransport: GatewayTransport {
                 let runID = self.omitResponseRunID ? "test" : "run"
                 self.queue.append(Data(#"{"type":"event","event":"chat","payload":{"runId":"\#(runID)","sessionKey":"agent:main:main","seq":1,"state":"final","message":"Hello"}}"#.utf8))
             }
+        case "sessions.messages.subscribe":
+            self.queue.append(Data(#"{"type":"res","id":"\#(id)","ok":true,"payload":{"subscribed":true,"key":"agent:main:main","approvalReplay":{"sessionKey":"agent:main:main","updatedAtMs":1,"approvals":[],"truncated":false}}}"#.utf8))
+        case "question.list":
+            self.queue.append(Data(#"{"type":"res","id":"\#(id)","ok":true,"payload":{"questions":[]}}"#.utf8))
         case "chat.history":
             self.historyReads += 1
             let available = self.historyAvailableBeforeSend || self.chatSendCount > 0
@@ -716,6 +777,18 @@ private actor TerminalApprovalTransport: GatewayTransport {
     }
 }
 
+private actor QuestionReplays {
+    private(set) var replayedIDs: [[String]] = []
+    private(set) var requestedIDs: [String] = []
+    private(set) var resolvedIDs: [String] = []
+    func record(_ update: ChatQuestionUpdate) {
+        switch update {
+        case let .replay(records): replayedIDs.append(records.map(\.id))
+        case let .requested(record): requestedIDs.append(record.id)
+        case let .resolved(event): resolvedIDs.append(event.id)
+        }
+    }
+}
 private actor ChatReplays {
     private(set) var ids: [[String]] = []
     func record(_ update: ChatApprovalUpdate) {
@@ -733,6 +806,7 @@ private actor ChatConnectionFactory {
 }
 private actor ChatTestTransport: GatewayTransport {
     private let approvalID: String
+    private let questionID: String?
     private let holdSubscription: Bool
     private var queue: [Data] = []
     private var stale = false
@@ -740,9 +814,10 @@ private actor ChatTestTransport: GatewayTransport {
     private var waiter: CheckedContinuation<Data, Error>?
     private(set) var closed = false
     private(set) var methods: [String] = []
-    init(approvalID: String, holdSubscription: Bool = false) {
+    init(approvalID: String, holdSubscription: Bool = false, questionID: String? = nil) {
         self.approvalID = approvalID
         self.holdSubscription = holdSubscription
+        self.questionID = questionID
     }
     func makeStale() { stale = true }
     func hasHeldResponse() -> Bool { heldResponse != nil }
@@ -773,6 +848,16 @@ private actor ChatTestTransport: GatewayTransport {
             payload = ["applied": true, "approval": ["id": approvalID, "createdAtMs": 1, "expiresAtMs": 9999999999999,
                 "resolvedAtMs": 2, "reason": "user", "decision": "deny", "status": "denied",
                 "presentation": ["kind": "exec", "commandText": "test", "allowedDecisions": ["deny"]]]]
+        case "question.list":
+            let questions: [[String: Any]] = questionID.map { [[
+                "id": $0, "createdAtMs": 1, "expiresAtMs": 9999999999999, "status": "pending", "sessionKey": "agent:main:main",
+                "questions": [["questionId": "group_message", "header": "Message", "question": "What should I send?",
+                               "options": [["label": "Call now"], ["label": "Meet tomorrow"]]]]]] } ?? []
+            payload = ["questions": questions]
+        case "question.resolve":
+            let params = try XCTUnwrap(frame["params"] as? [String: Any])
+            if params["cancel"] as? Bool == true { payload = ["status": "cancelled"] }
+            else { payload = ["status": "answered", "answers": params["answers"]!] }
         default: throw NSError(domain: "Unexpected RPC", code: 1)
         }
         let response = try JSONSerialization.data(withJSONObject: ["type": "res", "id": frame["id"]!, "ok": true, "payload": payload])

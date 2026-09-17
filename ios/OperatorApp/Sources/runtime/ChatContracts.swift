@@ -30,6 +30,15 @@ enum ChatApprovalUpdate: Sendable {
     case unsafe(String)
 }
 
+/// A question the model asked and is waiting on (`ask_user`), as the chat
+/// learns of it: the gateway's pending list on each foreground connection,
+/// then one event per request and per resolution during a run.
+enum ChatQuestionUpdate: Sendable {
+    case replay([GatewayQuestionRecord])
+    case requested(GatewayQuestionRecord)
+    case resolved(GatewayQuestionResolvedEvent)
+}
+
 protocol ChatGateway: Sendable {
     func deliver(
         _ entry: OutboxEntry,
@@ -41,6 +50,13 @@ protocol ChatGateway: Sendable {
         id: String,
         kind: GatewayApprovalKind,
         decision: GatewayApprovalDecision) async throws -> GatewayApprovalSnapshot
+    /// Starts question updates on the current foreground connection and
+    /// replays what the gateway still holds. Called right after
+    /// `activateApprovalUpdates`, on the connection it opened.
+    func activateQuestionUpdates(
+        _ update: @escaping @Sendable (ChatQuestionUpdate) async -> Void) async throws
+    func answerQuestion(id: String, answers: GatewayQuestionAnswers) async throws
+    func cancelQuestion(id: String) async throws
 }
 
 extension ChatGateway {
@@ -55,6 +71,17 @@ extension ChatGateway {
         decision: GatewayApprovalDecision) async throws -> GatewayApprovalSnapshot
     {
         throw ChatGatewayError.gateway("Approvals are not available until Operator reconnects.")
+    }
+
+    func activateQuestionUpdates(
+        _ update: @escaping @Sendable (ChatQuestionUpdate) async -> Void) async throws {}
+
+    func answerQuestion(id: String, answers: GatewayQuestionAnswers) async throws {
+        throw ChatGatewayError.gateway("Questions cannot be answered until Operator reconnects.")
+    }
+
+    func cancelQuestion(id: String) async throws {
+        throw ChatGatewayError.gateway("Questions cannot be answered until Operator reconnects.")
     }
 }
 

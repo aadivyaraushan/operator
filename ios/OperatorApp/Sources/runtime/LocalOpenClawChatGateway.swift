@@ -94,6 +94,7 @@ actor LocalOpenClawChatGateway: ChatGateway {
     private var connection: OpenClawGatewayConnection?
     private var activeRunID: String?
     private var approvalUpdate: (@Sendable (ChatApprovalUpdate) async -> Void)?
+    private var questionUpdate: (@Sendable (ChatQuestionUpdate) async -> Void)?
     private var isDelivering = false
     private var isActivating = false
     private var approvalRequestsInFlight = 0
@@ -265,6 +266,20 @@ actor LocalOpenClawChatGateway: ChatGateway {
                         await self.publishApproval(.event(event))
                         self.logger.info("[approval] terminal received id=\(event.approval.id, privacy: .public)")
                     }
+                case let .question(event):
+                    // The model is blocked on this until someone answers;
+                    // it is handed to the chat whether or not the run that
+                    // asked is the one being delivered, since the outbox may
+                    // have re-sent and the question belongs to the session.
+                    switch event {
+                    case let .requested(record):
+                        self.logger.info("[question] requested id=\(record.id, privacy: .public) questions=\(record.questions.count)")
+                        await self.publishQuestion(.requested(record))
+                    case let .resolved(resolved):
+                        self.logger.info("[question] resolved id=\(resolved.id, privacy: .public) status=\(resolved.status.rawValue, privacy: .public)")
+                        await self.publishQuestion(.resolved(resolved))
+                    }
+                    continue
                 case .response, .ignored:
                     continue
                 }
@@ -416,6 +431,64 @@ actor LocalOpenClawChatGateway: ChatGateway {
             self.connection = nil
             throw error
         }
+    }
+
+    func activateQuestionUpdates(
+        _ update: @escaping @Sendable (ChatQuestionUpdate) async -> Void) async throws
+    {
+        guard let connection, await connection.isConnected else { throw ChatGatewayError.offline }
+        self.questionUpdate = update
+        do {
+            let pending = try await connection.listQuestions()
+            await update(.replay(pending))
+        } catch {
+            // A gateway without question.list, or a list that failed: the
+            // chat is still usable, and requests during a run still arrive.
+            // Nothing is replayed rather than the connection being given up.
+            self.logger.error("[question] replay unavailable errorType=\(String(reflecting: type(of: error)), privacy: .public)")
+        }
+    }
+
+    func answerQuestion(id: String, answers: GatewayQuestionAnswers) async throws {
+        // The chat reader owns the foreground connection while a run is
+        // delivering, and it is exactly then that a question is pending. Use
+        // a separate connection, as approval decisions do.
+        try await self.withControlConnection(label: "answer", id: id) { control in
+            _ = try await control.answerQuestion(id: id, answers: answers)
+        }
+    }
+
+    func cancelQuestion(id: String) async throws {
+        try await self.withControlConnection(label: "cancel", id: id) { control in
+            try await control.cancelQuestion(id: id)
+        }
+    }
+
+    private func withControlConnection(
+        label: String, id: String,
+        _ body: (OpenClawGatewayConnection) async throws -> Void) async throws
+    {
+        guard !self.isActivating else { throw ChatGatewayError.offline }
+        self.approvalRequestsInFlight += 1
+        defer { self.approvalRequestsInFlight -= 1 }
+        let control = try await self.connectionFactory()
+        self.logger.info("[question] opening \(label, privacy: .public) connection id=\(id, privacy: .public)")
+        do {
+            try await control.connect()
+            try await body(control)
+            await control.disconnect()
+        } catch {
+            await control.disconnect()
+            self.logger.error("[question] \(label, privacy: .public) failed id=\(id, privacy: .public) errorType=\(String(reflecting: type(of: error)), privacy: .public)")
+            if case let OpenClawGatewayError.rejected(_, message) = error {
+                throw ChatGatewayError.gateway(message)
+            }
+            throw error
+        }
+    }
+
+    private func publishQuestion(_ update: ChatQuestionUpdate) async {
+        await self.questionUpdate?(update)
     }
 
     func resolveApproval(

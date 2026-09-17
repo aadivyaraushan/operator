@@ -6,7 +6,7 @@ scratch=$(mktemp -d /private/tmp/operator-chat-reconnect.XXXXXX)
 trap 'rm -rf "$scratch"' EXIT HUP INT TERM
 mkdir -p "$scratch/Sources/OperatorApp" "$scratch/Tests/ModelSetupProofTests"
 sed "s|CORE_PACKAGE_PATH|$ios_dir/OperatorCore|" "$test_dir/../model-setup-restart/Package.template" > "$scratch/Package.swift"
-for source in runtime/ChatContracts.swift runtime/LocalOpenClawChatGateway.swift chat/ChatSessionModel.swift; do
+for source in runtime/ChatContracts.swift runtime/LocalOpenClawChatGateway.swift chat/ChatSessionModel.swift chat/ChatActivity.swift runtime/continuation/ReplyContinuation.swift; do
     cp "$ios_dir/OperatorApp/Sources/$source" "$scratch/Sources/OperatorApp/"
 done
 # Include the actual message text formatter used by the app. SwiftUI is not
