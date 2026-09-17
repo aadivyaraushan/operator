@@ -14,6 +14,7 @@ public enum ConnectorID: String, Codable, CaseIterable, Sendable, Hashable {
     case messages, messagesAutosend, maps, apps
     case whatsapp
     case discord
+    case canvas
     case google, googleTasks, microsoft, slack, spotify
     case notion
     case media
@@ -215,6 +216,12 @@ public enum ConnectorCatalog {
                       "I am using an account I can afford to lose, and I accept that risk.",
                   ],
                   confirmLabel: "Turn on anyway")),
+        .init(id: .canvas, title: "Canvas",
+              readSummary: "Your courses with their current grade, what is due and what is missing, and recent announcements, through your own Canvas access token.",
+              writeSummary: nil,
+              readCommands: ["canvas.courses", "canvas.upcoming", "canvas.announcements"], writeCommands: [],
+              systemPermission: nil, requiresAccount: true,
+              setupInstructions: "Under Connect accounts > Canvas, enter your school's Canvas address and paste an access token from Canvas > Account > Settings > Approved Integrations > New Access Token. The token is kept on this iPhone."),
         .init(id: .google, title: "Google",
               readSummary: "Calendar events, every file in your Drive (Docs, Sheets and Slides included), and Gmail messages.",
               writeSummary: "Create or change calendar events, and create, edit, rename or move Drive files (Docs, Sheets and Slides included), each after you approve it.",

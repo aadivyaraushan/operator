@@ -141,6 +141,41 @@ public enum GatewayNodeAgentTools {
                 "limit": .integer("Newest messages per channel, 1 to 50. Defaults to 25."),
             ])),
         .init(
+            name: "canvas_courses",
+            command: "canvas.courses",
+            description: """
+            The person's active Canvas courses, with the current score and letter grade where \
+            the course shows one. Use for "what classes am I in", "what's my grade in X", or \
+            to get a course's id and name before reading its announcements. Takes no \
+            arguments. Read-only.
+            """,
+            parameters: .init()),
+        .init(
+            name: "canvas_upcoming",
+            command: "canvas.upcoming",
+            description: """
+            What is due in the person's Canvas courses over the next days - assignments, \
+            quizzes, discussions, events - soonest first, each with its course, due time, \
+            points and whether it is already submitted, missing or late; plus anything past \
+            due and unsubmitted. Use for "what's due", "what do I have this week", "what do I \
+            owe". Read-only: it cannot submit or change anything.
+            """,
+            parameters: .init(properties: [
+                "days": .integer("How many days ahead to look, 1 to 30. Defaults to 7."),
+            ])),
+        .init(
+            name: "canvas_announcements",
+            command: "canvas.announcements",
+            description: """
+            Recent announcements across the person's active Canvas courses, newest first, \
+            with course, author, time, the text and a link. Use for "any announcements", \
+            "what did I miss in class", or "did the professor post anything". Read-only.
+            """,
+            parameters: .init(properties: [
+                "days": .integer("How many days back to look, 1 to 60. Defaults to 14."),
+                "limit": .integer("How many announcements at most, 1 to 50. Defaults to 20."),
+            ])),
+        .init(
             name: "messages_incoming",
             command: "messages.incoming",
             description: """
