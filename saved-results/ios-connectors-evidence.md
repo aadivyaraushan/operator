@@ -1812,3 +1812,24 @@ kept), then ask the exact prompt again — "message aadivya and arnav in
 the gc" — and watch for the card; then the same with the app left, for
 the notification. The transcript will show `ask_user`'s toolResult
 carrying the chosen option instead of a restart line.
+
+## 2026-09-17, 10:36: the model's question answered on the phone, first time
+
+Built from `ac4bd12` (after Aadivya's overnight commits; the runtime
+re-staged first, since the new build-time check refused the old copy),
+signed with team 57266AVWJR, upgrade-installed with `devicectl`. Read
+back from the phone's `transcript_events`:
+
+| Time (local) | Event |
+| --- | --- |
+| 10:38:07 | "text mom" → the model asks in text "What should I text Mom?" |
+| 10:38:29 | "anything, give me a choice" |
+| 10:38:33 | `ask_user`: "Which message should I send to Mom?", three options, `timeoutSeconds: 900` |
+| **10:38:52** | `ask_user` toolResult **`status: answered`, `mom_text: ["Check in (Recommended)"]`** — the card's tap, 19 s later |
+| 10:38:56 | `contacts_search "Amma"` |
+| 10:39:01 | `sms.send` through the shortcut, `handedToShortcut: true` |
+| 10:39:05 | Reply: "Handed off to Amma for sending: good morning amma how are you" |
+
+The same tool call the night before sat for 15 minutes and ended in a
+gateway-restart line. Card in the thread: proven. Not yet seen: the
+notification path, with the app left before the question arrives.
