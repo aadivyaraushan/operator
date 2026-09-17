@@ -11,6 +11,7 @@
 		02B59DFB924F6C3A84780D5D /* SystemMessageComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFD68089BBBF22747CF5D120 /* SystemMessageComposer.swift */; };
 		05CA76832C365332CEEC5991 /* ForegroundAccountWriteConfirmationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38581187BA3CDE1568086596 /* ForegroundAccountWriteConfirmationServiceTests.swift */; };
 		07A5FA5CD1091D9F8EE373C9 /* ForegroundNotionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 050195695EEB8466D0BF736C /* ForegroundNotionService.swift */; };
+		080B964E06F6A7EBCFC83B79 /* QuestionNotifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F1CE9C56C0FF23032EE420 /* QuestionNotifierTests.swift */; };
 		0A1C30B53C7F970919B154FA /* NativeAccountSetupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B6D712F69ADF6344534D5B5 /* NativeAccountSetupCoordinator.swift */; };
 		0A1C488A56BB8EC44AF34AEC /* LocalLocationNodeGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46B72B71A8F5A948B06185B /* LocalLocationNodeGateway.swift */; };
 		0B0FAA7524FE0381259D49D9 /* SystemContactCreatePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF4E7F6DCFD0B1441C04DF8C /* SystemContactCreatePresenter.swift */; };
@@ -124,6 +125,7 @@
 		D2FE39CC2CD3BFD24A275863 /* DiscordAnnouncementsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCA0F3AC82EAE545D2FA2D2 /* DiscordAnnouncementsTests.swift */; };
 		D5317949027D962F39317776 /* WhatsAppSendGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2AC238B49B32CBE9B26A294 /* WhatsAppSendGuard.swift */; };
 		D59BDDE6E77F1538CD4B9792 /* SystemAppHandoffOpener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B763984DB6928E71916C75E /* SystemAppHandoffOpener.swift */; };
+		D61EC5779847E73DE05789AF /* QuestionNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44062588C79775235FF7769F /* QuestionNotifier.swift */; };
 		D7CC92BF77C3CA75BEB7DBA8 /* ForegroundAppHandoffServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F6E49CBA4B4BE7F0B6EE437 /* ForegroundAppHandoffServiceTests.swift */; };
 		DAFCE568B53F22106F8ACDCE /* ReplyContinuation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27A85995AA6624C88B25AE14 /* ReplyContinuation.swift */; };
 		DD5C4F8956B9DA0A98E594B3 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6BACC7C7C5D24B5E133FCEC2 /* CoreLocation.framework */; };
@@ -146,6 +148,7 @@
 		EFB337E1E8C679ED7DB3FE70 /* OperatorCore in Frameworks */ = {isa = PBXBuildFile; productRef = 051ADE6419DBFF89743CCF5F /* OperatorCore */; };
 		F3778B8382A2BA55F0B1CDFF /* PhoneOAuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41554565367C9E5163358C22 /* PhoneOAuthClient.swift */; };
 		F3789C7CF7E7E8D7B7402153 /* NodeMobile.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1EF691B8528973A5181E5FD0 /* NodeMobile.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		F40F66B811BCD9CAF14D397E /* NotificationResponseRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE17FE8A6A77A3855C6199AE /* NotificationResponseRouter.swift */; };
 		F50494031EA799DF091E228F /* OfflineDictationModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ACAACFE7B6DA3BFC9795838 /* OfflineDictationModelTests.swift */; };
 		F6555AAE42BD2A4FB7108CE4 /* OAuthTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D28413E654E17641C2A8767 /* OAuthTransport.swift */; };
 		F784AD59C98B8D7D361377E9 /* YouTubeAPIKeySetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 095EB3E761A8C80A0054953A /* YouTubeAPIKeySetup.swift */; };
@@ -256,7 +259,9 @@
 		41554565367C9E5163358C22 /* PhoneOAuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneOAuthClient.swift; sourceTree = "<group>"; };
 		41E545828CE4648B09996963 /* DiscordAccountSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordAccountSetup.swift; sourceTree = "<group>"; };
 		421FA479133137B163DDDE9C /* ModelSetupContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSetupContracts.swift; sourceTree = "<group>"; };
+		42F1CE9C56C0FF23032EE420 /* QuestionNotifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionNotifierTests.swift; sourceTree = "<group>"; };
 		43F05B24B6E4631A5F0FCDF4 /* YouTubeAPIKeySetupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeAPIKeySetupTests.swift; sourceTree = "<group>"; };
+		44062588C79775235FF7769F /* QuestionNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionNotifier.swift; sourceTree = "<group>"; };
 		44CA41C5411FB21868D6398C /* ForegroundDiscordAnnouncementsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundDiscordAnnouncementsService.swift; sourceTree = "<group>"; };
 		454677F47C69266BF1466FF6 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		4B5FC7EA600C4548A7C2F0A1 /* OperatorCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = OperatorCore; path = OperatorCore; sourceTree = SOURCE_ROOT; };
@@ -359,6 +364,7 @@
 		FA31C7EBC7EC9ECF4CBE9267 /* NotionMCPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotionMCPClient.swift; sourceTree = "<group>"; };
 		FAF730BF4D6B886A2B60A3D1 /* NativeWhatsAppLinkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWhatsAppLinkClient.swift; sourceTree = "<group>"; };
 		FBE38C1B2FB3BF54DDE0660B /* ForegroundPhotosService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundPhotosService.swift; sourceTree = "<group>"; };
+		FE17FE8A6A77A3855C6199AE /* NotificationResponseRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationResponseRouter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -701,6 +707,14 @@
 			path = "notion-callback";
 			sourceTree = "<group>";
 		};
+		5B24393D75D13A84EF0CF460 /* questions */ = {
+			isa = PBXGroup;
+			children = (
+				42F1CE9C56C0FF23032EE420 /* QuestionNotifierTests.swift */,
+			);
+			path = questions;
+			sourceTree = "<group>";
+		};
 		5C2B9D1BCCCE596DF3610B52 /* node */ = {
 			isa = PBXGroup;
 			children = (
@@ -858,6 +872,14 @@
 				56D61196FCC160ABACEA5517 /* PublicMediaURLPolicy.swift */,
 			);
 			path = network;
+			sourceTree = "<group>";
+		};
+		7348DE5D84EFCF0C17D1F394 /* questions */ = {
+			isa = PBXGroup;
+			children = (
+				44062588C79775235FF7769F /* QuestionNotifier.swift */,
+			);
+			path = questions;
 			sourceTree = "<group>";
 		};
 		755A01441883E44983799473 /* handoff */ = {
@@ -1028,6 +1050,7 @@
 				1593E68D6DA83F3D5323D640 /* ChatSessionModelTests.swift */,
 				03755826A1F5F57F5FD3EA1B /* ModelSetupModelTests.swift */,
 				8A45E94406039EE9C936DE3F /* capabilities */,
+				F69BADF1B43C11638CD7E791 /* chat */,
 				52FEDC2F36FC96D2A82A5D3F /* chat-reconnect */,
 				61CC1009953D5D863C4FE3F9 /* connections */,
 				59E92122161E46B1D263B149 /* dictation */,
@@ -1153,6 +1176,7 @@
 		C57062589EC6136399A76B46 /* system-entry-points */ = {
 			isa = PBXGroup;
 			children = (
+				FE17FE8A6A77A3855C6199AE /* NotificationResponseRouter.swift */,
 				E0BE63C783B303D5917456BF /* OperatorChatAppIntent.swift */,
 			);
 			path = "system-entry-points";
@@ -1295,6 +1319,14 @@
 			path = whatsapp;
 			sourceTree = "<group>";
 		};
+		F69BADF1B43C11638CD7E791 /* chat */ = {
+			isa = PBXGroup;
+			children = (
+				5B24393D75D13A84EF0CF460 /* questions */,
+			);
+			path = chat;
+			sourceTree = "<group>";
+		};
 		F6A5965330A56E09AE8E3EF3 /* confirmation */ = {
 			isa = PBXGroup;
 			children = (
@@ -1333,6 +1365,7 @@
 				D77EFF62D4E8D94BF0C1BF91 /* ChatActivity.swift */,
 				996961BE0B62984DE5354052 /* ChatScreen.swift */,
 				3F9676D6F9E8AD88AAAC40E2 /* ChatSessionModel.swift */,
+				7348DE5D84EFCF0C17D1F394 /* questions */,
 			);
 			path = chat;
 			sourceTree = "<group>";
@@ -1355,7 +1388,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_3BCFA401-4C10-454D-8FB5-B292B1151F14" /* embedded */ = {
+		"TEMP_F65B5279-D376-4024-B3FE-5E2B0663F51E" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1552,6 +1585,7 @@
 				CED0DD2CBF76656CC237E954 /* OperatorChatAppIntentTests.swift in Sources */,
 				AA41432EE6820F7979B54B41 /* PendingSendCenterTests.swift in Sources */,
 				63EB0E9E3C22DE2DF6E0B512 /* PhoneOAuthClientTests.swift in Sources */,
+				080B964E06F6A7EBCFC83B79 /* QuestionNotifierTests.swift in Sources */,
 				41A8A949CF0F2E5FABB3EB61 /* ReplyContinuationTests.swift in Sources */,
 				24341752AAD7E050880843F2 /* SpotifyLoopbackSetupTests.swift in Sources */,
 				B300654E87D79A4B03A259F8 /* WhatsAppLinkFlowTests.swift in Sources */,
@@ -1620,6 +1654,7 @@
 				3827FBBDFCB20B0289CC027E /* NativeWhatsAppLinkClient.swift in Sources */,
 				B754CC661FB16CBA852D9ACE /* NativeWhatsAppReadClient.swift in Sources */,
 				B72283677ABE1FBA924F3AFF /* NativeWhatsAppSendClient.swift in Sources */,
+				F40F66B811BCD9CAF14D397E /* NotificationResponseRouter.swift in Sources */,
 				DD93F7B2746B567AD0181B67 /* NotionLoopbackCallbackServer.swift in Sources */,
 				6BC1F46B1CC557DBF99034C8 /* NotionMCPClient.swift in Sources */,
 				F6555AAE42BD2A4FB7108CE4 /* OAuthTransport.swift in Sources */,
@@ -1632,6 +1667,7 @@
 				BC3844E544DDEAA656919833 /* PodcastMediaServices.swift in Sources */,
 				490CBF62A70354B3465B6877 /* PublicMediaHTTPTransport.swift in Sources */,
 				5B273A5F80E03A1E0ADEB811 /* PublicMediaURLPolicy.swift in Sources */,
+				D61EC5779847E73DE05789AF /* QuestionNotifier.swift in Sources */,
 				32A4F5CE59EF216429A0B751 /* RecordIncomingMessageIntent.swift in Sources */,
 				DAFCE568B53F22106F8ACDCE /* ReplyContinuation.swift in Sources */,
 				E02278F6D8BC696D9F8284EC /* ReplyNotifier.swift in Sources */,

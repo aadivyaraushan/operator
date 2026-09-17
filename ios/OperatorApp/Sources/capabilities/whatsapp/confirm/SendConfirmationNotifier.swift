@@ -19,13 +19,13 @@ final class SendConfirmationNotifier: SendConfirmationNotifying {
 
     init(center: UNUserNotificationCenter = .current()) { self.center = center }
 
-    /// Once, at launch, before any question can be posted: a notification
-    /// whose category is not registered shows no buttons at all.
-    func registerCategory() {
+    /// Registered once, at launch, before any question can be posted: a
+    /// notification whose category is not registered shows no buttons at
+    /// all. Registration is the App's, since the center takes one set.
+    nonisolated static func notificationCategory() -> UNNotificationCategory {
         let send = UNNotificationAction(identifier: Self.sendAction, title: "Send", options: [.authenticationRequired])
         let decline = UNNotificationAction(identifier: Self.declineAction, title: "Don't send", options: [.destructive])
-        let category = UNNotificationCategory(identifier: Self.category, actions: [send, decline], intentIdentifiers: [], options: [])
-        self.center.setNotificationCategories([category])
+        return UNNotificationCategory(identifier: Self.category, actions: [send, decline], intentIdentifiers: [], options: [])
     }
 
     /// The draft the answered notification was about, if it was a question.
@@ -77,10 +77,9 @@ final class SendConfirmationNotifier: SendConfirmationNotifying {
 }
 
 /// Answers to the question: the notification's buttons, or a tap on the
-/// notification itself. Retained by the App for the life of the process; the
-/// notification center only holds its delegate weakly. Unchecked only
-/// because NSObject is not Sendable: every stored property is.
-final class SendConfirmationResponder: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
+/// notification itself. One of the router's handlers; claims only
+/// confirm-send responses.
+final class SendConfirmationResponder: NotificationResponseHandling, @unchecked Sendable {
     private let center: PendingSendCenter
     private let presenter: any WhatsAppComposePresenter
     private let isOnScreen: @MainActor @Sendable () -> Bool
@@ -93,17 +92,10 @@ final class SendConfirmationResponder: NSObject, UNUserNotificationCenterDelegat
         self.isOnScreen = isOnScreen
     }
 
-    /// The system keeps the process running until this returns, which is
-    /// what a send from the Send button needs.
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        guard let id = SendConfirmationNotifier.pendingSendID(in: response) else { return }
+    func handle(_ response: UNNotificationResponse) async -> Bool {
+        guard let id = SendConfirmationNotifier.pendingSendID(in: response) else { return false }
         await self.answer(response.actionIdentifier, id: id)
-    }
-
-    /// A question or a report that lands while Operator is in front still
-    /// shows; without this a foreground app's notifications are silent.
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+        return true
     }
 
     @MainActor

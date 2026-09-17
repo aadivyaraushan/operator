@@ -549,6 +549,45 @@ final class ChatSessionModelTests: XCTestCase {
         XCTAssertEqual(cancelled, ["ask_5"])
     }
 
+    func testAQuestionAskedWhileTheAppIsNotInFrontReachesTheNotifierAndIsWithdrawnWhenSettled() async throws {
+        let record = try questionRecord(id: "ask_8")
+        let gateway = QuestioningGateway(replay: [], duringRun: record)
+        let model = self.readyModel(store: RecordingPersistence(), gateway: gateway)
+        var notified: [String] = []
+        var withdrawn: [String] = []
+        model.isInForeground = { false }
+        model.onQuestionInBackground = { notified.append($0.id) }
+        model.onQuestionSettled = { withdrawn.append($0) }
+        model.restore()
+        await waitUntil { model.connectionState == .ready }
+        model.draft = "message them"
+        model.send()
+
+        await waitUntil { model.questions.map(\.id) == ["ask_8"] }
+        XCTAssertEqual(notified, ["ask_8"])
+        let sent = await model.answerQuestionAndWait(id: "ask_8", answers: ["group_message": ["Call now"]])
+        XCTAssertTrue(sent)
+        XCTAssertEqual(withdrawn, ["ask_8"])
+        XCTAssertTrue(model.questions.isEmpty)
+    }
+
+    func testAQuestionAskedWhileTheAppIsInFrontIsNotNotified() async throws {
+        let record = try questionRecord(id: "ask_9")
+        let gateway = QuestioningGateway(replay: [], duringRun: record)
+        let model = self.readyModel(store: RecordingPersistence(), gateway: gateway)
+        var notified: [String] = []
+        model.onQuestionInBackground = { notified.append($0.id) }
+        model.restore()
+        await waitUntil { model.connectionState == .ready }
+        model.draft = "message them"
+        model.send()
+
+        await waitUntil { model.questions.map(\.id) == ["ask_9"] }
+        XCTAssertTrue(notified.isEmpty)
+        await gateway.resolveFromElsewhere(id: "ask_9", answers: ["group_message": ["Call now"]])
+        await waitUntil { model.questions.isEmpty }
+    }
+
     func testASecretQuestionIsCancelledAtOnceAndNeverShown() async throws {
         let secret = try questionRecord(id: "ask_6", secret: true)
         let gateway = QuestioningGateway(replay: [secret])

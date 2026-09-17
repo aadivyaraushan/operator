@@ -57,9 +57,10 @@ struct OperatorApp: App {
     @StateObject private var discord: DiscordAccountSetupModel
     @StateObject private var permissions: ConnectorPermissionCenter
     private let locationNode: LocalLocationNodeGateway
-    /// Answers the "Send to X on WhatsApp?" notification; the notification
-    /// center holds its delegate weakly, so the App keeps it.
-    private let sendConfirmations: SendConfirmationResponder
+    /// Answers the "Send to X on WhatsApp?" and "Operator has a question"
+    /// notifications; the notification center holds its delegate weakly, so
+    /// the App keeps it.
+    private let notificationResponses: NotificationResponseRouter
     private let foregroundRuntime: ForegroundRuntimeCoordinator
     private let embeddedRuntime: EmbeddedRuntimeHost
     private let runtimeToken: () async throws -> String
@@ -215,7 +216,7 @@ struct OperatorApp: App {
         let whatsappSender = NativeWhatsAppSendClient(supportDirectory: supportDirectory)
         let whatsappGuard = WhatsAppSendGuard(recipients: whatsappRead, history: UserDefaultsWhatsAppSendHistoryStore())
         let sendNotifier = SendConfirmationNotifier()
-        sendNotifier.registerCategory()
+        UNUserNotificationCenter.current().setNotificationCategories([SendConfirmationNotifier.notificationCategory()])
         let pendingSends = PendingSendCenter(
             store: PendingSendStore(supportDirectory: supportDirectory),
             notifier: sendNotifier,
@@ -226,7 +227,17 @@ struct OperatorApp: App {
                 await chat?.recordLocalNote("Sent to \(send.recipientName) on WhatsApp: \(send.body)")
             })
         let sendConfirmations = SendConfirmationResponder(center: pendingSends, presenter: whatsappPresenter, isOnScreen: isOnScreen)
-        UNUserNotificationCenter.current().delegate = sendConfirmations
+        // A question the model asks while a reply is kept alive off screen
+        // goes out as a notification whose buttons are its options; the
+        // card in the thread is there too for when the app is opened.
+        let questionNotifier = QuestionNotifier()
+        chat.onQuestionInBackground = { record in questionNotifier.ask(record) }
+        chat.onQuestionSettled = { id in questionNotifier.withdraw(id: id) }
+        let questionResponses = QuestionNotificationResponder(
+            answer: { [weak chat] id, answers in await chat?.answerQuestionAndWait(id: id, answers: answers) ?? false },
+            skip: { [weak chat] id in await chat?.skipQuestionAndWait(id: id) })
+        let notificationResponses = NotificationResponseRouter(handlers: [sendConfirmations, questionResponses])
+        UNUserNotificationCenter.current().delegate = notificationResponses
         let messageSend = ForegroundMessageSendService(
             runner: SystemShortcutRunner(),
             isAppActive: { UIApplication.shared.applicationState == .active })
@@ -280,7 +291,7 @@ struct OperatorApp: App {
             agentTools: { permissions.currentPublishedTools() })
         permissions.grantsDidChange = { Task { await locationNode.republishAgentTools() } }
         self.locationNode = locationNode
-        self.sendConfirmations = sendConfirmations
+        self.notificationResponses = notificationResponses
         self.foregroundRuntime = ForegroundRuntimeCoordinator(
             waitForChatGateway: { [weak chat] in
                 guard let chat else { return false }

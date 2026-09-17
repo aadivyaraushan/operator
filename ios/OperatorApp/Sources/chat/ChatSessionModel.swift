@@ -72,6 +72,11 @@ final class ChatSessionModel: ObservableObject {
     var onReplyInBackground: (@MainActor (String) -> Void)?
     /// Called when a continuation is accepted for a message.
     var onContinuationBegan: (@MainActor () -> Void)?
+    /// Called with a question the model asked while the app is not in
+    /// front, so it can reach the person as a notification; and with the
+    /// id of any question settled, so that notification can be withdrawn.
+    var onQuestionInBackground: (@MainActor (GatewayQuestionRecord) -> Void)?
+    var onQuestionSettled: (@MainActor (String) -> Void)?
     var isInForeground: @MainActor () -> Bool = { true }
 
     private let store: any ChatPersistence
@@ -283,52 +288,64 @@ final class ChatSessionModel: ObservableObject {
     /// `questionId` and must cover every question in the record; a question
     /// with options accepts a chosen label, or free text when it allows one.
     func answerQuestion(id: String, answers: [String: [String]]) {
+        Task { @MainActor [weak self] in _ = await self?.answerQuestionAndWait(id: id, answers: answers) }
+    }
+
+    /// Sends the answer and reports whether the gateway took it. Awaited
+    /// from a notification's button, where the process lives only as long
+    /// as the handler.
+    @discardableResult
+    func answerQuestionAndWait(id: String, answers: [String: [String]]) async -> Bool {
         guard let record = self.questionRecords[id], record.isActionable(),
               !self.questionsInFlight.contains(id),
               Self.answersComplete(answers, for: record)
         else {
             self.lastError = "That question can no longer be answered."
             self.logger.error("[question] rejected local answer id=\(id, privacy: .public)")
-            return
+            return false
         }
         let payload = GatewayQuestionAnswers(answers)
         self.questionsInFlight.insert(id)
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            defer { self.questionsInFlight.remove(id) }
-            do {
-                try await self.gateway.answerQuestion(id: id, answers: payload)
-                self.recordAnswered(record, answers: payload)
-                self.questionRecords.removeValue(forKey: id)
-                self.refreshQuestions()
-                self.logger.info("[question] answered id=\(id, privacy: .public)")
-            } catch {
-                // Answered elsewhere, expired, or the socket is down. The
-                // resolved event or the next replay settles which; until
-                // then the card stays so the person can try again.
-                self.lastError = Self.userMessage(for: error, fallback: "Operator could not send that answer. Try again.")
-                self.logger.error("[question] answer failed id=\(id, privacy: .public)")
-            }
+        defer { self.questionsInFlight.remove(id) }
+        do {
+            try await self.gateway.answerQuestion(id: id, answers: payload)
+            self.recordAnswered(record, answers: payload)
+            self.settleQuestion(id: id)
+            self.logger.info("[question] answered id=\(id, privacy: .public)")
+            return true
+        } catch {
+            // Answered elsewhere, expired, or the socket is down. The
+            // resolved event or the next replay settles which; until
+            // then the card stays so the person can try again.
+            self.lastError = Self.userMessage(for: error, fallback: "Operator could not send that answer. Try again.")
+            self.logger.error("[question] answer failed id=\(id, privacy: .public)")
+            return false
         }
     }
 
     /// Declines to answer: the model is told there is no answer and carries on.
     func skipQuestion(id: String) {
+        Task { @MainActor [weak self] in await self?.skipQuestionAndWait(id: id) }
+    }
+
+    func skipQuestionAndWait(id: String) async {
         guard self.questionRecords[id] != nil, !self.questionsInFlight.contains(id) else { return }
         self.questionsInFlight.insert(id)
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            defer { self.questionsInFlight.remove(id) }
-            do {
-                try await self.gateway.cancelQuestion(id: id)
-                self.questionRecords.removeValue(forKey: id)
-                self.refreshQuestions()
-                self.logger.info("[question] skipped id=\(id, privacy: .public)")
-            } catch {
-                self.lastError = Self.userMessage(for: error, fallback: "Operator could not skip that question. Try again.")
-                self.logger.error("[question] skip failed id=\(id, privacy: .public)")
-            }
+        defer { self.questionsInFlight.remove(id) }
+        do {
+            try await self.gateway.cancelQuestion(id: id)
+            self.settleQuestion(id: id)
+            self.logger.info("[question] skipped id=\(id, privacy: .public)")
+        } catch {
+            self.lastError = Self.userMessage(for: error, fallback: "Operator could not skip that question. Try again.")
+            self.logger.error("[question] skip failed id=\(id, privacy: .public)")
         }
+    }
+
+    private func settleQuestion(id: String) {
+        self.questionRecords.removeValue(forKey: id)
+        self.refreshQuestions()
+        self.onQuestionSettled?(id)
     }
 
     private static func answersComplete(_ answers: [String: [String]], for record: GatewayQuestionRecord) -> Bool {
@@ -607,13 +624,16 @@ final class ChatSessionModel: ObservableObject {
         case let .requested(record):
             self.admitQuestion(record)
             self.refreshQuestions()
+            if self.questionRecords[record.id] != nil, !self.isInForeground() {
+                self.onQuestionInBackground?(record)
+            }
         case let .resolved(event):
-            if let record = self.questionRecords.removeValue(forKey: event.id),
+            if let record = self.questionRecords[event.id],
                event.status == .answered, let answers = event.answers
             {
                 self.recordAnswered(record, answers: answers)
             }
-            self.refreshQuestions()
+            self.settleQuestion(id: event.id)
         }
     }
 
