@@ -27,7 +27,7 @@ final class ConnectorPermissionCenterTests: XCTestCase {
         let store = MemoryStore()
         let center = ConnectorPermissionCenter(store: store)
         let inner = RecordingHandler()
-        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner)
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner, maximumDecisionWait: .zero)
 
         let result = await guarded.handleNodeCommand("reminders.list", paramsJSON: nil, timeoutMilliseconds: nil)
 
@@ -47,7 +47,7 @@ final class ConnectorPermissionCenterTests: XCTestCase {
         var republished = 0
         center.grantsDidChange = { republished += 1 }
         let inner = RecordingHandler()
-        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner)
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner, maximumDecisionWait: .zero)
         _ = await guarded.handleNodeCommand("contacts.search", paramsJSON: #"{"query":"Mom"}"#, timeoutMilliseconds: nil)
 
         center.allowPendingRequest()
@@ -71,7 +71,7 @@ final class ConnectorPermissionCenterTests: XCTestCase {
         store.grants = saved
         let center = ConnectorPermissionCenter(store: store)
         let inner = RecordingHandler()
-        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner)
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner, maximumDecisionWait: .zero)
 
         _ = await guarded.handleNodeCommand("device.status", paramsJSON: nil, timeoutMilliseconds: nil)
         _ = await guarded.handleNodeCommand("connections.describe", paramsJSON: nil, timeoutMilliseconds: nil)
@@ -87,7 +87,7 @@ final class ConnectorPermissionCenterTests: XCTestCase {
         center.set(.messages, .write, allowed: true)
         center.setReadOnly(true)
         let inner = RecordingHandler()
-        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner)
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner, maximumDecisionWait: .zero)
 
         let result = await guarded.handleNodeCommand("sms.compose", paramsJSON: #"{"recipients":["+1"],"body":"hi"}"#, timeoutMilliseconds: nil)
 
@@ -101,7 +101,7 @@ final class ConnectorPermissionCenterTests: XCTestCase {
     func testAnUnknownCommandIsRefusedAsUnsupportedNotAsAPermissionAsk() async throws {
         let center = ConnectorPermissionCenter(store: MemoryStore())
         let inner = RecordingHandler()
-        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner)
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner, maximumDecisionWait: .zero)
 
         let result = await guarded.handleNodeCommand("shell.exec", paramsJSON: nil, timeoutMilliseconds: nil)
 
@@ -159,7 +159,7 @@ final class ConnectorPermissionCenterTests: XCTestCase {
 
         // The in-chat banner cannot grant it either; the page shows the warning.
         center.declineAcknowledgement()
-        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: RecordingHandler())
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: RecordingHandler(), maximumDecisionWait: .zero)
         _ = await guarded.handleNodeCommand("discord.announcements", paramsJSON: "{}", timeoutMilliseconds: nil)
         XCTAssertEqual(center.pendingRequest?.connector, .discord)
         XCTAssertFalse(center.allowPendingRequest())
@@ -168,7 +168,7 @@ final class ConnectorPermissionCenterTests: XCTestCase {
 
     func testTheInChatBannerCannotGrantAWarnedWriteDirectly() async throws {
         let center = ConnectorPermissionCenter(store: MemoryStore())
-        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: RecordingHandler())
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: RecordingHandler(), maximumDecisionWait: .zero)
         _ = await guarded.handleNodeCommand("whatsapp.compose", paramsJSON: #"{"recipientJID":"1@s.whatsapp.net","body":"hi"}"#, timeoutMilliseconds: nil)
         XCTAssertEqual(center.pendingRequest?.connector, .whatsapp)
         XCTAssertFalse(center.allowPendingRequest(), "the caller must show the warning instead")
@@ -192,5 +192,57 @@ final class ConnectorPermissionCenterTests: XCTestCase {
             _ = center.authorize("device.status", paramsJSON: nil)
         }
         XCTAssertEqual(center.activity.count, ConnectorPermissionCenter.activityLimit)
+    }
+
+    // MARK: Waiting for the owner's answer
+
+    func testACommandAllowedWhileItWaitsRunsInsteadOfBeingRefused() async throws {
+        let center = ConnectorPermissionCenter(store: MemoryStore())
+        let inner = RecordingHandler()
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner, maximumDecisionWait: .seconds(5))
+
+        async let result = guarded.handleNodeCommand("reminders.list", paramsJSON: nil, timeoutMilliseconds: nil)
+        while center.pendingRequest == nil { await Task.yield() }
+        XCTAssertEqual(inner.commands, [], "nothing runs before the owner answers")
+        XCTAssertTrue(center.allowPendingRequest())
+
+        guard case .success = await result else { return XCTFail("expected the command to run once allowed") }
+        XCTAssertEqual(inner.commands, ["reminders.list"])
+        XCTAssertNil(center.pendingRequest)
+    }
+
+    func testDismissingTheBannerRefusesTheWaitingCommandAtOnce() async throws {
+        let center = ConnectorPermissionCenter(store: MemoryStore())
+        let inner = RecordingHandler()
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner, maximumDecisionWait: .seconds(30))
+
+        async let result = guarded.handleNodeCommand("reminders.list", paramsJSON: nil, timeoutMilliseconds: nil)
+        while center.pendingRequest == nil { await Task.yield() }
+        center.dismissPendingRequest()
+
+        guard case let .failure(code, _) = await result else { return XCTFail("expected a refusal") }
+        XCTAssertEqual(code, "PERMISSION_DENIED")
+        XCTAssertEqual(inner.commands, [])
+    }
+
+    func testAnUnansweredAskIsRefusedWhenTheWaitRunsOut() async throws {
+        let center = ConnectorPermissionCenter(store: MemoryStore())
+        let inner = RecordingHandler()
+        let guarded = PermissionGuardedNodeCommandHandler(center: center, next: inner, maximumDecisionWait: .milliseconds(50))
+
+        let result = await guarded.handleNodeCommand("reminders.list", paramsJSON: nil, timeoutMilliseconds: nil)
+
+        guard case let .failure(code, message) = result else { return XCTFail("expected a refusal") }
+        XCTAssertEqual(code, "PERMISSION_DENIED")
+        XCTAssertTrue(message.contains("Do not retry"))
+        XCTAssertEqual(inner.commands, [])
+        XCTAssertNotNil(center.pendingRequest, "the banner stays so the owner can still allow it")
+    }
+
+    func testTheWaitStaysInsideTheGatewaysOwnTimeout() {
+        XCTAssertEqual(PermissionGuardedNodeCommandHandler.decisionWait(maximum: .seconds(45), timeoutMilliseconds: 10_000), .seconds(7))
+        XCTAssertEqual(PermissionGuardedNodeCommandHandler.decisionWait(maximum: .seconds(45), timeoutMilliseconds: 120_000), .seconds(45))
+        XCTAssertEqual(PermissionGuardedNodeCommandHandler.decisionWait(maximum: .seconds(45), timeoutMilliseconds: 2_000), .zero)
+        XCTAssertEqual(PermissionGuardedNodeCommandHandler.decisionWait(maximum: .seconds(45), timeoutMilliseconds: nil), .seconds(25))
     }
 }

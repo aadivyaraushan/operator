@@ -87,6 +87,15 @@ final class ConnectorPermissionCenter: ObservableObject {
     private nonisolated let snapshot: OSAllocatedUnfairLock<ConnectorGrants>
     private let logger = Logger(subsystem: "app.operator.ios", category: "permissions")
     static let activityLimit = 200
+    /// Node commands refused for a missing grant, held until the owner
+    /// answers the banner. Resolved true when the grant lands, false when
+    /// the ask is dismissed, declined, or the wait runs out.
+    private struct DecisionWaiter {
+        let connector: ConnectorID
+        let access: ConnectorAccess
+        let continuation: CheckedContinuation<Bool, Never>
+    }
+    private var decisionWaiters: [UUID: DecisionWaiter] = [:]
 
     init(store: any ConnectorGrantStore, now: @escaping () -> Date = Date.init) {
         self.store = store
@@ -128,6 +137,7 @@ final class ConnectorPermissionCenter: ObservableObject {
     func declineAcknowledgement() {
         if let pending = self.acknowledgementRequired {
             self.logger.info("[permissions] acknowledgement declined connector=\(pending.connector.rawValue, privacy: .public)")
+            self.resolveDecisionWaiters(false) { $0.connector == pending.connector && $0.access == pending.access }
         }
         self.acknowledgementRequired = nil
     }
@@ -160,6 +170,7 @@ final class ConnectorPermissionCenter: ObservableObject {
             self.pendingRequest = nil
         }
         self.grantsDidChange?()
+        self.resolveDecisionWaiters(true) { updated.permits($0.connector, $0.access) }
     }
 
     // MARK: In-context requests
@@ -175,7 +186,37 @@ final class ConnectorPermissionCenter: ObservableObject {
         return true
     }
 
-    func dismissPendingRequest() { self.pendingRequest = nil }
+    func dismissPendingRequest() {
+        self.pendingRequest = nil
+        self.resolveDecisionWaiters(false) { _ in true }
+    }
+
+    /// Holds a refused command until the owner answers the banner it raised.
+    /// True means the grant now exists and the command may run; false means
+    /// it was dismissed, declined, or nobody answered within `limit`.
+    func waitForDecision(connector: ConnectorID, access: ConnectorAccess, upTo limit: Duration) async -> Bool {
+        if self.grants.permits(connector, access) { return true }
+        guard limit > .zero else { return false }
+        let id = UUID()
+        let timeout = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: limit)
+            guard !Task.isCancelled, let waiter = self?.decisionWaiters.removeValue(forKey: id) else { return }
+            self?.logger.info("[permissions] wait ran out connector=\(connector.rawValue, privacy: .public) access=\(access.rawValue, privacy: .public)")
+            waiter.continuation.resume(returning: false)
+        }
+        let allowed = await withCheckedContinuation { continuation in
+            self.decisionWaiters[id] = DecisionWaiter(connector: connector, access: access, continuation: continuation)
+        }
+        timeout.cancel()
+        return allowed
+    }
+
+    private func resolveDecisionWaiters(_ allowed: Bool, where matches: (DecisionWaiter) -> Bool) {
+        for (id, waiter) in self.decisionWaiters where matches(waiter) {
+            self.decisionWaiters[id] = nil
+            waiter.continuation.resume(returning: allowed)
+        }
+    }
 
     // MARK: Enforcement
 
@@ -225,10 +266,21 @@ final class ConnectorPermissionCenter: ObservableObject {
 final class PermissionGuardedNodeCommandHandler: GatewayNodeCommandHandler {
     private let center: ConnectorPermissionCenter
     private let next: any GatewayNodeCommandHandler
+    private let maximumDecisionWait: Duration
+    private let logger = Logger(subsystem: "app.operator.ios", category: "permissions")
 
-    init(center: ConnectorPermissionCenter, next: any GatewayNodeCommandHandler) {
+    init(center: ConnectorPermissionCenter, next: any GatewayNodeCommandHandler, maximumDecisionWait: Duration = .seconds(45)) {
         self.center = center
         self.next = next
+        self.maximumDecisionWait = maximumDecisionWait
+    }
+
+    /// How long a refused command may wait for the owner. It must answer
+    /// before the gateway gives up on it, so it stays three seconds inside
+    /// the gateway's own timeout, and assumes a short one when none is sent.
+    static func decisionWait(maximum: Duration, timeoutMilliseconds: Int?) -> Duration {
+        let budget: Duration = timeoutMilliseconds.map { .milliseconds(max(0, $0 - 3_000)) } ?? .seconds(25)
+        return min(maximum, budget)
     }
 
     func handleNodeCommand(_ command: String, paramsJSON: String?, timeoutMilliseconds: Int?) async -> GatewayNodeCommandResult {
@@ -236,6 +288,15 @@ final class PermissionGuardedNodeCommandHandler: GatewayNodeCommandHandler {
         case .allowed:
             return await self.next.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
         case let .denied(connector, access):
+            // The banner is up. Hold the call for the owner's answer so an
+            // Allow continues the task instead of costing a second ask.
+            let wait = Self.decisionWait(maximum: self.maximumDecisionWait, timeoutMilliseconds: timeoutMilliseconds)
+            self.logger.info("[permissions] waiting for the owner connector=\(connector.rawValue, privacy: .public) access=\(access.rawValue, privacy: .public) command=\(command, privacy: .public) upTo=\(wait.components.seconds)s")
+            if await self.center.waitForDecision(connector: connector, access: access, upTo: wait),
+               case .allowed = self.center.authorize(command, paramsJSON: paramsJSON) {
+                self.logger.info("[permissions] allowed while waiting; running command=\(command, privacy: .public)")
+                return await self.next.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
+            }
             let title = ConnectorCatalog.descriptor(connector).title
             return .failure(
                 code: "PERMISSION_DENIED",
