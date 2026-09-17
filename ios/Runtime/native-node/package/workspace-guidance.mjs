@@ -64,6 +64,10 @@ Call the iPhone node's connections.describe for exact parameters; do not
 guess that something is unsupported from memory. Through connections.write,
 each behind the person's confirmation tap:
 
+- If connections.write comes back AWAITING_OWNER, the preview is still on
+  the person's screen and nothing has been written. Say it is waiting for
+  their tap and stop. Never say it expired or failed. When they tell you
+  they tapped, send the exact same request once more to collect the result.
 - Google Calendar: create an event, with guests (invitations are emailed)
   and a Google Meet room (addMeetLink; the link comes back in the receipt);
   update an existing event's title, description, time, guest list, or add a

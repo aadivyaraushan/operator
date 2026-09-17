@@ -39,12 +39,34 @@ import XCTest
         XCTAssertEqual(result, .failure(code: "APP_NOT_ACTIVE", message: "Open Operator to confirm the account write")); XCTAssertEqual(inactiveCalls, 0)
     }
 
-    func testTimeoutIsDistinctFromOwnerDenial() async {
-        let presenter = FakePresenter(); presenter.hang = true; let writer = FakeWriter()
+    /// The card once vanished after 30 seconds while the owner was still
+    /// reading it. The gateway's wait still ends, but the card must not.
+    func testTheCardOutlivesTheWaitAndALaterApprovalWritesOnce() async {
+        let presenter = GatedPresenter(); let writer = FakeWriter()
         let service = ForegroundAccountWriteConfirmationService(writer: writer, presenter: presenter, isAppActive: { true })
-        let result = await service.handleNodeCommand("connections.write", paramsJSON: #"{"operation":"slackPostMessage","channelID":"C123","text":"hello"}"#, timeoutMilliseconds: 300)
-        XCTAssertEqual(result, .failure(code: "TIMEOUT", message: "The account write preview expired"))
-        let calls = await writer.callCount(); XCTAssertEqual(calls, 0)
+        let json = #"{"operation":"slackPostMessage","channelID":"C123","text":"hello"}"#
+        let waiting = await service.handleNodeCommand("connections.write", paramsJSON: json, timeoutMilliseconds: 300)
+        XCTAssertEqual(waiting, .failure(code: "AWAITING_OWNER", message: ForegroundAccountWriteConfirmationService.awaitingOwnerMessage))
+        XCTAssertEqual(presenter.cancels, 0, "the card must stay up")
+        var calls = await writer.callCount(); XCTAssertEqual(calls, 0)
+
+        // The same request again joins the card already showing.
+        let again = await service.handleNodeCommand("connections.write", paramsJSON: json, timeoutMilliseconds: 300)
+        XCTAssertEqual(again, .failure(code: "AWAITING_OWNER", message: ForegroundAccountWriteConfirmationService.awaitingOwnerMessage))
+        XCTAssertEqual(presenter.requests.count, 1)
+
+        presenter.decide(allow: true)
+        let settled = await service.handleNodeCommand("connections.write", paramsJSON: json, timeoutMilliseconds: 1000)
+        XCTAssertEqual(settled, .success(payloadJSON: #"{"ok":true,"operation":"slackPostMessage","receipt":{"kind":"slackMessage","channelID":"C123","timestamp":"1"}}"#))
+        calls = await writer.callCount(); XCTAssertEqual(calls, 1)
+        XCTAssertEqual(presenter.requests.count, 1)
+
+        // The result is handed over once; after that the request is new.
+        presenter.decide(allow: false)
+        let fresh = await service.handleNodeCommand("connections.write", paramsJSON: json, timeoutMilliseconds: 1000)
+        XCTAssertEqual(fresh, .failure(code: "OWNER_DENIED", message: "The account write was not performed"))
+        XCTAssertEqual(presenter.requests.count, 2)
+        calls = await writer.callCount(); XCTAssertEqual(calls, 1)
     }
 
     func testTaskCancellationIsDistinctAndWritesNothing() async {
@@ -123,6 +145,22 @@ import XCTest
         let calls = await writer.callCount()
         XCTAssertEqual(calls, 0)
     }
+}
+
+/// Holds the card open until the test decides, like an owner still reading.
+@MainActor private final class GatedPresenter: AccountWriteConfirmationPresenting {
+    var requests: [AccountWriteConfirmationRequest] = []
+    var cancels = 0
+    private var ready: Bool?
+    private var continuation: CheckedContinuation<Bool, Never>?
+    func confirm(_ request: AccountWriteConfirmationRequest) async -> AccountWriteDecision {
+        requests.append(request)
+        let allow: Bool
+        if let ready { allow = ready; self.ready = nil } else { allow = await withCheckedContinuation { self.continuation = $0 } }
+        return allow ? .confirmed(request) : .denied
+    }
+    func decide(allow: Bool) { if let continuation { self.continuation = nil; continuation.resume(returning: allow) } else { ready = allow } }
+    func cancel() { cancels += 1; if continuation != nil { decide(allow: false) } }
 }
 
 @MainActor private final class FakePresenter: AccountWriteConfirmationPresenting {

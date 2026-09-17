@@ -42,3 +42,16 @@ what was changed, and what the owner must do once for it to work.
 2. In Operator: disconnect and reconnect Google, approve the Drive access.
    Works only while the Google project is in Testing mode, or after Google
    reviews it: full Drive is a restricted permission.
+
+## Follow-up the same day
+- Verified on the Simulator after the owner's two steps: the waitlist sheet
+  was found and read ("17 unique sign-ups").
+- Creating a Doc failed: the approval card closed itself after 30 seconds
+  (the gateway's wait limit) and the model said "expired". Now the card
+  stays until the owner taps. When the gateway's wait ends first the model
+  gets AWAITING_OWNER ("still on screen, nothing written"); the owner's
+  later answer is kept and handed to a repeat of the same request, once.
+  Code: ForegroundAccountWriteConfirmationService.swift. Not yet tried in
+  the real app.
+- Same 30-second pattern still exists in WhatsApp compose and contact
+  create (ForegroundWhatsAppComposeService, ForegroundContactCreateService).

@@ -12,7 +12,7 @@ enum AccountWriteDecision: Sendable {
     case confirmed(AccountWriteConfirmationRequest)
     case denied
 }
-private enum ConfirmationOutcome: Sendable { case decision(AccountWriteDecision); case timedOut; case cancelled }
+private enum ConfirmationOutcome: Sendable { case finished(GatewayNodeCommandResult); case stillWaiting; case cancelled }
 
 @MainActor protocol AccountWriteConfirmationPresenting: AnyObject, Sendable {
     func confirm(_ request: AccountWriteConfirmationRequest) async -> AccountWriteDecision
@@ -41,31 +41,74 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         guard let parsed = Self.parse(paramsJSON) else { return .failure(code: "INVALID_REQUEST", message: "Connection write parameters were invalid") }
         guard DirectAccountWriter.isValid(parsed.request) else { logger.info("[account-write-confirmation] rejected branch=typed-validation"); return .failure(code: "INVALID_REQUEST", message: "Connection write parameters were invalid") }
         let milliseconds = max(1, min(timeoutMilliseconds ?? 30_000, 30_000))
-        let outcome = await ConfirmationRace().run(presenter: presenter, request: parsed.confirmation, milliseconds: max(1, milliseconds - 250))
-        switch outcome {
-        case .timedOut:
-            logger.info("[account-write-confirmation] rejected operation=\(parsed.confirmation.operation.rawValue, privacy: .public) phase=confirmation reason=timeout")
-            presenter.cancel(); return .failure(code: "TIMEOUT", message: "The account write preview expired")
+        let key = parsed.confirmation.fingerprint
+        // A repeat of a request the owner has already answered gets that answer, once.
+        if let settled = self.settled.removeValue(forKey: key) {
+            logger.info("[account-write-confirmation] handed over operation=\(parsed.confirmation.operation.rawValue, privacy: .public) branch=settled-earlier")
+            return settled
+        }
+        // A repeat while the card is still up joins it instead of replacing it.
+        let work: Task<GatewayNodeCommandResult, Never>
+        if let pending = self.pending[key] {
+            logger.info("[account-write-confirmation] joined operation=\(parsed.confirmation.operation.rawValue, privacy: .public) branch=card-already-showing")
+            work = pending
+        } else {
+            logger.info("[account-write-confirmation] presenting operation=\(parsed.confirmation.operation.rawValue, privacy: .public) wait_ms=\(milliseconds)")
+            work = Task { @MainActor [weak self] in
+                guard let self else { return .failure(code: "CANCELLED", message: "The account write was not performed") }
+                return await self.confirmThenWrite(parsed)
+            }
+            self.pending[key] = work
+        }
+        switch await ConfirmationRace().run(work: work, milliseconds: max(1, milliseconds - 250)) {
+        case let .finished(result):
+            // This caller has the result, so nothing is kept for a repeat.
+            self.pending[key] = nil; self.settled[key] = nil
+            return result
         case .cancelled:
             logger.info("[account-write-confirmation] rejected operation=\(parsed.confirmation.operation.rawValue, privacy: .public) phase=confirmation reason=cancelled")
+            self.pending[key] = nil; self.abandoned.insert(key)
             presenter.cancel(); return .failure(code: "CANCELLED", message: "The account write was cancelled")
-        case .decision(.denied):
+        case .stillWaiting:
+            // The gateway stops waiting here; the owner has not. The card stays
+            // up, and whatever they decide is kept for a repeat of this request.
+            logger.info("[account-write-confirmation] still waiting operation=\(parsed.confirmation.operation.rawValue, privacy: .public) branch=card-kept")
+            Task { @MainActor [weak self] in
+                let result = await work.value
+                guard let self, self.pending[key] == work else { return }
+                self.pending[key] = nil
+                if self.abandoned.remove(key) == nil { self.settled[key] = result }
+            }
+            return .failure(code: "AWAITING_OWNER", message: Self.awaitingOwnerMessage)
+        }
+    }
+
+    static let awaitingOwnerMessage = "The preview is still on the iPhone screen and nothing has been written yet. Tell the person it is waiting for their tap, and stop. When they say they tapped, send the exact same request once to get the result; do not change it and do not send it before then."
+
+    private var pending: [String: Task<GatewayNodeCommandResult, Never>] = [:]
+    private var settled: [String: GatewayNodeCommandResult] = [:]
+    private var abandoned: Set<String> = []
+
+    private func confirmThenWrite(_ parsed: Parsed) async -> GatewayNodeCommandResult {
+        switch await presenter.confirm(parsed.confirmation) {
+        case .denied:
             logger.info("[account-write-confirmation] rejected operation=\(parsed.confirmation.operation.rawValue, privacy: .public) phase=confirmation reason=owner-denied")
-            presenter.cancel(); return .failure(code: "OWNER_DENIED", message: "The account write was not performed")
-        case let .decision(.confirmed(confirmed)) where confirmed == parsed.confirmation: break
-        case .decision(.confirmed):
+            return .failure(code: "OWNER_DENIED", message: "The account write was not performed")
+        case let .confirmed(confirmed) where confirmed == parsed.confirmation: break
+        case .confirmed:
             presenter.cancel(); return .failure(code: "CONFIRMATION_MISMATCH", message: "The account write was not performed")
         }
-        guard isAppActive(), !Task.isCancelled else { presenter.cancel(); return .failure(code: "CANCELLED", message: "The account write was not performed") }
+        guard isAppActive(), !self.abandoned.contains(parsed.confirmation.fingerprint) else { presenter.cancel(); return .failure(code: "CANCELLED", message: "The account write was not performed") }
         do {
             let receipt = try await writer.writeAfterOwnerConfirmation(parsed.request)
+            logger.info("[account-write-confirmation] written operation=\(parsed.confirmation.operation.rawValue, privacy: .public)")
             return .success(payloadJSON: Self.receiptJSON(receipt, operation: parsed.confirmation.operation))
         } catch is CancellationError { return .failure(code: "CANCELLED", message: "The account write was cancelled") }
-        catch let error as AccountWriteError { return Self.result(for: error) }
+        catch let error as AccountWriteError { logger.error("[account-write-confirmation] write failed operation=\(parsed.confirmation.operation.rawValue, privacy: .public)"); return Self.result(for: error) }
         catch { return .failure(code: "ACCOUNT_WRITE_FAILED", message: "The account write could not complete") }
     }
 
-    private struct Parsed { let request: AccountWriteRequest; let confirmation: AccountWriteConfirmationRequest }
+    private struct Parsed: Sendable { let request: AccountWriteRequest; let confirmation: AccountWriteConfirmationRequest }
 
     private static func parse(_ raw: String?) -> Parsed? {
         guard let raw, Data(raw.utf8).count <= 64_000, let object = try? JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [String: Any], let opText = object["operation"] as? String, let operation = AccountWriteOperation(rawValue: opText) else { return nil }
@@ -206,18 +249,20 @@ extension DirectAccountWriter: AccountWriteExecuting {}
     private static func result(for error: AccountWriteError) -> GatewayNodeCommandResult { switch error { case .notConnected: .failure(code:"NOT_CONNECTED",message:"Connect this account before writing"); case .permissionDenied: .failure(code:"PERMISSION_DENIED",message:"This account did not grant the needed write permission"); case .rateLimited: .failure(code:"RATE_LIMITED",message:"This account is temporarily rate limited"); case .outcomeUnknownNotSafeToRetry: .failure(code:"OUTCOME_UNKNOWN",message:"The account write outcome is unknown; do not retry"); default: .failure(code:"ACCOUNT_WRITE_FAILED",message:"The account write could not complete") } }
 }
 
+/// Waits for the card's task, the gateway's deadline, or the caller being
+/// cancelled, whichever is first. It never touches the card itself.
 @MainActor private final class ConfirmationRace {
     private var continuation: CheckedContinuation<ConfirmationOutcome, Never>?
-    private var confirmation: Task<Void, Never>?
+    private var watcher: Task<Void, Never>?
     private var timeout: Task<Void, Never>?
-    func run(presenter: any AccountWriteConfirmationPresenting, request: AccountWriteConfirmationRequest, milliseconds: Int) async -> ConfirmationOutcome {
+    func run(work: Task<GatewayNodeCommandResult, Never>, milliseconds: Int) async -> ConfirmationOutcome {
         await withTaskCancellationHandler(operation: {
             await withCheckedContinuation { (continuation: CheckedContinuation<ConfirmationOutcome, Never>) in
                 self.continuation = continuation
-                self.confirmation = Task { [weak self] in self?.finish(.decision(await presenter.confirm(request))) }
-                self.timeout = Task { [weak self] in try? await Task.sleep(for: .milliseconds(milliseconds)); guard !Task.isCancelled else{return}; self?.finish(.timedOut) }
+                self.watcher = Task { [weak self] in let result = await work.value; self?.finish(.finished(result)) }
+                self.timeout = Task { [weak self] in try? await Task.sleep(for: .milliseconds(milliseconds)); guard !Task.isCancelled else{return}; self?.finish(.stillWaiting) }
             }
         }, onCancel: { Task { @MainActor [weak self] in self?.finish(.cancelled) } })
     }
-    private func finish(_ value: ConfirmationOutcome) { guard let continuation else{return}; self.continuation=nil; confirmation?.cancel(); timeout?.cancel(); continuation.resume(returning:value) }
+    private func finish(_ value: ConfirmationOutcome) { guard let continuation else{return}; self.continuation=nil; timeout?.cancel(); continuation.resume(returning:value) }
 }
