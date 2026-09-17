@@ -121,8 +121,8 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
             parameters = schema(required: ["from", "to"], optional: ["transport"], limits: ["transport": "driving|walking|transit", "coordinate": "{lat:number,lon:number}"])
             note = "Returns up to 3 routes with bounded steps."
         case "apps.open":
-            parameters = schema(required: ["appID"], optional: ["draft"])
-            note = "Opens only an appID listed in appHandoffIDs; URL input is not accepted."
+            parameters = schema(required: [], optional: ["name", "appID", "draft"], limits: ["name": "1...100 bytes, one line"])
+            note = "Give exactly one of name or appID. name opens any app installed on this iPhone by the name the person used (\"Google Docs\", \"Settings\"); it leaves Operator, does nothing inside the app, and fails with APP_NOT_FOUND or OPEN_FAILED when the app is unknown or not installed. appID opens a website listed in appHandoffIDs inside Operator. URL input is not accepted."
         case "whatsapp.chats":
             parameters = schema(required: [], optional: ["limit"], limits: ["limit": "1...50"])
             note = "Reads locally stored chats; it does not start pairing."

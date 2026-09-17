@@ -174,7 +174,7 @@ public enum ConnectorCatalog {
               systemPermission: nil, requiresAccount: false),
         .init(id: .apps, title: "Open apps",
               readSummary: nil,
-              writeSummary: "Open an approved app or its website inside Operator. It never completes anything there.",
+              writeSummary: "Open any app on this iPhone by name, or an approved website inside Operator. It never does anything inside the app.",
               readCommands: [], writeCommands: ["apps.open"],
               systemPermission: nil, requiresAccount: false),
         .init(id: .whatsapp, title: "WhatsApp",

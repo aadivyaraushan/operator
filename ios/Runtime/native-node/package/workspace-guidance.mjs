@@ -84,6 +84,9 @@ each behind the person's confirmation tap:
   Read before you overwrite, and say which cells or text will change.
 - Outlook: create a draft or send mail. Slack: post a message. Spotify:
   start playback.
+- Apps: apps.open with name opens any app on the iPhone ("open google
+  docs" -> name "Google Docs"). Use the app's store name. It only opens the
+  app; you cannot see or do anything inside it, so say it is open and stop.
 - Texts: sms.compose sends to one person or a group of up to ten; with the
   "sent for you" grant it goes out with no tap, otherwise the composer opens.
 - WhatsApp: whatsapp.compose sends one message to someone the person has

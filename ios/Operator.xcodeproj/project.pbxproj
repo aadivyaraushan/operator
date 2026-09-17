@@ -69,12 +69,14 @@
 		6C9023EB6B08D517592E775B /* ChatSessionModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1593E68D6DA83F3D5323D640 /* ChatSessionModelTests.swift */; };
 		712D9DC4FDCABF688DC15ED6 /* ForegroundWhatsAppComposeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 024EB25ABFAFDEDC1DC27761 /* ForegroundWhatsAppComposeService.swift */; };
 		76ACD6E1A4470AC81B451EE2 /* android-handoff-catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = E10DAC4EEE0D33DB1BF4B953 /* android-handoff-catalog.json */; };
+		772E73F811680AF7BE4D6BBC /* AppLaunchByNameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EF10EFF9B95D4B5220783B /* AppLaunchByNameTests.swift */; };
 		79D6EEA191EB7EA5D764E9F0 /* OperatorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243883C3810544B3A49A5C08 /* OperatorApp.swift */; };
 		7C1396A6AB48DB5C2765FA5C /* DirectAccountReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC37EE7F222735D21673BC20 /* DirectAccountReader.swift */; };
 		7E7266219A2988B47B66BD18 /* NodeMobile.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1EF691B8528973A5181E5FD0 /* NodeMobile.xcframework */; };
 		7E7A21E9FFD562A14B342E88 /* GoogleWorkspaceWrites.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99855B0C6E936DE7EB41178B /* GoogleWorkspaceWrites.swift */; };
 		7ED39EDE3514AAB3E5876E9B /* OperatorCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9C8D80636F955AF766371DC4 /* OperatorCore */; };
 		7F1752F178E72B5279E02700 /* ForegroundMessageSendService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACA417B76B5DE642B37CAF40 /* ForegroundMessageSendService.swift */; };
+		7F60B70FA0D27F75B3B3B109 /* AppLaunchByName.swift in Sources */ = {isa = PBXBuildFile; fileRef = C275206C50044BA137626768 /* AppLaunchByName.swift */; };
 		809FA1D6CC33C375B2E3E378 /* OperatorWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5BBE65B3C8115DF59F3CA4E /* OperatorWidget.swift */; };
 		83270C28B3F1CB55A10B7BA1 /* ForegroundPhotosService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE38C1B2FB3BF54DDE0660B /* ForegroundPhotosService.swift */; };
 		86356378289DD18125034702 /* DirectAccountWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19B41231B05CA6BD56434A3E /* DirectAccountWriter.swift */; };
@@ -129,6 +131,7 @@
 		D5317949027D962F39317776 /* WhatsAppSendGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2AC238B49B32CBE9B26A294 /* WhatsAppSendGuard.swift */; };
 		D59BDDE6E77F1538CD4B9792 /* SystemAppHandoffOpener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B763984DB6928E71916C75E /* SystemAppHandoffOpener.swift */; };
 		D61EC5779847E73DE05789AF /* QuestionNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44062588C79775235FF7769F /* QuestionNotifier.swift */; };
+		D727DBCEDD85FB07EC4056A6 /* app-links.json in Resources */ = {isa = PBXBuildFile; fileRef = 5D948A92F925544B8869DDB2 /* app-links.json */; };
 		D7CC92BF77C3CA75BEB7DBA8 /* ForegroundAppHandoffServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F6E49CBA4B4BE7F0B6EE437 /* ForegroundAppHandoffServiceTests.swift */; };
 		DAFCE568B53F22106F8ACDCE /* ReplyContinuation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27A85995AA6624C88B25AE14 /* ReplyContinuation.swift */; };
 		DD5C4F8956B9DA0A98E594B3 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6BACC7C7C5D24B5E133FCEC2 /* CoreLocation.framework */; };
@@ -278,8 +281,10 @@
 		51BDA4CB9ABC87C383F66FBC /* EmbeddedRuntimeHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddedRuntimeHost.swift; sourceTree = "<group>"; };
 		53019819A86F6569529CEBF1 /* libresolv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.tbd; path = usr/lib/libresolv.tbd; sourceTree = SDKROOT; };
 		56D61196FCC160ABACEA5517 /* PublicMediaURLPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicMediaURLPolicy.swift; sourceTree = "<group>"; };
+		57EF10EFF9B95D4B5220783B /* AppLaunchByNameTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLaunchByNameTests.swift; sourceTree = "<group>"; };
 		5B5996E42CE6B56B761AAF24 /* DiscordReadCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordReadCache.swift; sourceTree = "<group>"; };
 		5C13CFDD2D788E106F260D4B /* LocalModelSetupGateway.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelSetupGateway.swift; sourceTree = "<group>"; };
+		5D948A92F925544B8869DDB2 /* app-links.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "app-links.json"; sourceTree = "<group>"; };
 		5E260410CCF3BEE7038F1C3C /* ForegroundMediaNodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMediaNodeService.swift; sourceTree = "<group>"; };
 		5F5454686119833200D7DBB5 /* ForegroundContactsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundContactsService.swift; sourceTree = "<group>"; };
 		61FC1CAA927881E1E5A7D049 /* ScenarioDriverUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioDriverUITests.swift; sourceTree = "<group>"; };
@@ -335,6 +340,7 @@
 		BCE70C0845DA0C0556AF0F86 /* DiscordReadPace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordReadPace.swift; sourceTree = "<group>"; };
 		BD8E98D2432240D788CF4F2A /* GoogleDriveContentReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleDriveContentReaderTests.swift; sourceTree = "<group>"; };
 		C15E65E440A54A03C877EBE2 /* NativeWhatsAppSendClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWhatsAppSendClient.swift; sourceTree = "<group>"; };
+		C275206C50044BA137626768 /* AppLaunchByName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLaunchByName.swift; sourceTree = "<group>"; };
 		C51BA6701E49DA24B88ABD88 /* OperatorApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OperatorApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6CA41572C591A851B4330A2 /* ForegroundMapsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMapsServiceTests.swift; sourceTree = "<group>"; };
 		C9D30E9FCFEEAAFDF887AC2C /* ForegroundMessageComposeServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMessageComposeServiceTests.swift; sourceTree = "<group>"; };
@@ -842,6 +848,7 @@
 		6A19DD37286FE3D27C66D641 /* handoff */ = {
 			isa = PBXGroup;
 			children = (
+				57EF10EFF9B95D4B5220783B /* AppLaunchByNameTests.swift */,
 				8F6E49CBA4B4BE7F0B6EE437 /* ForegroundAppHandoffServiceTests.swift */,
 			);
 			path = handoff;
@@ -894,6 +901,7 @@
 		755A01441883E44983799473 /* handoff */ = {
 			isa = PBXGroup;
 			children = (
+				C275206C50044BA137626768 /* AppLaunchByName.swift */,
 				D442566C1D40BDCD8DCD8459 /* ForegroundAppHandoffService.swift */,
 				8B763984DB6928E71916C75E /* SystemAppHandoffOpener.swift */,
 			);
@@ -1392,12 +1400,13 @@
 			isa = PBXGroup;
 			children = (
 				E10DAC4EEE0D33DB1BF4B953 /* android-handoff-catalog.json */,
+				5D948A92F925544B8869DDB2 /* app-links.json */,
 			);
 			name = handoff;
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_84C59B94-DDCA-44B3-A663-C7E437F37E48" /* embedded */ = {
+		"TEMP_ACC9FC5E-10D9-4CCB-B1F7-D89AC42C856A" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1538,6 +1547,7 @@
 			files = (
 				62C1F989D7AB832279EC9A95 /* Assets.xcassets in Resources */,
 				76ACD6E1A4470AC81B451EE2 /* android-handoff-catalog.json in Resources */,
+				D727DBCEDD85FB07EC4056A6 /* app-links.json in Resources */,
 				FB39CBF6079950629E2B05BC /* runtime in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1580,6 +1590,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				772E73F811680AF7BE4D6BBC /* AppLaunchByNameTests.swift in Sources */,
 				6C9023EB6B08D517592E775B /* ChatSessionModelTests.swift in Sources */,
 				C769F0BD6B3A535DF4FBF71B /* ConnectionDiscoveryServiceTests.swift in Sources */,
 				632B8D75D08511C4EA7504B4 /* ConnectorPermissionCenterTests.swift in Sources */,
@@ -1632,6 +1643,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7F60B70FA0D27F75B3B3B109 /* AppLaunchByName.swift in Sources */,
 				C4FDFB65B65F048157366310 /* ChatActivity.swift in Sources */,
 				FD66FBAF132FD1B8830F9CF4 /* ChatContracts.swift in Sources */,
 				8DAA325B2CE2A7D6BB1A96AC /* ChatScreen.swift in Sources */,
