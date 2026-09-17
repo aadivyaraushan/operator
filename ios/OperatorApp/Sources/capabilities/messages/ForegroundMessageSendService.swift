@@ -83,8 +83,8 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
         self.logger.info("[message-send] handing to shortcut recipients=\(parameters.recipients.count) body_bytes=\(parameters.body.utf8.count)")
         // Waits for the shortcut to come back, so the model can continue after
         // the send. The process is kept alive across the hop; see the coordinator.
-        let outcome = await self.coordinator.send(url)
-        switch outcome {
+        let completion = await self.coordinator.send(url)
+        switch completion.outcome {
         case .couldNotOpen:
             self.logger.info("[message-send] shortcut could not be opened")
             return .failure(
@@ -95,8 +95,9 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
             {"handedToShortcut":true,"sent":true,"outcome":"success","deliveryVerified":false,"nextStep":"The shortcut ran and handed the message to Messages without asking. Say it was sent; do not say it was delivered, because delivery is not reported. You may continue with anything else the person asked."}
             """)
         case .error:
+            let detail = Self.errorPayloadField(completion.message)
             return .success(payloadJSON: """
-            {"handedToShortcut":true,"sent":false,"outcome":"error","deliveryVerified":false,"nextStep":"The send shortcut reported an error, so nothing was sent. Tell the person plainly; do not retry on your own."}
+            {"handedToShortcut":true,"sent":false,"outcome":"error"\(detail),"deliveryVerified":false,"nextStep":"The send shortcut reported an error, so nothing was sent. Tell the person plainly what the error says; do not retry on your own."}
             """)
         case .cancel:
             return .success(payloadJSON: """
@@ -138,6 +139,24 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
         guard url.scheme == self.callbackScheme, url.host == self.callbackHost else { return nil }
         let outcome = url.lastPathComponent
         return ["success", "error", "cancel"].contains(outcome) ? outcome : nil
+    }
+
+    /// The shortcut's own error text as a JSON field, bounded and escaped, or
+    /// empty when it gave none.
+    static func errorPayloadField(_ message: String?) -> String {
+        guard let message, !message.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: ["shortcutError": String(message.prefix(300))]),
+              let object = String(data: data, encoding: .utf8), object.hasPrefix("{"), object.hasSuffix("}")
+        else { return "" }
+        return "," + object.dropFirst().dropLast()
+    }
+
+    /// The outcome and any error message from a return to Operator's scheme.
+    static func callbackDetail(_ url: URL) -> (outcome: String, message: String?)? {
+        guard let outcome = self.callbackOutcome(url) else { return nil }
+        let message = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?.first { $0.name == "errorMessage" }?.value
+        return (outcome, message)
     }
 
     private static func parameters(from paramsJSON: String?) -> Parameters? {

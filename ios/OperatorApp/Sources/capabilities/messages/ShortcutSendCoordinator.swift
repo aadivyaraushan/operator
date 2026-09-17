@@ -21,6 +21,13 @@ final class ShortcutSendCoordinator: ObservableObject {
         case success, error, cancel, timedOut, couldNotOpen
     }
 
+    /// The outcome plus, on an error the shortcut reported, its message, so
+    /// the person can be told why nothing was sent.
+    struct Completion: Sendable, Equatable {
+        let outcome: Outcome
+        let message: String?
+    }
+
     /// True from the moment the shortcut is opened until it comes back or the
     /// wait times out. The app keeps the runtime alive while this holds.
     @Published private(set) var isSending = false
@@ -28,7 +35,7 @@ final class ShortcutSendCoordinator: ObservableObject {
     private let runner: any ShortcutRunner
     private let timeout: Duration
     private let logger = Logger(subsystem: "app.operator.ios", category: "message-send")
-    private var pending: CheckedContinuation<Outcome, Never>?
+    private var pending: CheckedContinuation<Completion, Never>?
     private var timeoutTask: Task<Void, Never>?
     #if canImport(UIKit)
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
@@ -41,23 +48,23 @@ final class ShortcutSendCoordinator: ObservableObject {
 
     /// Opens the shortcut and waits for its callback. Returns `couldNotOpen`
     /// when the URL will not open (no shortcut), without ever waiting.
-    func send(_ url: URL) async -> Outcome {
+    func send(_ url: URL) async -> Completion {
         guard self.pending == nil else {
             // One send at a time; the guard (20 s apart) makes overlap rare,
             // and a second send while one is out is treated as unopenable
             // rather than silently jumping the first.
             self.logger.info("[message-send] a send is already awaiting its callback")
-            return .couldNotOpen
+            return Completion(outcome: .couldNotOpen, message: nil)
         }
         self.isSending = true
         self.beginBackgroundTask()
         guard await self.runner.run(url) else {
             self.isSending = false
             self.endBackgroundTask()
-            return .couldNotOpen
+            return Completion(outcome: .couldNotOpen, message: nil)
         }
         self.logger.info("[message-send] shortcut opened; awaiting callback")
-        let outcome = await withCheckedContinuation { (continuation: CheckedContinuation<Outcome, Never>) in
+        let completion = await withCheckedContinuation { (continuation: CheckedContinuation<Completion, Never>) in
             self.pending = continuation
             self.timeoutTask = Task { [weak self] in
                 try? await Task.sleep(for: self?.timeout ?? .seconds(180))
@@ -66,17 +73,18 @@ final class ShortcutSendCoordinator: ObservableObject {
         }
         self.isSending = false
         self.endBackgroundTask()
-        self.logger.info("[message-send] callback outcome=\(outcome.rawValue, privacy: .public)")
-        return outcome
+        self.logger.info("[message-send] callback outcome=\(completion.outcome.rawValue, privacy: .public)")
+        return completion
     }
 
-    /// Delivered by the app when Shortcuts returns to Operator's scheme.
-    func resolve(_ outcome: Outcome) {
+    /// Delivered by the app when Shortcuts returns to Operator's scheme. The
+    /// error message, when Shortcuts gives one, is carried back too.
+    func resolve(_ outcome: Outcome, message: String? = nil) {
         guard let pending = self.pending else { return }
         self.pending = nil
         self.timeoutTask?.cancel()
         self.timeoutTask = nil
-        pending.resume(returning: outcome)
+        pending.resume(returning: Completion(outcome: outcome, message: message))
     }
 
     private func beginBackgroundTask() {
@@ -86,7 +94,7 @@ final class ShortcutSendCoordinator: ObservableObject {
             // iOS is about to reclaim the assertion; end the wait so the run
             // is not left hanging. The callback, if it lands after the app
             // resumes, then finds nothing pending and is simply logged.
-            self?.resolve(.timedOut)
+            self?.resolve(.timedOut, message: nil)
         }
         #endif
     }

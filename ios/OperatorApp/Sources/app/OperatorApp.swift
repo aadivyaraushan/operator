@@ -360,19 +360,19 @@ struct OperatorApp: App {
                 .onOpenURL { url in
                     // Shortcuts returning from sms.send. The only thing known
                     // is what Shortcuts reported; it goes in the session log.
-                    if let outcome = ForegroundMessageSendService.callbackOutcome(url) {
+                    if let detail = ForegroundMessageSendService.callbackDetail(url) {
                         // Resume the sms.send tool call that is waiting on this,
                         // so the model's turn continues with the real result.
-                        let resolved: ShortcutSendCoordinator.Outcome = switch outcome {
+                        let resolved: ShortcutSendCoordinator.Outcome = switch detail.outcome {
                         case "success": .success
                         case "error": .error
                         default: .cancel
                         }
-                        self.shortcutSend.resolve(resolved)
+                        self.shortcutSend.resolve(resolved, message: detail.message)
                         self.permissions.recordExternalOutcome(
                             connector: .messagesAutosend, access: .write,
-                            command: "\(GatewayNativeNodeSurface.messageSendCommand) shortcut \(outcome)",
-                            succeeded: outcome == "success")
+                            command: "\(GatewayNativeNodeSurface.messageSendCommand) shortcut \(detail.outcome)",
+                            succeeded: detail.outcome == "success")
                     }
                 }
                 .onChange(of: self.scenePhase, initial: true) { _, phase in

@@ -160,7 +160,7 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
         XCTAssertTrue(coordinator.isSending, "the runtime is kept alive while a send is out")
         coordinator.resolve(.success)
         let result = await outcome
-        XCTAssertEqual(result, .success)
+        XCTAssertEqual(result.outcome, .success)
         XCTAssertFalse(coordinator.isSending)
     }
 
