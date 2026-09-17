@@ -1388,7 +1388,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_F65B5279-D376-4024-B3FE-5E2B0663F51E" /* embedded */ = {
+		"TEMP_1A00DBC0-A404-432E-AEF8-94634BD1A1AE" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1402,6 +1402,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3E080D4F232DD078947F21DB /* Build configuration list for PBXNativeTarget "OperatorApp" */;
 			buildPhases = (
+				F313E689C88673D88DB717B4 /* Check staged runtime carries the Intl.Segmenter replacement */,
 				9D9CC9E99A4E70A1227C023E /* Sources */,
 				EC6687AF070CFB44FE42AC75 /* Resources */,
 				FCD6348BCAA1D60EB7E2B6DB /* Frameworks */,
@@ -1533,6 +1534,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		F313E689C88673D88DB717B4 /* Check staged runtime carries the Intl.Segmenter replacement */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check staged runtime carries the Intl.Segmenter replacement";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "sh \"$SRCROOT/Runtime/native-node/package/check-staged-shim.sh\"";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		7F5FBF96C7D3B92568EF60EE /* Sources */ = {
