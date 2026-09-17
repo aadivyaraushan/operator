@@ -32,6 +32,7 @@ public enum OpenClawGatewayError: Error, Equatable, Sendable {
 public enum GatewayInbound: Equatable, Sendable {
     case conversation([GatewayConversationEvent])
     case approval(GatewaySessionApprovalEvent)
+    case question(GatewayQuestionEvent)
     case response(
         id: String,
         ok: Bool,
@@ -248,6 +249,48 @@ public actor OpenClawGatewayConnection {
         return result
     }
 
+    /// Every question the gateway still holds for this session. Called on
+    /// each foreground subscription, so a question asked while the socket
+    /// was down is not missed: the model is still waiting on it.
+    public func listQuestions() async throws -> [GatewayQuestionRecord] {
+        let result: GatewayQuestionListResult = try await self.request(
+            method: "question.list", params: GatewayQuestionListParams())
+        let mine = result.questions.filter { $0.sessionKey == nil || $0.sessionKey == self.sessionKey }
+        self.logger.info("[question] listed pendingCount=\(mine.filter { $0.status == .pending }.count)")
+        return mine
+    }
+
+    /// Answers a question and checks the gateway recorded exactly that.
+    public func answerQuestion(id: String, answers: GatewayQuestionAnswers) async throws -> GatewayQuestionResolveResult {
+        guard !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !answers.answers.isEmpty else {
+            throw OpenClawGatewayError.invalidFrame
+        }
+        let result: GatewayQuestionResolveResult = try await self.request(
+            method: "question.resolve",
+            params: GatewayQuestionAnswerParams(id: id, answers: answers, resolvedBy: "operator-ios"))
+        guard result.status == .answered, result.answers == answers else {
+            self.logger.error("[question] gateway recorded a different answer id=\(id, privacy: .public) status=\(result.status.rawValue, privacy: .public)")
+            throw OpenClawGatewayError.invalidFrame
+        }
+        self.logger.info("[question] answered id=\(id, privacy: .public)")
+        return result
+    }
+
+    /// Cancels a question: the model gets "no answer" and carries on.
+    public func cancelQuestion(id: String) async throws {
+        guard !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw OpenClawGatewayError.invalidFrame
+        }
+        let result: GatewayQuestionResolveResult = try await self.request(
+            method: "question.resolve",
+            params: GatewayQuestionCancelParams(id: id, resolvedBy: "operator-ios"))
+        guard result.status == .cancelled else {
+            self.logger.error("[question] cancel not recorded id=\(id, privacy: .public) status=\(result.status.rawValue, privacy: .public)")
+            throw OpenClawGatewayError.invalidFrame
+        }
+        self.logger.info("[question] cancelled id=\(id, privacy: .public)")
+    }
+
     public func receive() async throws -> GatewayInbound {
         guard self.isConnected else { throw OpenClawGatewayError.notConnected }
         if !self.bufferedInbound.isEmpty {
@@ -293,6 +336,18 @@ public actor OpenClawGatewayConnection {
                 return .ignored(event: header.event ?? "unknown")
             }
             return .approval(frame.payload)
+        case "event" where header.event == "question.requested":
+            // The model's ask_user, blocked until someone answers. A record
+            // for another session, or one that does not decode, is not ours
+            // to answer and is ignored rather than failing the reader.
+            guard let frame = try? JSONDecoder().decode(GatewayEventFrame<GatewayQuestionRecord>.self, from: data),
+                  frame.payload.sessionKey == nil || frame.payload.sessionKey == self.sessionKey
+            else { return .ignored(event: "question.requested") }
+            return .question(.requested(frame.payload))
+        case "event" where header.event == "question.resolved":
+            guard let frame = try? JSONDecoder().decode(GatewayEventFrame<GatewayQuestionResolvedEvent>.self, from: data)
+            else { return .ignored(event: "question.resolved") }
+            return .question(.resolved(frame.payload))
         case "event":
             return .ignored(event: header.event ?? "unknown")
         default:
