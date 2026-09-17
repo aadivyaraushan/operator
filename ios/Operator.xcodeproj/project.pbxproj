@@ -1446,7 +1446,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_0853798C-1677-4B13-98B6-9037CBF7F0D2" /* embedded */ = {
+		"TEMP_6D681533-61CA-4020-8B83-039EF5148CA6" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);

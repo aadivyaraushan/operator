@@ -14,6 +14,9 @@ struct CanvasAccountStorage: Sendable {
     let saveBaseURL: @Sendable (URL?) -> Void
     /// The school's cookies from the kept sign-in; empty when there is none.
     var sessionCookies: @Sendable (_ host: String) async -> [HTTPCookie] = { _ in [] }
+    /// Reads the school's cookies out of the live sign-in and keeps them,
+    /// while the setup sheet is still open. Returns what was kept.
+    var captureSession: @Sendable (_ host: String) async -> [HTTPCookie] = { _ in [] }
     var clearSession: @Sendable () async -> Void = {}
 
     /// What signs a read right now: a token when one is saved, else the
@@ -122,7 +125,9 @@ final class CanvasAccountSetupModel: ObservableObject {
         let previousURL = self.storage.loadBaseURL()
         self.storage.saveBaseURL(url)
         self.baseURL = url
-        let cookies = await self.storage.sessionCookies(host)
+        // Capture while the sheet is still open: canvas_session is a session
+        // cookie and is gone from WebKit once the sheet closes.
+        let cookies = await self.storage.captureSession(host)
         guard !cookies.isEmpty else {
             self.storage.saveBaseURL(previousURL)
             self.baseURL = previousURL

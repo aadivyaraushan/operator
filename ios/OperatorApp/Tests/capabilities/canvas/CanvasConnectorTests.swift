@@ -422,6 +422,7 @@ final class CanvasSessionCredentialTests: XCTestCase {
             var token: String? = fixtureToken
             var url: URL?
             var cookies: [HTTPCookie] = []
+            var captured = false
             var sessionCleared = 0
         }
         let storage = Storage()
@@ -429,8 +430,13 @@ final class CanvasSessionCredentialTests: XCTestCase {
         let accountStorage = CanvasAccountStorage(
             loadToken: { storage.token }, saveToken: { storage.token = $0 }, clearToken: { storage.token = nil },
             loadBaseURL: { storage.url }, saveBaseURL: { storage.url = $0 },
-            sessionCookies: { host in host == "canvas.illinois.edu" ? storage.cookies : [] },
-            clearSession: { storage.sessionCleared += 1 })
+            sessionCookies: { host in (host == "canvas.illinois.edu" && storage.captured) ? storage.cookies : [] },
+            captureSession: { host in
+                guard host == "canvas.illinois.edu" else { return [] }
+                storage.captured = true
+                return storage.cookies
+            },
+            clearSession: { storage.sessionCleared += 1; storage.captured = false })
         let transport = RoutedTransport(["/api/v1/users/self": [.ok(#"while(1);{"id":1,"name":"Surya S"}"#)]])
         let model = CanvasAccountSetupModel(storage: accountStorage, transport: transport)
         model.choose(CanvasSchool(name: "UIUC", domain: "canvas.illinois.edu"))

@@ -167,7 +167,13 @@ struct OperatorApp: App {
             service: "app.operator.ios.canvas",
             account: "access-token")
         let canvasBaseURL = UserDefaultsCanvasBaseURLStore()
-        let canvasSession = CanvasSessionStore()
+        let canvasCookieStore = KeychainCredentialStore(
+            service: "app.operator.ios.canvas",
+            account: "session-cookies")
+        let canvasSession = CanvasSessionStore(persistence: CanvasSessionPersistence(
+            save: { try await canvasCookieStore.save($0) },
+            load: { try await canvasCookieStore.load() },
+            clear: { try await canvasCookieStore.remove() }))
         let canvasStorage = CanvasAccountStorage(
             loadToken: {
                 guard let data = try await canvasTokenStore.load(), let value = String(data: data, encoding: .utf8) else { return nil }
@@ -178,6 +184,7 @@ struct OperatorApp: App {
             loadBaseURL: { canvasBaseURL.load() },
             saveBaseURL: { canvasBaseURL.save($0) },
             sessionCookies: { host in await canvasSession.cookies(for: host) },
+            captureSession: { host in await canvasSession.capture(for: host) },
             clearSession: { await canvasSession.clear() })
         let canvasSetup = CanvasAccountSetupModel(storage: canvasStorage)
         let canvasService = ForegroundCanvasService(client: CanvasClient(
