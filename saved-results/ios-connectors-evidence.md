@@ -1833,3 +1833,20 @@ back from the phone's `transcript_events`:
 The same tool call the night before sat for 15 minutes and ended in a
 gateway-restart line. Card in the thread: proven. Not yet seen: the
 notification path, with the app left before the question arrives.
+
+## 2026-09-17, 15:59: Canvas connector built, installed, not yet proven live
+
+Per planning/canvas-connector-plan.md, commits 4387ef5..edcf7d0: Canvas's
+own REST API with the owner's access token (Connect accounts > Canvas:
+school address + token, one GET /users/self to prove them), three
+read-only commands - canvas.courses with grades, canvas.upcoming with
+what is due and what is missing, canvas.announcements - behind one Canvas
+grant. Tests: 14 in OperatorAppTests over a routed fake transport, the
+node-surface pins updated in OperatorCore, connector-qa 40 with a
+nine-scenario Canvas bank. Runtime re-staged for the guidance; phone
+build from edcf7d0 installed 15:59 (upgrade install).
+
+To prove live: in Canvas (Account > Settings > Approved Integrations >
+New Access Token), then in Operator Connect accounts > Canvas, then
+Permissions > Canvas > Read, then "what's due this week". The first
+real read of each command goes in this file.
