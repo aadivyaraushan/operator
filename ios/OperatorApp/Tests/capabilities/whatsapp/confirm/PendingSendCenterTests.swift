@@ -39,15 +39,13 @@ final class PendingSendCenterTests: XCTestCase {
     private var directory: URL!
     private var clock = Date(timeIntervalSince1970: 1_800_000_000)
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
         self.directory = FileManager.default.temporaryDirectory.appendingPathComponent("pending-\(UUID().uuidString)", isDirectory: true)
         self.clock = Date(timeIntervalSince1970: 1_800_000_000)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         try? FileManager.default.removeItem(at: self.directory)
-        super.tearDown()
     }
 
     private func center(_ notifier: Notifier, _ sender: Sender, known: Set<String> = ["villa@s.whatsapp.net"], recorded: (@MainActor (PendingSend) async -> Void)? = nil) -> (PendingSendCenter, PendingSendStore, History) {

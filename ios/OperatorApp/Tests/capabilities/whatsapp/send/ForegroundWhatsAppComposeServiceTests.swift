@@ -32,12 +32,11 @@ final class ForegroundWhatsAppComposeServiceTests: XCTestCase {
     private let params = #"{"recipientJID":"15551234567@s.whatsapp.net","body":"u free tomorrow?"}"#
     private var directory: URL!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
         self.directory = FileManager.default.temporaryDirectory.appendingPathComponent("compose-\(UUID().uuidString)", isDirectory: true)
     }
 
-    override func tearDown() { try? FileManager.default.removeItem(at: self.directory); super.tearDown() }
+    override func tearDown() async throws { try? FileManager.default.removeItem(at: self.directory) }
 
     private func guardrail(known: Set<String>) -> WhatsAppSendGuard { WhatsAppSendGuard(recipients: Recipients(known: known), history: History()) }
 

@@ -1,4 +1,4 @@
-#if canImport(BackgroundTasks) && os(iOS)
+#if canImport(BackgroundTasks) && os(iOS) && compiler(>=6.2)
 import BackgroundTasks
 import Foundation
 
@@ -53,5 +53,19 @@ private final class SystemContinuedProcessingTask: ContinuedProcessingTask, @unc
     }
     func updateTitle(_ title: String, subtitle: String) { self.task.updateTitle(title, subtitle: subtitle) }
     func setTaskCompleted(success: Bool) { self.task.setTaskCompleted(success: success) }
+}
+#else
+import Foundation
+
+/// SDKs before iOS 26 (Swift 6.1 and older) have no continued processing
+/// task type, so this build cannot reference it. Every submission is
+/// refused and the reply stays foreground-only, the same as iOS 18 at runtime.
+@MainActor
+final class SystemContinuedProcessingScheduler: ContinuedProcessingScheduling {
+    struct Unavailable: Error {}
+
+    func submit(identifier: String, title: String, subtitle: String, handler: @escaping @MainActor (any ContinuedProcessingTask) -> Void) throws {
+        throw Unavailable()
+    }
 }
 #endif

@@ -7,14 +7,12 @@ import XCTest
 final class ForegroundIncomingMessagesServiceTests: XCTestCase {
     private var directory: URL!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
         self.directory = FileManager.default.temporaryDirectory.appendingPathComponent("incoming-svc-\(UUID().uuidString)", isDirectory: true)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         try? FileManager.default.removeItem(at: self.directory)
-        super.tearDown()
     }
 
     private func object(_ result: GatewayNodeCommandResult) throws -> [String: Any] {
