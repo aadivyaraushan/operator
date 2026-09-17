@@ -28,6 +28,14 @@ enum ConnectionState: Equatable {
     }
 }
 
+/// A question the person answered this launch, as the thread shows it
+/// afterwards: what was asked and what they chose.
+struct AnsweredQuestion: Identifiable, Equatable, Sendable {
+    let id: String
+    let prompts: [String]
+    let chosen: [String]
+}
+
 @MainActor
 final class ChatSessionModel: ObservableObject {
     @Published var draft = ""
@@ -47,9 +55,10 @@ final class ChatSessionModel: ObservableObject {
     /// Questions the model is waiting on, oldest first. Each is a card in the
     /// thread; the reply cannot continue until it is answered or skipped.
     @Published private(set) var questions: [GatewayQuestionRecord] = []
-    /// What the person chose, kept for the collapsed card after the answer
-    /// went in. Not persisted; the transcript carries the model's account.
-    @Published private(set) var answeredQuestions: [String: GatewayQuestionAnswers] = [:]
+    /// Questions settled this launch, in order, for the collapsed card that
+    /// stays where the question was. Not persisted; the transcript carries
+    /// the model's own account of the answer.
+    @Published private(set) var answeredQuestions: [AnsweredQuestion] = []
     @Published private(set) var connectionState: ConnectionState = .starting
     @Published private(set) var lastError: String?
 
@@ -289,7 +298,7 @@ final class ChatSessionModel: ObservableObject {
             defer { self.questionsInFlight.remove(id) }
             do {
                 try await self.gateway.answerQuestion(id: id, answers: payload)
-                self.answeredQuestions[id] = payload
+                self.recordAnswered(record, answers: payload)
                 self.questionRecords.removeValue(forKey: id)
                 self.refreshQuestions()
                 self.logger.info("[question] answered id=\(id, privacy: .public)")
@@ -599,12 +608,21 @@ final class ChatSessionModel: ObservableObject {
             self.admitQuestion(record)
             self.refreshQuestions()
         case let .resolved(event):
-            self.questionRecords.removeValue(forKey: event.id)
-            if event.status == .answered, let answers = event.answers, self.answeredQuestions[event.id] == nil {
-                self.answeredQuestions[event.id] = answers
+            if let record = self.questionRecords.removeValue(forKey: event.id),
+               event.status == .answered, let answers = event.answers
+            {
+                self.recordAnswered(record, answers: answers)
             }
             self.refreshQuestions()
         }
+    }
+
+    private func recordAnswered(_ record: GatewayQuestionRecord, answers: GatewayQuestionAnswers) {
+        guard !self.answeredQuestions.contains(where: { $0.id == record.id }) else { return }
+        self.answeredQuestions.append(AnsweredQuestion(
+            id: record.id,
+            prompts: record.questions.map(\.question),
+            chosen: record.questions.flatMap { answers.answers[$0.questionId] ?? [] }))
     }
 
     private func admitQuestion(_ record: GatewayQuestionRecord) {

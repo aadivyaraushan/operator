@@ -491,7 +491,8 @@ final class ChatSessionModelTests: XCTestCase {
         let answered = await gateway.answered()
         XCTAssertEqual(answered.map(\.id), ["ask_1"])
         XCTAssertEqual(answered.first?.answers.answers, ["group_message": ["Call now"]])
-        XCTAssertEqual(model.answeredQuestions["ask_1"]?.answers, ["group_message": ["Call now"]])
+        XCTAssertEqual(model.answeredQuestions.map(\.chosen), [["Call now"]])
+        XCTAssertEqual(model.answeredQuestions.first?.prompts, ["What should I send in the group chat?"])
         XCTAssertNil(model.lastError)
     }
 
@@ -508,7 +509,7 @@ final class ChatSessionModelTests: XCTestCase {
         await gateway.resolveFromElsewhere(id: "ask_2", answers: ["group_message": ["Meet tomorrow"]])
         await waitUntil { model.questions.isEmpty }
 
-        XCTAssertEqual(model.answeredQuestions["ask_2"]?.answers, ["group_message": ["Meet tomorrow"]])
+        XCTAssertEqual(model.answeredQuestions.map(\.chosen), [["Meet tomorrow"]])
         let answered = await gateway.answered()
         XCTAssertTrue(answered.isEmpty, "the phone did not answer; someone else did")
     }

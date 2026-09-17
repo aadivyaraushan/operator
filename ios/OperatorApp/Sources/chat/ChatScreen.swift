@@ -167,6 +167,14 @@ struct ChatScreen: View {
                             ApprovalCard(approval: approval, model: self.model)
                                 .id("approval-\(approval.id)")
                         }
+                        ForEach(self.model.answeredQuestions) { answered in
+                            AnsweredQuestionLine(answered: answered)
+                                .id("answered-\(answered.id)")
+                        }
+                        ForEach(self.model.questions) { question in
+                            QuestionCard(record: question, model: self.model)
+                                .id("question-\(question.id)")
+                        }
                         if self.model.liveActivity != nil || self.model.streamingReply != nil {
                             ActivityBubble(
                                 activity: self.model.liveActivity ?? ChatLiveActivity(phase: .writing),
@@ -214,6 +222,7 @@ struct ChatScreen: View {
                 .onChange(of: self.model.streamingReply) { self.follow(proxy, animated: false) }
                 .onChange(of: self.model.liveActivity) { self.follow(proxy, animated: true) }
                 .onChange(of: self.model.approvals.map(\.id)) { self.follow(proxy, animated: true) }
+                .onChange(of: self.model.questions.map(\.id)) { self.follow(proxy, animated: true) }
                 .onChange(of: self.model.lastError) { self.follow(proxy, animated: true) }
             }
 
@@ -599,6 +608,162 @@ private struct ApprovalCard: View {
         case .allowAlways: "Always allow"
         case .deny: "Deny"
         }
+    }
+}
+
+/// The model's question, waiting on the person: the run cannot continue
+/// until it is answered or skipped. One tap answers a single-choice
+/// question; anything else collects and sends once. Carries the "Needs your
+/// answer" mark, and never the send-style prominence of an approval, since
+/// nothing leaves the phone on an answer.
+private struct QuestionCard: View {
+    let record: GatewayQuestionRecord
+    @ObservedObject var model: ChatSessionModel
+    @State private var chosen: [String: Set<String>] = [:]
+    @State private var typed: [String: String] = [:]
+
+    private var needsSendButton: Bool {
+        self.record.questions.count > 1 || self.record.questions.contains { $0.multiSelect || $0.acceptsFreeText }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Needs your answer", systemImage: "questionmark.diamond")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.orange)
+            ForEach(self.record.questions) { question in
+                VStack(alignment: .leading, spacing: 8) {
+                    if !question.header.isEmpty {
+                        Text(question.header.uppercased())
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(question.question)
+                        .font(.subheadline.weight(.semibold))
+                        .textSelection(.enabled)
+                    ForEach(question.options, id: \.label) { option in
+                        self.optionButton(option, for: question)
+                    }
+                    if question.acceptsFreeText {
+                        TextField(
+                            question.options.isEmpty ? "Your answer" : "Or type your own",
+                            text: Binding(
+                                get: { self.typed[question.questionId] ?? "" },
+                                set: { self.typed[question.questionId] = $0 }),
+                            axis: .vertical)
+                            .lineLimit(1 ... 4)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color(uiColor: .tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .accessibilityLabel("Answer: \(question.question)")
+                    }
+                }
+            }
+            HStack(spacing: 8) {
+                if self.needsSendButton {
+                    Button("Send answer") { self.send() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.accentColor)
+                        .disabled(!self.record.isActionable() || self.answers() == nil)
+                }
+                Button("Skip") { self.model.skipQuestion(id: self.record.id) }
+                    .buttonStyle(.bordered)
+                    .tint(.secondary)
+                    .disabled(!self.record.isActionable())
+            }
+        }
+        .padding(14)
+        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Needs your answer: \(self.record.questions.map(\.question).joined(separator: " "))")
+    }
+
+    @ViewBuilder
+    private func optionButton(_ option: GatewayQuestionOption, for question: GatewayQuestion) -> some View {
+        let isChosen = self.chosen[question.questionId]?.contains(option.label) ?? false
+        Button {
+            if self.needsSendButton {
+                self.toggle(option.label, for: question)
+            } else {
+                self.model.answerQuestion(id: self.record.id, answers: [question.questionId: [option.label]])
+            }
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if question.multiSelect {
+                    Image(systemName: isChosen ? "checkmark.square.fill" : "square")
+                        .foregroundStyle(isChosen ? Color.accentColor : Color.secondary)
+                } else if self.needsSendButton {
+                    Image(systemName: isChosen ? "largecircle.fill.circle" : "circle")
+                        .foregroundStyle(isChosen ? Color.accentColor : Color.secondary)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(option.label)
+                        .font(.subheadline)
+                    if let description = option.description, !description.isEmpty {
+                        Text(description)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.bordered)
+        .tint(isChosen ? .accentColor : .primary)
+        .disabled(!self.record.isActionable())
+        .accessibilityLabel(option.label)
+        .accessibilityHint(option.description ?? "")
+    }
+
+    private func toggle(_ label: String, for question: GatewayQuestion) {
+        var set = self.chosen[question.questionId] ?? []
+        if question.multiSelect {
+            if set.contains(label) { set.remove(label) } else { set.insert(label) }
+        } else {
+            set = set.contains(label) ? [] : [label]
+        }
+        self.chosen[question.questionId] = set
+    }
+
+    /// Every question answered, or nil while one is still blank.
+    private func answers() -> [String: [String]]? {
+        var answers: [String: [String]] = [:]
+        for question in self.record.questions {
+            let picked = Array(self.chosen[question.questionId] ?? []).sorted()
+            let text = (self.typed[question.questionId] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !picked.isEmpty { answers[question.questionId] = picked }
+            else if question.acceptsFreeText, !text.isEmpty { answers[question.questionId] = [text] }
+            else { return nil }
+        }
+        return answers
+    }
+
+    private func send() {
+        guard let answers = self.answers() else { return }
+        self.model.answerQuestion(id: self.record.id, answers: answers)
+    }
+}
+
+/// Where a question was, once it is answered: what the person chose.
+private struct AnsweredQuestionLine: View {
+    let answered: AnsweredQuestion
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(self.answered.prompts.enumerated()), id: \.offset) { _, prompt in
+                Text(prompt)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            Text("You answered: \(self.answered.chosen.joined(separator: ", "))")
+                .font(.footnote.weight(.semibold))
+        }
+        .padding(.horizontal, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
