@@ -1,6 +1,6 @@
 ---
 name: connector-qa
-description: Run realistic, repeated QA against every Operator iPhone connector (Gmail, Calendar, Drive, Tasks, Outlook, Slack, Spotify, Notion, WhatsApp, YouTube, Podcasts, Maps, device services) through the real chat and the real ChatGPT model, then judge the results. Use when asked to test, QA, or verify a connector, or after changing connector code.
+description: Run realistic, repeated QA against every Operator iPhone connector (Gmail, Calendar, Drive, Tasks, Outlook, Slack, Spotify, Notion, WhatsApp, Discord, Canvas, YouTube, Podcasts, Maps, device services) through the real chat and the real ChatGPT model, then judge the results. Use when asked to test, QA, or verify a connector, or after changing connector code.
 ---
 
 # Connector QA

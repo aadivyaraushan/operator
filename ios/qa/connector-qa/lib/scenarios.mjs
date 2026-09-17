@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, basename } from "node:path";
 
 export const KINDS = ["precise", "casual", "vague", "typo", "indirect", "followup", "clarify", "decline", "write", "handoff"];
-export const PROVIDERS = ["google", "microsoft", "slack", "spotify", "notion", "whatsapp", "discord", "device", "public"];
+export const PROVIDERS = ["google", "microsoft", "slack", "spotify", "notion", "whatsapp", "discord", "canvas", "device", "public"];
 const OUTCOMES = ["answer", "clarify", "decline", "handoff"];
 
 export function loadBanks(dir) {
