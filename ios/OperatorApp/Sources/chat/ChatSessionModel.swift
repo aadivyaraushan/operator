@@ -162,6 +162,13 @@ final class ChatSessionModel: ObservableObject {
     func runtimeDidSuspend() {
         self.setForegroundActive(false)
         self.connectionState = .offline
+        // A send still waiting on the connection would wait forever once iOS
+        // freezes it, and nothing reconnects while a send is in progress.
+        let waiting = self.inFlight.count
+        Task { [gateway, logger] in
+            logger.info("[chat] leaving the screen; letting go of the connection sendsInProgress=\(waiting)")
+            await gateway.letGoOfConnection()
+        }
     }
 
     func runtimeFailed(_ message: String) {
@@ -230,6 +237,7 @@ final class ChatSessionModel: ObservableObject {
             guard let self else { return }
             do {
                 self.apply(try await self.store.stage(id: id, text: trimmed, now: now))
+                await self.addToRunningRequestIfOneIsRunning(id: id)
                 await self.flushOutbox()
             } catch {
                 self.connectionState = .offline
@@ -367,6 +375,23 @@ final class ChatSessionModel: ObservableObject {
 
     func stopDictation() {
         self.dictation.stop()
+    }
+
+    /// A message sent while an earlier one is still being worked on goes to
+    /// the runtime at once, which folds it into that work. It stays in the
+    /// outbox: its turn there settles whether the earlier reply covered it
+    /// or it got a reply of its own.
+    private func addToRunningRequestIfOneIsRunning(id: UUID) async {
+        guard self.isFlushing, self.isGatewayReady, !self.inFlight.isEmpty,
+              let entry = self.outbox.first(where: { $0.id == id })
+        else { return }
+        do {
+            try await self.gateway.addToRunningRequest(entry)
+            self.inFlight.insert(id)
+            self.logger.info("[chat] added to the running request id=\(id.uuidString, privacy: .public)")
+        } catch {
+            self.logger.info("[chat] could not add to the running request; it waits its turn id=\(id.uuidString, privacy: .public)")
+        }
     }
 
     private func flushOutbox() async {
@@ -527,7 +552,7 @@ final class ChatSessionModel: ObservableObject {
                 self.connectionState = .ready
                 self.continuation?.finish(success: false)
                 if !self.isInForeground() { self.onReplyInBackground?(message) }
-            case .stopped:
+            case .stopped, .joinedEarlierReply:
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.streamingReply = nil
                 self.liveActivity = nil

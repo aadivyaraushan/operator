@@ -53,6 +53,24 @@ final class AppLaunchByNameTests: XCTestCase {
         XCTAssertEqual(launcher.bundles, ["com.apple.camera"])
     }
 
+    /// Seen in the real app: "open gmail" sent appID "gmail", a listed
+    /// website, and the web page opened without the Gmail app being tried.
+    func testAListedWebsiteIsOnlyTheFallbackWhenTheAppItselfWillNotOpen() async throws {
+        let site = URL(string: "https://docs.google.com/")!
+        let installed = RecordingLauncher(); let unusedSite = RecordingOpener()
+        let first = ForegroundAppHandoffService(destinations: ["docs": site], opener: unusedSite, isAppActive: { true }, links: self.table, launcher: installed, lookup: FixedLookup(nil))
+        let asApp = try payload(await first.handleNodeCommand("apps.open", paramsJSON: #"{"appID":"docs"}"#, timeoutMilliseconds: nil))
+        XCTAssertEqual(asApp["destinationKind"] as? String, "app")
+        XCTAssertEqual(unusedSite.opened, [])
+
+        let missing = RecordingLauncher(); missing.linkOpens = false; missing.bundleOpens = false
+        let usedSite = RecordingOpener()
+        let second = ForegroundAppHandoffService(destinations: ["docs": site], opener: usedSite, isAppActive: { true }, links: self.table, launcher: missing, lookup: FixedLookup(nil))
+        let asSite = try payload(await second.handleNodeCommand("apps.open", paramsJSON: #"{"appID":"docs"}"#, timeoutMilliseconds: nil))
+        XCTAssertEqual(asSite["destinationKind"] as? String, "website")
+        XCTAssertEqual(usedSite.opened, [site])
+    }
+
     func testNothingOpensWhenTheAppCannotBeFoundOrWillNotLaunch() async {
         let missing = RecordingLauncher()
         let notFound = await service(missing).handleNodeCommand("apps.open", paramsJSON: #"{"name":"Nonexistent"}"#, timeoutMilliseconds: nil)
@@ -115,6 +133,11 @@ private actor FixedLookup: AppBundleLookup {
     private let answer: String?
     init(_ answer: String?) { self.answer = answer }
     func bundleID(forName name: String) async -> String? { asked.append(name); return answer }
+}
+
+@MainActor private final class RecordingOpener: AppHandoffOpener {
+    var opened: [URL] = []
+    func open(_ url: URL) async -> Bool { opened.append(url); return true }
 }
 
 @MainActor private final class NeverOpener: AppHandoffOpener {

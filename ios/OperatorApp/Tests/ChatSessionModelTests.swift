@@ -325,6 +325,50 @@ final class ChatSessionModelTests: XCTestCase {
         XCTAssertTrue(model.outbox.isEmpty)
     }
 
+    /// Operator opened Settings mid-reply; the frozen send never returned, the
+    /// reconnect refused to start while it was "in progress", and every later
+    /// message sat on Waiting for good.
+    func testLeavingTheAppMidReplyReleasesTheSendSoTheQueueResumesOnReturn() async throws {
+        let gateway = FrozenUntilLetGoGateway()
+        let model = self.readyModel(store: RecordingPersistence(), gateway: gateway)
+        model.restore()
+        model.draft = "open the settings app"
+        model.send()
+        while !(await gateway.deliveryCount() == 1) { await Task.yield() }
+
+        model.runtimeDidSuspend()
+        while !(await gateway.letGoCount() == 1) { await Task.yield() }
+        model.draft = "open gmail"
+        model.send()
+
+        model.runtimeIsStarting()
+        model.setForegroundActive(true)
+        model.runtimeBecameReady()
+
+        await waitUntil(timeout: 2) { model.messages.filter { $0.role == .assistant }.count == 2 }
+        XCTAssertEqual(model.messages.filter { $0.role == .assistant }.map(\.text), ["Reply 2", "Reply 3"])
+        XCTAssertTrue(model.outbox.isEmpty)
+    }
+
+    func testAMessageSentWhileAReplyIsRunningJoinsThatRunInsteadOfWaitingBehindIt() async throws {
+        let gateway = JoiningGateway()
+        let model = self.readyModel(store: RecordingPersistence(), gateway: gateway)
+        model.restore()
+        model.draft = "plan my day"
+        model.send()
+        while !(await gateway.deliveryStarted()) { await Task.yield() }
+
+        model.draft = "also include the gym"
+        model.send()
+        while !(await gateway.joinedTexts() == ["also include the gym"]) { await Task.yield() }
+        XCTAssertEqual(model.connectionState, .working)
+
+        await gateway.finishDelivery()
+        await waitUntil(timeout: 2) { model.outbox.isEmpty }
+        XCTAssertEqual(model.messages.filter { $0.role == .assistant }.map(\.text), ["One reply covering both"])
+        XCTAssertNil(model.lastError)
+    }
+
     func testForegroundNodeStartsOnlyAfterChatGatewayIsReady() async {
         let chat = ControlledChatReadiness()
         let node = RecordingForegroundNode()
@@ -1035,6 +1079,45 @@ private actor DeliveryFailureReconnectGateway: ChatGateway {
     }
     func deliveryAttemptCount() -> Int { self.deliveryAttempts }
     func successfulKeys() -> [String] { self.deliveredKeys }
+}
+
+/// A send that only returns when the connection is let go, as a frozen
+/// socket does. Later sends answer at once.
+private actor FrozenUntilLetGoGateway: ChatGateway {
+    private var deliveries = 0
+    private var letGo = 0
+    private var frozen: CheckedContinuation<Void, Never>?
+    func deliver(_ entry: OutboxEntry, update: @escaping @Sendable (ChatDeliveryUpdate) async -> Void) async throws {
+        self.deliveries += 1
+        if self.deliveries == 1 {
+            await withCheckedContinuation { self.frozen = $0 }
+            throw ChatGatewayError.offline
+        }
+        await update(.accepted)
+        await update(.reply("Reply \(self.deliveries)"))
+    }
+    func letGoOfConnection() async { self.letGo += 1; self.frozen?.resume(); self.frozen = nil }
+    func deliveryCount() -> Int { self.deliveries }
+    func letGoCount() -> Int { self.letGo }
+}
+
+/// The runtime folds a message sent mid-run into that run: one reply, and
+/// the joined message's own request ends with nothing to show.
+private actor JoiningGateway: ChatGateway {
+    private var joined: [String] = []
+    private var held: CheckedContinuation<Void, Never>?
+    private var started = false
+    func deliver(_ entry: OutboxEntry, update: @escaping @Sendable (ChatDeliveryUpdate) async -> Void) async throws {
+        if self.joined.contains(entry.text) { await update(.joinedEarlierReply); return }
+        self.started = true
+        await update(.accepted)
+        await withCheckedContinuation { self.held = $0 }
+        await update(.reply("One reply covering both"))
+    }
+    func addToRunningRequest(_ entry: OutboxEntry) async throws { self.joined.append(entry.text) }
+    func deliveryStarted() -> Bool { self.started }
+    func finishDelivery() { self.held?.resume(); self.held = nil }
+    func joinedTexts() -> [String] { self.joined }
 }
 
 private actor SuspendedReconnectGateway: ChatGateway {

@@ -96,6 +96,11 @@ final class ForegroundAppHandoffService: GatewayNodeCommandHandler {
             self.logger.info("[app-handoff] appID is not a listed website; trying it as an app name")
             return await self.openInstalledApp(named: name)
         }
+        // "gmail" is both a listed website and an app: the app itself comes
+        // first, the website only when the app will not open.
+        if self.launcher != nil, case .success = await self.openInstalledApp(named: appID) {
+            return Self.appOpened
+        }
         guard let url = self.destinations[appID], AppHandoffCatalog.isSafeDestination(url) else {
             self.logger.info("[app-handoff] rejected unavailable destination")
             return .failure(code: "APP_UNAVAILABLE", message: "This app has no supported website hand-off")

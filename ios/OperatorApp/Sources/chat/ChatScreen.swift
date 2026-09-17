@@ -801,7 +801,11 @@ private struct Composer: View {
                 .accessibilityLabel(self.dictation.state == .recording ? "Stop dictation" : "Start offline dictation")
                 .accessibilityHint("Adds on-device speech to the editable message draft")
 
-                if self.model.connectionState == .working {
+                // Stop while it works, unless something is typed: then Send,
+                // which adds the message to the work already running.
+                if self.model.connectionState == .working,
+                   self.model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                {
                     Button(action: self.model.stop) {
                         Image(systemName: "stop.fill")
                             .frame(width: 28, height: 28)

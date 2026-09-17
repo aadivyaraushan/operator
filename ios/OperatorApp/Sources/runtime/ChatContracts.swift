@@ -21,6 +21,9 @@ enum ChatDeliveryUpdate: Equatable, Sendable {
     case reply(String)
     case failed(String)
     case stopped
+    /// This message was added to a request that was already running, and
+    /// that request's reply answered it. Nothing more to show.
+    case joinedEarlierReply
 }
 
 enum ChatApprovalUpdate: Sendable {
@@ -44,6 +47,14 @@ protocol ChatGateway: Sendable {
         _ entry: OutboxEntry,
         update: @escaping @Sendable (ChatDeliveryUpdate) async -> Void) async throws
     func stop() async
+    /// Hands a message to the runtime while another request is still being
+    /// worked on, so it reaches the model now instead of after the reply.
+    /// Throws when nothing is running to add it to.
+    func addToRunningRequest(_ entry: OutboxEntry) async throws
+    /// The app is leaving the screen with no permission to keep working.
+    /// Drops the connection so a send waiting on it returns instead of
+    /// waiting forever on a frozen socket; the request itself keeps running.
+    func letGoOfConnection() async
     func activateApprovalUpdates(
         _ update: @escaping @Sendable (ChatApprovalUpdate) async -> Void) async throws
     func resolveApproval(
@@ -61,6 +72,8 @@ protocol ChatGateway: Sendable {
 
 extension ChatGateway {
     func stop() async {}
+    func addToRunningRequest(_ entry: OutboxEntry) async throws { throw ChatGatewayError.offline }
+    func letGoOfConnection() async {}
 
     func activateApprovalUpdates(
         _ update: @escaping @Sendable (ChatApprovalUpdate) async -> Void) async throws {}

@@ -96,6 +96,11 @@ actor LocalOpenClawChatGateway: ChatGateway {
     private var approvalUpdate: (@Sendable (ChatApprovalUpdate) async -> Void)?
     private var questionUpdate: (@Sendable (ChatQuestionUpdate) async -> Void)?
     private var isDelivering = false
+    /// Messages handed to the runtime while another request was running, by
+    /// idempotency key, and those of them whose own request the runtime
+    /// closed with nothing to say because the running one took them in.
+    private var addedRunIDs: Set<String> = []
+    private var coveredRunIDs: Set<String> = []
     private var isActivating = false
     private var approvalRequestsInFlight = 0
 
@@ -176,6 +181,12 @@ actor LocalOpenClawChatGateway: ChatGateway {
         guard !self.isActivating, !self.isDelivering else { throw ChatGatewayError.offline }
         self.isDelivering = true
         defer { self.isDelivering = false }
+        if self.coveredRunIDs.remove(entry.idempotencyKey) != nil {
+            self.addedRunIDs.remove(entry.idempotencyKey)
+            self.logger.info("[gateway] message was answered by the request it joined runID=\(entry.idempotencyKey, privacy: .public)")
+            await update(.joinedEarlierReply)
+            return
+        }
         let connection = try await self.readyConnection()
         var timing = LocalChatDeliveryTimer(startedAtMilliseconds: self.monotonicMilliseconds())
         do {
@@ -221,6 +232,11 @@ actor LocalOpenClawChatGateway: ChatGateway {
                     switch status?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
                     case "ok":
                         guard let reply = try await connection.recoverReply(runID: acceptedRunID!) else {
+                            if self.addedRunIDs.remove(entry.idempotencyKey) != nil {
+                                self.logger.info("[gateway] joined message finished with no reply of its own runID=\(acceptedRunID!, privacy: .public)")
+                                await update(.joinedEarlierReply)
+                                return
+                            }
                             self.logger.error(
                                 "[gateway] exact terminal reply missing runID=\(acceptedRunID!, privacy: .public)")
                             await update(.failed("Operator finished, but its exact reply could not be recovered."))
@@ -286,6 +302,13 @@ actor LocalOpenClawChatGateway: ChatGateway {
                 guard let acceptedRunID else { continue }
                 for event in conversationEvents {
                     guard event.runID == acceptedRunID else {
+                        // The runtime closes a joined message's own request
+                        // with an empty final, which reads as a failure.
+                        if case .failed = event, self.addedRunIDs.contains(event.runID) {
+                            self.coveredRunIDs.insert(event.runID)
+                            self.logger.info("[gateway] joined message taken into the running request runID=\(event.runID, privacy: .public)")
+                            continue
+                        }
                         self.logger.info(
                             "[gateway] ignored event for non-current run eventRun=\(event.runID, privacy: .public) currentRun=\(acceptedRunID, privacy: .public)")
                         continue
@@ -395,6 +418,20 @@ actor LocalOpenClawChatGateway: ChatGateway {
         self.logger.info(
             "[chat-timing] phase=\(event.phase.rawValue, privacy: .public) elapsedMs=\(event.elapsedMilliseconds) outcome=\(outcome, privacy: .public)")
         self.timingSink?(event)
+    }
+
+    func addToRunningRequest(_ entry: OutboxEntry) async throws {
+        guard self.isDelivering, let connection else { throw ChatGatewayError.offline }
+        _ = try await connection.sendMessage(entry.text, idempotencyKey: entry.idempotencyKey)
+        self.addedRunIDs.insert(entry.idempotencyKey)
+        self.logger.info("[gateway] added a message to the running request runID=\(entry.idempotencyKey, privacy: .public)")
+    }
+
+    func letGoOfConnection() async {
+        guard let connection else { return }
+        self.logger.info("[gateway] letting go of the connection delivering=\(self.isDelivering)")
+        await connection.disconnect()
+        self.connection = nil
     }
 
     func stop() async {
