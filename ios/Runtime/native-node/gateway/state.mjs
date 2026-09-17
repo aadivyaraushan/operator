@@ -7,7 +7,9 @@ import {OPERATOR_GUIDANCE_END, OPERATOR_GUIDANCE_HEADING, OPERATOR_GUIDANCE_STAR
 /// wording. Three shapes are handled: a marked section is replaced in place;
 /// a section from before the markers (heading to end of file, which is where
 /// staging appended it) is replaced once and gains the markers; a file with
-/// neither is left for OpenClaw, which seeds it from the template. Anything
+/// neither gains the section at its end, since a phone set up before the
+/// guidance existed would otherwise never get it. A missing file is left for
+/// OpenClaw, which seeds it from the template. Anything
 /// outside the section is the owner's and is preserved byte for byte.
 export function refreshWorkspaceGuidance(workspace) {
   const file = path.join(workspace, 'AGENTS.md');
@@ -22,8 +24,9 @@ export function refreshWorkspaceGuidance(workspace) {
     next = current.slice(0, start) + section + current.slice(end + OPERATOR_GUIDANCE_END.length);
   } else {
     const legacy = current.indexOf(`\n${OPERATOR_GUIDANCE_HEADING}`);
-    if (legacy < 0) return false;
-    next = `${current.slice(0, legacy).trimEnd()}\n${section}\n`;
+    next = legacy < 0
+      ? `${current.trimEnd()}\n\n${section}\n`
+      : `${current.slice(0, legacy).trimEnd()}\n${section}\n`;
   }
   if (next === current) return false;
   fs.writeFileSync(file, next, {mode: 0o600});

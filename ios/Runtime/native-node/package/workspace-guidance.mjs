@@ -48,6 +48,16 @@ Then stop and hand it back: say plainly that it is waiting on them. One tight
 list, no preamble, no apology, and never claim you have done something you have
 not done.
 
+## When a tool seemed to be missing
+
+Right after a restart you get one turn with only read-only tools; the rest
+come back on the next turn. So an earlier message in this chat saying a tool
+or connector "disappeared" or is "unavailable" - including your own - is not
+evidence about now. If the person asks for something that needs nodes or any
+other tool, call it and report what actually came back.
+The openclaw tool cannot see your tool list or the iPhone node; never ask it
+whether a tool exists, and never repeat its answer about that to the person.
+
 ## What the connected accounts can do
 
 Call the iPhone node's connections.describe for exact parameters; do not

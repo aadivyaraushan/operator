@@ -206,12 +206,26 @@ test('a marked section is replaced in place and text the owner wrote after it is
   assert.ok(refreshed.endsWith('## Quiet hours\n\nNever text after 23:00.\n'));
 });
 
-test('a workspace with no Operator section, or no AGENTS.md, is left alone', t => {
+// A phone set up before the guidance existed has an AGENTS.md with no
+// Operator section; left alone, it never learns any of it.
+test('a missing AGENTS.md is left for OpenClaw to seed; one with no Operator section gains it after the owner\'s text', t => {
   const state = sandbox(t);
   prepareState(state);
   const workspace = path.join(state, 'workspace');
   assert.equal(refreshWorkspaceGuidance(workspace), false);
+  assert.equal(fs.existsSync(path.join(workspace, 'AGENTS.md')), false);
   fs.writeFileSync(path.join(workspace, 'AGENTS.md'), '# Mine\n');
+  assert.equal(refreshWorkspaceGuidance(workspace), true);
+  assert.equal(fs.readFileSync(path.join(workspace, 'AGENTS.md'), 'utf8'), `# Mine\n\n${OPERATOR_WORKSPACE_GUIDANCE.trim()}\n`);
   assert.equal(refreshWorkspaceGuidance(workspace), false);
-  assert.equal(fs.readFileSync(path.join(workspace, 'AGENTS.md'), 'utf8'), '# Mine\n');
+});
+
+// After a restart OpenClaw runs one recovery turn with only read-only tools.
+// The agent wrote "the Gmail connector disappeared" in that turn and then
+// believed its own message for hours while the nodes tool was back.
+test('the guidance says a tool missing in an earlier turn must be tried again, not assumed gone', () => {
+  assert.match(OPERATOR_WORKSPACE_GUIDANCE, /## When a tool seemed to be missing/);
+  assert.match(OPERATOR_WORKSPACE_GUIDANCE, /after a restart/i);
+  assert.match(OPERATOR_WORKSPACE_GUIDANCE, /call it/i);
+  assert.match(OPERATOR_WORKSPACE_GUIDANCE, /openclaw tool cannot see/i);
 });
