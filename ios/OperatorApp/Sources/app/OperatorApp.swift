@@ -58,6 +58,7 @@ struct OperatorApp: App {
     @StateObject private var canvas: CanvasAccountSetupModel
     private let canvasSession: CanvasSessionStore
     @StateObject private var permissions: ConnectorPermissionCenter
+    @StateObject private var shortcutSend: ShortcutSendCoordinator
     private let locationNode: LocalLocationNodeGateway
     /// Answers the "Send to X on WhatsApp?" and "Operator has a question"
     /// notifications; the notification center holds its delegate weakly, so
@@ -95,8 +96,11 @@ struct OperatorApp: App {
         // Readers that put nothing on screen may run while a reply is being
         // kept alive in the background. Anything that presents an alert, a
         // permission prompt, a composer or another app keeps the strict check.
+        // A send shortcut in flight keeps the runtime alive across the hop to
+        // the Shortcuts app, the same way a reply continuation does.
+        let shortcutSend = ShortcutSendCoordinator(runner: SystemShortcutRunner())
         let isActiveOrContinuing: @MainActor @Sendable () -> Bool = {
-            UIApplication.shared.applicationState == .active || continuation.isActive
+            UIApplication.shared.applicationState == .active || continuation.isActive || shortcutSend.isSending
         }
         let isOnScreen: @MainActor @Sendable () -> Bool = { UIApplication.shared.applicationState == .active }
         let chat = ChatSessionModel(
@@ -274,7 +278,7 @@ struct OperatorApp: App {
         let notificationResponses = NotificationResponseRouter(handlers: [sendConfirmations, questionResponses])
         UNUserNotificationCenter.current().delegate = notificationResponses
         let messageSend = ForegroundMessageSendService(
-            runner: SystemShortcutRunner(),
+            coordinator: shortcutSend,
             isAppActive: { UIApplication.shared.applicationState == .active })
         let locationNode = LocalLocationNodeGateway(
             url: gatewayURL,
@@ -345,6 +349,7 @@ struct OperatorApp: App {
         _canvas = StateObject(wrappedValue: canvasSetup)
         self.canvasSession = canvasSession
         _permissions = StateObject(wrappedValue: permissions)
+        _shortcutSend = StateObject(wrappedValue: shortcutSend)
         _whatsapp = StateObject(wrappedValue: WhatsAppLinkFlowModel(
             gateway: NativeWhatsAppLinkClient(supportDirectory: supportDirectory)))
     }
@@ -356,6 +361,14 @@ struct OperatorApp: App {
                     // Shortcuts returning from sms.send. The only thing known
                     // is what Shortcuts reported; it goes in the session log.
                     if let outcome = ForegroundMessageSendService.callbackOutcome(url) {
+                        // Resume the sms.send tool call that is waiting on this,
+                        // so the model's turn continues with the real result.
+                        let resolved: ShortcutSendCoordinator.Outcome = switch outcome {
+                        case "success": .success
+                        case "error": .error
+                        default: .cancel
+                        }
+                        self.shortcutSend.resolve(resolved)
                         self.permissions.recordExternalOutcome(
                             connector: .messagesAutosend, access: .write,
                             command: "\(GatewayNativeNodeSurface.messageSendCommand) shortcut \(outcome)",
@@ -368,7 +381,7 @@ struct OperatorApp: App {
                     if phase == .active {
                         self.runtimeIsForeground = true
                         self.permissions.ownerReturnedToApp()
-                    } else if phase == .background, !self.continuation.isActive {
+                    } else if phase == .background, !self.continuation.isActive, !self.shortcutSend.isSending {
                         self.runtimeIsForeground = false
                     }
                     // With a reply in flight the transition waits for the
@@ -378,7 +391,15 @@ struct OperatorApp: App {
                     // The task ended (reply, failure, or the system expired
                     // it) while the app is not in front: apply the deferred
                     // background transition now.
-                    if !isActive, self.scenePhase == .background {
+                    if !isActive, self.scenePhase == .background, !self.shortcutSend.isSending {
+                        self.runtimeIsForeground = false
+                    }
+                }
+                .onChange(of: self.shortcutSend.isSending) { _, isSending in
+                    // A send shortcut finished while Operator was still in the
+                    // background (Shortcuts did not return to it): apply the
+                    // deferred transition now, as the continuation does.
+                    if !isSending, self.scenePhase == .background, !self.continuation.isActive {
                         self.runtimeIsForeground = false
                     }
                 }

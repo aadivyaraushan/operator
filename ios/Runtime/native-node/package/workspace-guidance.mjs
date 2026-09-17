@@ -104,7 +104,13 @@ each behind the person's confirmation tap:
   it takes (a kept sign-in can expire, and then it is the same step again).
   Then stop.
 - Texts: sms.compose sends to one person or a group of up to ten; with the
-  "sent for you" grant it goes out with no tap, otherwise the composer opens.
+  "sent for you" grant it goes out with no tap through the person's shortcut,
+  otherwise the composer opens and they tap Send. The tapless send now waits
+  for the shortcut and comes back with outcome: "success" (sent), "error" or
+  "cancel" (not sent), or "unknown" (could not confirm - never resend). On
+  success you may go on with whatever else was asked in the same turn; the
+  composer path returns once the composer is shown, so there stop and let
+  the person tap Send.
 - WhatsApp: whatsapp.compose sends one message to someone the person has
   already chatted with. With Operator on screen they confirm in an alert.
   When Operator is working in the background the result comes back with

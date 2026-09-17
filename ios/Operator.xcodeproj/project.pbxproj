@@ -97,6 +97,7 @@
 		927E4629901EF1BA4F78240B /* NativeNotionSetupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D490F4DB23A72D1FB9731241 /* NativeNotionSetupCoordinator.swift */; };
 		92BFBCCD34A8D9FE09040AD7 /* LoopbackPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BE69740E2DDC14AE4876FE3 /* LoopbackPort.swift */; };
 		951A0E155F073F63DE0A69E9 /* NotionNodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A816D04CA467DDAB4D4ADAEC /* NotionNodeTests.swift */; };
+		971150110A790949ACF819B6 /* ShortcutSendCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFC5B2EA0AD82A07C35958C4 /* ShortcutSendCoordinator.swift */; };
 		976D9A3CB299B486F06CE930 /* LiveNotionSpotifyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ABE8E24F2E4D5ECA767C7B3 /* LiveNotionSpotifyTests.swift */; };
 		9A726EF954FE2A991803299B /* ForegroundDeviceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9E3D881095DD2A08566CBAE /* ForegroundDeviceService.swift */; };
 		9DD7EB7D50A1F516DA87BC40 /* NativeAccountSetupCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EFCEC0ED2A7FEA62302B8D /* NativeAccountSetupCoordinatorTests.swift */; };
@@ -363,6 +364,7 @@
 		CDEBFC827D5CF6DD89F8A2B9 /* ForegroundAccountReadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundAccountReadService.swift; sourceTree = "<group>"; };
 		CE395A0D665898A3DEE8B501 /* ForegroundMessageComposeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMessageComposeService.swift; sourceTree = "<group>"; };
 		CF4E7F6DCFD0B1441C04DF8C /* SystemContactCreatePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemContactCreatePresenter.swift; sourceTree = "<group>"; };
+		CFC5B2EA0AD82A07C35958C4 /* ShortcutSendCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutSendCoordinator.swift; sourceTree = "<group>"; };
 		CFD68089BBBF22747CF5D120 /* SystemMessageComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemMessageComposer.swift; sourceTree = "<group>"; };
 		D1A0C43953E827ADD2C2E944 /* CanvasGuidedTokenSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasGuidedTokenSetup.swift; sourceTree = "<group>"; };
 		D442566C1D40BDCD8DCD8459 /* ForegroundAppHandoffService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundAppHandoffService.swift; sourceTree = "<group>"; };
@@ -1358,6 +1360,7 @@
 				CE395A0D665898A3DEE8B501 /* ForegroundMessageComposeService.swift */,
 				D6BECAAB613F39B7900BC7D5 /* ForegroundMessageDispatchService.swift */,
 				ACA417B76B5DE642B37CAF40 /* ForegroundMessageSendService.swift */,
+				CFC5B2EA0AD82A07C35958C4 /* ShortcutSendCoordinator.swift */,
 				CFD68089BBBF22747CF5D120 /* SystemMessageComposer.swift */,
 				0D8ADAEEBA012EDA302A0337 /* incoming */,
 			);
@@ -1446,7 +1449,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_6D681533-61CA-4020-8B83-039EF5148CA6" /* embedded */ = {
+		"TEMP_ACDCD568-BFFE-4D31-BFDC-69F0A7D553C2" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1767,6 +1770,7 @@
 				DAFCE568B53F22106F8ACDCE /* ReplyContinuation.swift in Sources */,
 				E02278F6D8BC696D9F8284EC /* ReplyNotifier.swift in Sources */,
 				2D6FE837716901D4C5020E23 /* SendConfirmationNotifier.swift in Sources */,
+				971150110A790949ACF819B6 /* ShortcutSendCoordinator.swift in Sources */,
 				F7F4BF5D98E4308A2CB5F01B /* SystemAccountWriteConfirmationPresenter.swift in Sources */,
 				D59BDDE6E77F1538CD4B9792 /* SystemAppHandoffOpener.swift in Sources */,
 				0B0FAA7524FE0381259D49D9 /* SystemContactCreatePresenter.swift in Sources */,

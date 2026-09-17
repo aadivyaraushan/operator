@@ -163,10 +163,10 @@ public enum ConnectorCatalog {
               readCommands: [], writeCommands: ["sms.send"],
               systemPermission: nil, requiresAccount: false,
               setupInstructions: """
-              Needs a shortcut named "OperatorSendMessage" in the Shortcuts app. Tap Install shortcut, then Add Shortcut. \
-              The first send will ask you once to let the shortcut send messages. \
-              Building it by hand instead: Get Dictionary from Input; Get Dictionary Value "body"; Get Dictionary Value "to"; \
-              Send Message with that body to that recipient, "Show When Run" off.
+              Two taps: tap Install shortcut, then Add Shortcut on the page that opens. Come back to Operator and this turns on by itself. \
+              The very first send asks you once to let the shortcut send messages; tap Allow, and after that it is silent. \
+              Prefer not to install it? Leave this off and Operator opens the message with Send ready for your tap instead. \
+              Building the shortcut by hand instead: new shortcut named "OperatorSendMessage"; Get Dictionary from Input; Get Dictionary Value "body"; Get Dictionary Value "to"; Send Message with that body to that recipient; turn "Show When Run" off.
               """),
         .init(id: .maps, title: "Maps",
               readSummary: nil,

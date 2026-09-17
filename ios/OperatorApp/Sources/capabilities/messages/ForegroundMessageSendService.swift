@@ -56,12 +56,12 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
         let body: String
     }
 
-    private let runner: any ShortcutRunner
+    private let coordinator: ShortcutSendCoordinator
     private let isAppActive: @MainActor @Sendable () -> Bool
     private let logger = Logger(subsystem: "app.operator.ios", category: "message-send")
 
-    init(runner: any ShortcutRunner, isAppActive: @escaping @MainActor @Sendable () -> Bool) {
-        self.runner = runner
+    init(coordinator: ShortcutSendCoordinator, isAppActive: @escaping @MainActor @Sendable () -> Bool) {
+        self.coordinator = coordinator
         self.isAppActive = isAppActive
     }
 
@@ -80,16 +80,33 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
         guard let url = Self.shortcutURL(recipients: parameters.recipients, body: parameters.body) else {
             return .failure(code: "INVALID_REQUEST", message: "The message could not be encoded for the shortcut")
         }
-        guard await self.runner.run(url) else {
+        self.logger.info("[message-send] handing to shortcut recipients=\(parameters.recipients.count) body_bytes=\(parameters.body.utf8.count)")
+        // Waits for the shortcut to come back, so the model can continue after
+        // the send. The process is kept alive across the hop; see the coordinator.
+        let outcome = await self.coordinator.send(url)
+        switch outcome {
+        case .couldNotOpen:
             self.logger.info("[message-send] shortcut could not be opened")
             return .failure(
                 code: "SHORTCUT_UNAVAILABLE",
                 message: "The \"\(Self.shortcutName)\" shortcut could not be opened. The person has to create it once in the Shortcuts app; the steps are on Operator's Permissions page under \"\(ConnectorCatalog.descriptor(.messagesAutosend).title)\". Nothing was sent.")
+        case .success:
+            return .success(payloadJSON: """
+            {"handedToShortcut":true,"sent":true,"outcome":"success","deliveryVerified":false,"nextStep":"The shortcut ran and handed the message to Messages without asking. Say it was sent; do not say it was delivered, because delivery is not reported. You may continue with anything else the person asked."}
+            """)
+        case .error:
+            return .success(payloadJSON: """
+            {"handedToShortcut":true,"sent":false,"outcome":"error","deliveryVerified":false,"nextStep":"The send shortcut reported an error, so nothing was sent. Tell the person plainly; do not retry on your own."}
+            """)
+        case .cancel:
+            return .success(payloadJSON: """
+            {"handedToShortcut":true,"sent":false,"outcome":"cancel","deliveryVerified":false,"nextStep":"The send was cancelled, so nothing was sent. Tell the person."}
+            """)
+        case .timedOut:
+            return .success(payloadJSON: """
+            {"handedToShortcut":true,"sent":false,"outcome":"unknown","deliveryVerified":false,"nextStep":"The shortcut did not report back, so whether it sent is not known. Say you cannot confirm it; do not resend, which could send it twice."}
+            """)
         }
-        self.logger.info("[message-send] handed to shortcut recipients=\(parameters.recipients.count) body_bytes=\(parameters.body.utf8.count)")
-        return .success(payloadJSON: """
-        {"handedToShortcut":true,"sent":false,"deliveryVerified":false,"nextStep":"The message was handed to the person's \\"\(Self.shortcutName)\\" shortcut, which sends it without asking them. Say it was handed off for sending; do not say it was delivered, because that is not known."}
-        """)
     }
 
     /// shortcuts://x-callback-url/run-shortcut, with the message as a JSON

@@ -8,19 +8,46 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
     private final class FakeRunner: ShortcutRunner {
         var opens: [URL] = []
         var result = true
+        let coordinator: ShortcutSendCoordinator
+        /// The outcome the callback delivers once the shortcut "opens"; nil
+        /// leaves the wait hanging (for the timeout test).
+        var callback: ShortcutSendCoordinator.Outcome? = .success
+        init() {
+            let box = Box()
+            self.coordinator = ShortcutSendCoordinator(runner: box, timeout: .milliseconds(200))
+            box.owner = self
+        }
         func run(_ url: URL) async -> Bool { self.opens.append(url); return self.result }
+        /// Bridges the coordinator's runner call back to this fake, then plays
+        /// the callback the app would deliver from onOpenURL.
+        final class Box: ShortcutRunner {
+            weak var owner: FakeRunner?
+            func run(_ url: URL) async -> Bool {
+                guard let owner else { return false }
+                let opened = await owner.run(url)
+                if opened, let outcome = owner.callback {
+                    Task { @MainActor in owner.coordinator.resolve(outcome) }
+                }
+                return opened
+            }
+        }
+    }
+
+    private func service(_ runner: FakeRunner, isAppActive: @escaping @MainActor @Sendable () -> Bool = { true }) -> ForegroundMessageSendService {
+        ForegroundMessageSendService(coordinator: runner.coordinator, isAppActive: isAppActive)
     }
 
     func testHandsTheMessageToTheNamedShortcutAndNeverClaimsDelivery() async throws {
         let runner = FakeRunner()
-        let service = ForegroundMessageSendService(runner: runner, isAppActive: { true })
+        let service = self.service(runner)
 
         let result = await service.handleNodeCommand("sms.send", paramsJSON: #"{"recipient":" +1 217 555 0100 ","body":"running late, 10 min"}"#, timeoutMilliseconds: nil)
 
         guard case let .success(payload) = result else { return XCTFail("expected success") }
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [String: Any])
         XCTAssertEqual(object["handedToShortcut"] as? Bool, true)
-        XCTAssertEqual(object["sent"] as? Bool, false)
+        XCTAssertEqual(object["sent"] as? Bool, true, "x-success means the shortcut ran")
+        XCTAssertEqual(object["outcome"] as? String, "success")
         XCTAssertEqual(object["deliveryVerified"] as? Bool, false)
         XCTAssertTrue((object["nextStep"] as? String ?? "").contains("do not say it was delivered"))
 
@@ -41,7 +68,7 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
 
     func testAGroupIsHandedToTheShortcutAsAListOfRecipients() async throws {
         let runner = FakeRunner()
-        let service = ForegroundMessageSendService(runner: runner, isAppActive: { true })
+        let service = self.service(runner)
         let result = await service.handleNodeCommand("sms.send", paramsJSON: #"{"recipients":[" +12175550100 ","ann@example.com"],"body":"dinner at 7?"}"#, timeoutMilliseconds: nil)
         guard case .success = result else { return XCTFail("expected success, got \(result)") }
         let url = try XCTUnwrap(runner.opens.first)
@@ -55,7 +82,7 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
 
     func testRefusesBadShapesBeforeTouchingShortcuts() async throws {
         let runner = FakeRunner()
-        let service = ForegroundMessageSendService(runner: runner, isAppActive: { true })
+        let service = self.service(runner)
         let eleven = (1...11).map { "\"+1217555010\($0)\"" }.joined(separator: ",")
         for params in [
             nil, "", "not json", "[]",
@@ -79,7 +106,7 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
     func testAMissingShortcutIsReportedAsSetupNotAsAFailedSend() async throws {
         let runner = FakeRunner()
         runner.result = false
-        let service = ForegroundMessageSendService(runner: runner, isAppActive: { true })
+        let service = self.service(runner)
 
         let result = await service.handleNodeCommand("sms.send", paramsJSON: #"{"recipient":"+1","body":"hi"}"#, timeoutMilliseconds: nil)
 
@@ -91,12 +118,50 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
 
     func testInactiveAppAndOtherCommandsAreRefused() async throws {
         let runner = FakeRunner()
-        let inactive = ForegroundMessageSendService(runner: runner, isAppActive: { false })
+        let inactive = self.service(runner, isAppActive: { false })
         guard case let .failure(code, _) = await inactive.handleNodeCommand("sms.send", paramsJSON: #"{"recipient":"+1","body":"hi"}"#, timeoutMilliseconds: nil) else { return XCTFail() }
         XCTAssertEqual(code, "APP_NOT_ACTIVE")
         guard case let .failure(other, _) = await inactive.handleNodeCommand("sms.compose", paramsJSON: nil, timeoutMilliseconds: nil) else { return XCTFail() }
         XCTAssertEqual(other, "UNSUPPORTED_COMMAND")
         XCTAssertEqual(runner.opens, [])
+    }
+
+    func testTheShortcutsOutcomeIsReturnedSoTheModelKnowsAndCanContinue() async throws {
+        for (outcome, sent, label) in [(ShortcutSendCoordinator.Outcome.error, false, "error"), (.cancel, false, "cancel")] {
+            let runner = FakeRunner()
+            runner.callback = outcome
+            let result = await self.service(runner).handleNodeCommand("sms.send", paramsJSON: #"{"recipient":"+1","body":"hi"}"#, timeoutMilliseconds: nil)
+            guard case let .success(payload) = result else { return XCTFail("expected a payload for \(label)") }
+            let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [String: Any])
+            XCTAssertEqual(object["sent"] as? Bool, sent, label)
+            XCTAssertEqual(object["outcome"] as? String, label)
+        }
+    }
+
+    func testNoCallbackTimesOutAsUnknownRatherThanClaimingASend() async throws {
+        let runner = FakeRunner()
+        runner.callback = nil // the shortcut never reports back
+        let result = await self.service(runner).handleNodeCommand("sms.send", paramsJSON: #"{"recipient":"+1","body":"hi"}"#, timeoutMilliseconds: nil)
+        guard case let .success(payload) = result else { return XCTFail("expected a payload") }
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [String: Any])
+        XCTAssertEqual(object["sent"] as? Bool, false)
+        XCTAssertEqual(object["outcome"] as? String, "unknown")
+        XCTAssertTrue((object["nextStep"] as? String ?? "").contains("do not resend"))
+    }
+
+    func testCoordinatorReportsSendingAcrossTheHopThenClears() async throws {
+        let runner = FakeRunner()
+        runner.callback = nil
+        let coordinator = runner.coordinator
+        XCTAssertFalse(coordinator.isSending)
+        async let outcome = coordinator.send(URL(string: "shortcuts://x-callback-url/run-shortcut")!)
+        // Give the open a moment, then resolve as the app would.
+        try await Task.sleep(for: .milliseconds(20))
+        XCTAssertTrue(coordinator.isSending, "the runtime is kept alive while a send is out")
+        coordinator.resolve(.success)
+        let result = await outcome
+        XCTAssertEqual(result, .success)
+        XCTAssertFalse(coordinator.isSending)
     }
 
     func testCallbackOutcomesAreRecognisedOnlyOnOperatorsOwnScheme() {
