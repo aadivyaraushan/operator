@@ -15,6 +15,7 @@ public actor OpenClawNodeConnection {
     /// The tools to offer the model, read fresh on every publish so a grant
     /// the owner changes mid-session takes effect on the next republish.
     private let agentTools: @Sendable () -> [GatewayNodeAgentToolDescriptor]
+    private let handshakeTimeoutMilliseconds: Int
     private let logger = Logger(subsystem: "app.operator.ios", category: "location-node")
     private var bufferedFrames: [Data] = []
 
@@ -29,9 +30,11 @@ public actor OpenClawNodeConnection {
             try? await Task.sleep(for: .milliseconds(250))
         },
         approveOwnDeviceRole: @escaping @Sendable () async throws -> Void = {},
-        agentTools: @escaping @Sendable () -> [GatewayNodeAgentToolDescriptor] = { GatewayNodeAgentTools.descriptors })
+        agentTools: @escaping @Sendable () -> [GatewayNodeAgentToolDescriptor] = { GatewayNodeAgentTools.descriptors },
+        handshakeTimeoutMilliseconds: Int = GatewayDeadline.defaultMilliseconds)
     {
         self.agentTools = agentTools
+        self.handshakeTimeoutMilliseconds = handshakeTimeoutMilliseconds
         self.transport = transport
         self.token = token
         self.identity = identity
@@ -48,7 +51,9 @@ public actor OpenClawNodeConnection {
         while true {
             self.logger.info("[location-node] opening local node websocket")
             do {
-                try await self.connectOnce()
+                try await GatewayDeadline.handshake(milliseconds: self.handshakeTimeoutMilliseconds) {
+                    try await self.connectOnce()
+                }
                 return
             } catch {
                 self.isConnected = false

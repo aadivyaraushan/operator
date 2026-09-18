@@ -22,6 +22,26 @@ public enum GatewayDeadline {
         max(1, min(requested ?? Self.defaultMilliseconds, Self.maximumMilliseconds))
     }
 
+    /// Bounds a gateway handshake. A socket opened while the gateway restarts
+    /// (it does after every config change) is accepted and then silent; the
+    /// wait for its challenge has no other end, and a node route stuck here
+    /// never re-registered. Throws `handshakeTimedOut` when the deadline wins.
+    public static func handshake(
+        milliseconds: Int,
+        _ work: @escaping @Sendable () async throws -> Void) async throws
+    {
+        let outcome: Result<Void, any Error>? = await Self.run(milliseconds: milliseconds) {
+            do {
+                try await work()
+                return .success(())
+            } catch {
+                return .failure(error)
+            }
+        }
+        guard let outcome else { throw OpenClawGatewayError.handshakeTimedOut }
+        try outcome.get()
+    }
+
     /// Runs `work` under a deadline, returning nil if the deadline passes
     /// first. The losing task is cancelled. A framework call that ignores
     /// cancellation may still finish later, but it cannot keep the caller

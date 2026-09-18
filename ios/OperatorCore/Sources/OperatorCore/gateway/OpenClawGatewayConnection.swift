@@ -23,6 +23,9 @@ public struct GatewayConnectionMetadata: Equatable, Sendable {
 public enum OpenClawGatewayError: Error, Equatable, Sendable {
     case invalidChallenge
     case invalidFrame
+    /// The socket opened but the gateway never finished the handshake.
+    /// Seen while the gateway restarts after a config change.
+    case handshakeTimedOut
     case notConnected
     case recoveryPending
     case rejected(code: String, message: String)
@@ -59,6 +62,7 @@ public actor OpenClawGatewayConnection {
     private let sessionKey: String
     private let requestID: @Sendable () -> String
     private let pairingRetryDelay: @Sendable () async -> Void
+    private let handshakeTimeoutMilliseconds: Int
     private let logger = Logger(subsystem: "app.operator.ios", category: "gateway")
     private let typedRequestQueue = TypedRequestQueue()
     private var reducer: GatewayEventReducer
@@ -79,7 +83,8 @@ public actor OpenClawGatewayConnection {
         requestID: @escaping @Sendable () -> String = { UUID().uuidString.lowercased() },
         pairingRetryDelay: @escaping @Sendable () async -> Void = {
             try? await Task.sleep(for: .milliseconds(250))
-        })
+        },
+        handshakeTimeoutMilliseconds: Int = GatewayDeadline.defaultMilliseconds)
     {
         self.transport = transport
         self.token = token
@@ -88,6 +93,7 @@ public actor OpenClawGatewayConnection {
         self.sessionKey = sessionKey
         self.requestID = requestID
         self.pairingRetryDelay = pairingRetryDelay
+        self.handshakeTimeoutMilliseconds = handshakeTimeoutMilliseconds
         self.reducer = GatewayEventReducer(sessionKey: sessionKey)
     }
 
@@ -97,7 +103,9 @@ public actor OpenClawGatewayConnection {
         while true {
             self.logger.info("[gateway] opening local websocket")
             do {
-                try await self.connectOnce()
+                try await GatewayDeadline.handshake(milliseconds: self.handshakeTimeoutMilliseconds) {
+                    try await self.connectOnce()
+                }
                 return
             } catch {
                 self.isConnected = false

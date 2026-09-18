@@ -296,7 +296,7 @@ actor LocalModelSetupGateway: ModelSetupGateway {
                 self.logger.debug("[setup] saved configuration is not active yet")
             } catch let error as OpenClawGatewayError {
                 switch error {
-                case .transport, .notConnected: break
+                case .transport, .notConnected, .handshakeTimedOut: break
                 default: throw error
                 }
                 self.logger.debug("[setup] gateway transport unavailable during verification")
