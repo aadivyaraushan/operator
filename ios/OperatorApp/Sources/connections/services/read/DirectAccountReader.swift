@@ -53,7 +53,7 @@ actor DirectAccountReader {
         guard data.count <= 512_000 else { throw AccountReadError.invalidResponse }
         if input.operation == .spotifyPlayback, http.statusCode == 204 { return .init(payloadJSON: "[]", count: 0, nextCursor: nil) }
         switch http.statusCode { case 200: break; case 401: throw AccountReadError.notConnected; case 403: throw AccountReadError.permissionDenied; case 429: throw AccountReadError.rateLimited(retryAfterSeconds: max(1, Int(http.value(forHTTPHeaderField: "Retry-After") ?? "") ?? 1)); case 500...599: throw AccountReadError.unavailable; default: throw AccountReadError.unavailable }
-        return try self.page(data, input: input)
+        return try await self.page(data, input: input)
     }
 
     private func valid(_ r: AccountReadRequest) -> Bool {
@@ -325,7 +325,7 @@ actor DirectAccountReader {
         var c=URLComponents(string:base)!; c.path=path; c.queryItems=items; guard let url=c.url else { throw AccountReadError.invalidRequest }; return url
     }
 
-    private func page(_ data: Data, input: AccountReadRequest) throws -> AccountReadPage {
+    private func page(_ data: Data, input: AccountReadRequest) async throws -> AccountReadPage {
         guard let object = try? JSONSerialization.jsonObject(with:data) as? [String:Any] else { throw AccountReadError.invalidResponse }
         if input.operation == .slackChannels || input.operation == .slackHistory { guard object["ok"] as? Bool == true else { throw AccountReadError.unavailable } }
         let array: [Any]?; let next: String?
@@ -347,9 +347,103 @@ actor DirectAccountReader {
         case .spotifyPlayback: array = object.isEmpty ? nil : [object]; next=nil
         }
         guard let array, array.count <= input.limit else { throw AccountReadError.invalidResponse }
-        let safe = array.compactMap { self.sanitize($0, operation: input.operation) }
-        guard safe.count == array.count, let encoded = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]), encoded.count <= 256_000 else { throw AccountReadError.invalidResponse }
+        var safe = array.compactMap { self.sanitize($0, operation: input.operation) }
+        guard safe.count == array.count else { throw AccountReadError.invalidResponse }
+        switch input.operation {
+        case .slackChannels: safe = await self.slackChannelsWithUnreadState(safe)
+        case .slackHistory: safe = await self.slackHistoryWithReadStateAndNames(safe, channel: input.channel ?? "")
+        default: break
+        }
+        guard let encoded = try? JSONSerialization.data(withJSONObject: safe, options: [.sortedKeys]), encoded.count <= 256_000 else { throw AccountReadError.invalidResponse }
         return .init(payloadJSON:String(decoding: encoded, as: UTF8.self),count:safe.count,nextCursor:next?.isEmpty == true ? nil : next)
+    }
+
+    // MARK: Slack read state and names
+    //
+    // conversations.list and conversations.history say nothing about what the
+    // person has seen. conversations.info (user token) carries the channel's
+    // last_read and unread_count; a message newer than last_read is unread.
+    // users.info turns a user id into a name. Both are extras: if a lookup
+    // fails the row goes out without that field rather than failing the read,
+    // and a message is never marked read or unread by guessing.
+
+    private static let slackChannelStateKeys: Set<String> = ["last_read", "unread_count", "unread_count_display"]
+
+    private func slackChannelsWithUnreadState(_ rows: [[String: Any]]) async -> [[String: Any]] {
+        let ids = rows.map { $0["id"] as? String ?? "" }
+        let states = await self.slackLookup(ids.filter { !$0.isEmpty }) { id in
+            try await self.slackObject(path: "/api/conversations.info", query: [.init(name: "channel", value: id)], key: "channel")
+        }
+        self.logger.info("[account-read] slack channel state channels=\(ids.count) resolved=\(states.count)")
+        return zip(rows, ids).map { row, id in
+            var row = row
+            for (key, value) in states[id] ?? [:] where Self.slackChannelStateKeys.contains(key) && Self.safeJSON(value) { row[key] = value }
+            return row
+        }
+    }
+
+    private func slackHistoryWithReadStateAndNames(_ rows: [[String: Any]], channel: String) async -> [[String: Any]] {
+        let state = await self.slackLookup([channel]) { id in
+            try await self.slackObject(path: "/api/conversations.info", query: [.init(name: "channel", value: id)], key: "channel")
+        }[channel] ?? [:]
+        let users = Array(Set(rows.compactMap { $0["user"] as? String }))
+        let names = await self.slackLookup(users) { id in
+            try await self.slackObject(path: "/api/users.info", query: [.init(name: "user", value: id)], key: "user")
+        }
+        let lastRead = state["last_read"] as? String
+        self.logger.info("[account-read] slack history state hasLastRead=\(lastRead != nil) senders=\(users.count) named=\(names.count)")
+        return rows.map { row in
+            var row = row
+            if let lastRead, let ts = row["ts"] as? String {
+                row["unread"] = Self.slackTimestamp(ts) > Self.slackTimestamp(lastRead)
+                row["channel_last_read"] = lastRead
+            }
+            if let count = state["unread_count"], Self.safeJSON(count) { row["channel_unread_count"] = count }
+            if let user = row["user"] as? String, let person = names[user] {
+                let name = [person["real_name"], (person["profile"] as? [String: Any])?["display_name"], person["name"]]
+                    .compactMap { $0 as? String }.first { !$0.isEmpty }
+                if let name, Self.safeJSON(name) { row["user_name"] = name }
+            }
+            return row
+        }
+    }
+
+    /// Slack timestamps are "seconds.sequence" strings; comparing them as
+    /// text fails once the integer part changes length, so split them.
+    private static func slackTimestamp(_ value: String) -> (Int, Int) {
+        let parts = value.split(separator: ".", maxSplits: 1).map { Int($0) ?? 0 }
+        return (parts.first ?? 0, parts.count > 1 ? parts[1] : 0)
+    }
+
+    /// Looks every id up at once (the actor releases at each await, so these
+    /// overlap) and keeps only the ones that answered. Only Data crosses the
+    /// task boundary; [String: Any] is not Sendable.
+    private func slackLookup(_ ids: [String], _ lookup: @escaping @Sendable (String) async throws -> Data) async -> [String: [String: Any]] {
+        guard !ids.isEmpty else { return [:] }
+        let found: [String: Data] = await withTaskGroup(of: (String, Data)?.self) { group in
+            for id in ids {
+                group.addTask {
+                    guard let data = try? await lookup(id) else { return nil }
+                    return (id, data)
+                }
+            }
+            var collected: [String: Data] = [:]
+            for await item in group { if let (id, data) = item { collected[id] = data } }
+            return collected
+        }
+        return found.compactMapValues { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] }
+    }
+
+    /// The named object out of a Slack envelope, re-encoded as Data.
+    private func slackObject(path: String, query: [URLQueryItem], key: String) async throws -> Data {
+        var components = URLComponents(string: "https://slack.com")!
+        components.path = path; components.queryItems = query
+        guard let url = components.url else { throw AccountReadError.invalidRequest }
+        let data = try await self.fetch(url, provider: .slack, operation: .slackHistory, maximumBytes: 64_000)
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any], object["ok"] as? Bool == true,
+              let inner = object[key] as? [String: Any], let encoded = try? JSONSerialization.data(withJSONObject: inner)
+        else { throw AccountReadError.unavailable }
+        return encoded
     }
 
     private func microsoftCursor(_ link: String?, path: String) throws -> String? {
@@ -376,8 +470,8 @@ actor DirectAccountReader {
         case .gmailMessages: keys = []
         case .outlookInbox: keys = ["id", "subject", "from", "receivedDateTime", "bodyPreview"]
         case .outlookCalendarEvents: keys = ["id", "subject", "start", "end", "location", "isAllDay", "webLink", "organizer"]
-        case .slackChannels: keys = ["id", "name", "is_private", "is_archived", "topic", "purpose"]
-        case .slackHistory: keys = ["ts", "user", "text", "thread_ts"]
+        case .slackChannels: keys = ["id", "name", "is_private", "is_archived", "is_member", "is_im", "is_mpim", "num_members", "created", "updated", "topic", "purpose"]
+        case .slackHistory: keys = ["ts", "user", "bot_id", "username", "text", "subtype", "thread_ts", "reply_count", "reply_users_count", "latest_reply", "reactions", "edited", "pinned_to", "files"]
         case .spotifySearch: keys = ["id", "name", "artists", "album", "duration_ms", "external_urls"]
         case .spotifyPlayback: keys = ["device", "item", "is_playing", "progress_ms", "timestamp"]
         }

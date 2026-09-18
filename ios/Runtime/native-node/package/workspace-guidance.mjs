@@ -91,7 +91,13 @@ each behind the person's confirmation tap:
   outlookCalendarCreateEvent (subject, startRFC3339, endRFC3339 with the
   person's UTC offset, optional body); change one with
   outlookCalendarUpdateEvent and the id from a calendar read.
-- Slack: post a message. Spotify: start playback.
+- Slack: connections.read slackChannels lists channels with unread_count
+  (messages the person has not seen) and last_read; slackHistory rows carry
+  unread true/false, the sender's user_name, reply_count, reactions and
+  channel_unread_count. For "what's unread", read the channels, then the
+  history of each channel whose unread_count is above zero, and report the
+  rows marked unread. Reading never marks anything as read. Writes: post a
+  message. Spotify: start playback.
 - Apps: apps.open with name opens any app on the iPhone ("open google
   docs" -> name "Google Docs"). Use the app's store name. It only opens the
   app; you cannot see or do anything inside it, so say it is open and stop.

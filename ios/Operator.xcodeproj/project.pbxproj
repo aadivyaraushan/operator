@@ -135,6 +135,7 @@
 		CED0DD2CBF76656CC237E954 /* OperatorChatAppIntentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EB2EEF88717787396DCE133 /* OperatorChatAppIntentTests.swift */; };
 		D094A70A26404271B327BC24 /* ForegroundLocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CC5F95F8C505559D1B76A38 /* ForegroundLocationService.swift */; };
 		D0C18A9F479A13E26FE882E1 /* ForegroundWhatsAppReadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCBB7A0034CB9F86454E312 /* ForegroundWhatsAppReadService.swift */; };
+		D1C007E02391A31970079D5C /* SlackReadMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8063DA3D8BFF92F1CCB91836 /* SlackReadMetadataTests.swift */; };
 		D2AC8A1C88A2579BB183D1E3 /* ForegroundConnectionDiscoveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AF808F58E59888E570DC8A1 /* ForegroundConnectionDiscoveryService.swift */; };
 		D2DD599CBBEC5A2523EAB98C /* ForegroundPresentationHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251F85646597B5FF1146ED0C /* ForegroundPresentationHost.swift */; };
 		D2FE39CC2CD3BFD24A275863 /* DiscordAnnouncementsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCA0F3AC82EAE545D2FA2D2 /* DiscordAnnouncementsTests.swift */; };
@@ -313,6 +314,7 @@
 		7C364852820EA0EC2FD8162C /* WhatsAppLinkSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsAppLinkSheet.swift; sourceTree = "<group>"; };
 		7CC5F95F8C505559D1B76A38 /* ForegroundLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundLocationService.swift; sourceTree = "<group>"; };
 		7D3BF519B529306424C4EDE5 /* YouTubeMediaServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeMediaServices.swift; sourceTree = "<group>"; };
+		8063DA3D8BFF92F1CCB91836 /* SlackReadMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlackReadMetadataTests.swift; sourceTree = "<group>"; };
 		826145382FCAEBEB3B7439D1 /* ForegroundMusicService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMusicService.swift; sourceTree = "<group>"; };
 		826E52BF783031AB3018FF6C /* NativeReadServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeReadServiceTests.swift; sourceTree = "<group>"; };
 		828C58FCF6EC83564AEA420E /* WhatsAppLinkFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsAppLinkFlowTests.swift; sourceTree = "<group>"; };
@@ -468,6 +470,7 @@
 				85F96B9A535CAC3C5A1A3B55 /* DirectAccountReaderTests.swift */,
 				777FA2CF77340DA64BF18129 /* ForegroundAccountReadServiceTests.swift */,
 				BD8E98D2432240D788CF4F2A /* GoogleDriveContentReaderTests.swift */,
+				8063DA3D8BFF92F1CCB91836 /* SlackReadMetadataTests.swift */,
 			);
 			path = read;
 			sourceTree = "<group>";
@@ -1452,7 +1455,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_BEB70A91-F161-4579-AD41-4C8FF4105BA9" /* embedded */ = {
+		"TEMP_50360A28-9BE9-497A-A3AE-C39034EA2475" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1681,6 +1684,7 @@
 				63EB0E9E3C22DE2DF6E0B512 /* PhoneOAuthClientTests.swift in Sources */,
 				080B964E06F6A7EBCFC83B79 /* QuestionNotifierTests.swift in Sources */,
 				41A8A949CF0F2E5FABB3EB61 /* ReplyContinuationTests.swift in Sources */,
+				D1C007E02391A31970079D5C /* SlackReadMetadataTests.swift in Sources */,
 				24341752AAD7E050880843F2 /* SpotifyLoopbackSetupTests.swift in Sources */,
 				B300654E87D79A4B03A259F8 /* WhatsAppLinkFlowTests.swift in Sources */,
 				49AF45BACD7E0473CBAE247E /* WhatsAppSendGuardTests.swift in Sources */,
