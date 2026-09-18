@@ -132,6 +132,8 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         case .googleTasksUpdateTask: required = ["operation", "taskID"]; optional = ["list", "title", "notes", "due", "completed"]
         case .outlookCreateDraft: required = ["operation", "subject", "body"]; optional = []
         case .outlookSendMail: required = ["operation", "to", "subject", "body"]; optional = []
+        case .outlookCalendarCreateEvent: required = ["operation", "subject", "startRFC3339", "endRFC3339"]; optional = ["body"]
+        case .outlookCalendarUpdateEvent: required = ["operation", "eventID"]; optional = ["subject", "body", "startRFC3339", "endRFC3339"]
         case .slackPostMessage: required = ["operation", "channelID", "text"]; optional = []
         case .spotifyStartPlayback: required = ["operation", "trackURI"]; optional = ["deviceID"]
         }
@@ -194,6 +196,12 @@ extension DirectAccountWriter: AccountWriteExecuting {}
             request = .googleTasksUpdateTask(.init(list:list,taskID:id,title:title,notes:notes,due:due,completed:completed))
         case .outlookCreateDraft: guard let a=string("subject"),let b=string("body") else{return nil}; request = .outlookCreateDraft(.init(subject:a,body:b))
         case .outlookSendMail: guard let a=string("to"),let b=string("subject"),let c=string("body") else{return nil}; request = .outlookSendMail(.init(to:a,subject:b,body:c))
+        case .outlookCalendarCreateEvent:
+            guard let subject=string("subject"),let start=string("startRFC3339"),let end=string("endRFC3339"),let body=optionalString("body") else{return nil}
+            request = .outlookCalendarCreateEvent(.init(subject:subject,body:body ?? "",startRFC3339:start,endRFC3339:end))
+        case .outlookCalendarUpdateEvent:
+            guard let id=string("eventID"),let subject=optionalString("subject"),let body=optionalString("body"),let start=optionalString("startRFC3339"),let end=optionalString("endRFC3339") else{return nil}
+            request = .outlookCalendarUpdateEvent(.init(eventID:id,subject:subject,body:body,startRFC3339:start,endRFC3339:end))
         case .slackPostMessage: guard let a=string("channelID"),let b=string("text") else{return nil}; request = .slackPostMessage(.init(channelID:a,text:b))
         case .spotifyStartPlayback: guard let a=string("trackURI"), let deviceID=optionalString("deviceID") else{return nil}; request = .spotifyStartPlayback(.init(trackURI:a,deviceID:deviceID))
         }
@@ -224,6 +232,11 @@ extension DirectAccountWriter: AccountWriteExecuting {}
                 + (v.due.map { "\nNew due day: \($0)" } ?? "") + (v.completed.map { $0 ? "\nMark it done" : "\nMark it not done" } ?? "")
         case let .outlookCreateDraft(v): "Outlook draft\nSubject: \(v.subject)\nBody: \(v.body)"
         case let .outlookSendMail(v): "Send email to \(v.to)\nSubject: \(v.subject)\nBody: \(v.body)"
+        case let .outlookCalendarCreateEvent(v):
+            "New Outlook calendar event\nSubject: \(v.subject)\nStarts: \(v.startRFC3339)\nEnds: \(v.endRFC3339)" + (v.body.isEmpty ? "" : "\nDetails: \(v.body)")
+        case let .outlookCalendarUpdateEvent(v):
+            "Change Outlook calendar event \(v.eventID)" + (v.subject.map { "\nNew subject: \($0)" } ?? "") + (v.startRFC3339.map { "\nStarts: \($0)" } ?? "")
+                + (v.endRFC3339.map { "\nEnds: \($0)" } ?? "") + (v.body.map { "\nNew details: \($0)" } ?? "")
         case let .slackPostMessage(v): "Slack channel \(v.channelID)\nMessage: \(v.text)"
         case let .spotifyStartPlayback(v): "Play Spotify track \(v.trackURI)\(v.deviceID.map { "\nDevice: \($0)" } ?? "")"
         }
@@ -256,6 +269,7 @@ extension DirectAccountWriter: AccountWriteExecuting {}
         case let .googleTask(id): "\"kind\":\"googleTask\",\"id\":\"\(id)\""
         case let .outlookDraft(id): "\"kind\":\"outlookDraft\",\"id\":\"\(id)\""
         case .outlookMailAccepted: "\"kind\":\"outlookMailAccepted\""
+        case let .outlookCalendarEvent(id): "\"kind\":\"outlookCalendarEvent\",\"id\":\"\(id)\""
         case let .slackMessage(channelID, timestamp): "\"kind\":\"slackMessage\",\"channelID\":\"\(channelID)\",\"timestamp\":\"\(timestamp)\""
         case .spotifyPlaybackStarted: "\"kind\":\"spotifyPlaybackStarted\""
         }

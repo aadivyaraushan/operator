@@ -229,6 +229,8 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
         "googleDriveCreateFile": ["name", "kind"],
         "outlookCreateDraft": ["subject", "body"],
         "outlookSendMail": ["to", "subject", "body"],
+        "outlookCalendarCreateEvent": ["subject", "startRFC3339", "endRFC3339", "body?"],
+        "outlookCalendarUpdateEvent": ["eventID", "subject?", "body?", "startRFC3339?", "endRFC3339?"],
         "slackPostMessage": ["channelID", "text"],
         "spotifyStartPlayback": ["trackURI", "deviceID?"],
     ]

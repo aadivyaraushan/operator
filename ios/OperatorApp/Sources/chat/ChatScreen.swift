@@ -82,7 +82,7 @@ struct ChatScreen: View {
     private func accountStatus(_ id: ConnectorID) -> String? {
         let provider: OAuthProvider? = switch id {
         case .google, .googleTasks: .google
-        case .microsoft: .microsoftOutlook
+        case .microsoft, .outlookCalendar: .microsoftOutlook
         case .slack: .slack
         case .spotify: .spotify
         default: nil

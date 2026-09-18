@@ -24,7 +24,7 @@ enum OAuthProvider: String, Codable, CaseIterable, Sendable {
                 "https://www.googleapis.com/auth/tasks",
             ]
         case .microsoftOutlook:
-            ["openid", "offline_access", "User.Read", "Mail.ReadWrite", "Mail.Send", "Calendars.Read"]
+            ["openid", "offline_access", "User.Read", "Mail.ReadWrite", "Mail.Send", "Calendars.ReadWrite"]
         case .slack:
             ["chat:write", "channels:read", "channels:history", "groups:read", "groups:history", "im:write", "im:history", "users:read"]
         case .spotify:

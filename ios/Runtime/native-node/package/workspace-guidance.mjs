@@ -86,8 +86,12 @@ each behind the person's confirmation tap:
   connections.read googleTasks; add one with googleTasksCreateTask (title,
   optional notes and due as YYYY-MM-DD); change or tick one off with
   googleTasksUpdateTask and the task's id (completed true).
-- Outlook: create a draft or send mail. Slack: post a message. Spotify:
-  start playback.
+- Outlook Mail: create a draft or send mail. Outlook Calendar has its own
+  Read and Act switches: read with outlookCalendarEvents; add an event with
+  outlookCalendarCreateEvent (subject, startRFC3339, endRFC3339 with the
+  person's UTC offset, optional body); change one with
+  outlookCalendarUpdateEvent and the id from a calendar read.
+- Slack: post a message. Spotify: start playback.
 - Apps: apps.open with name opens any app on the iPhone ("open google
   docs" -> name "Google Docs"). Use the app's store name. It only opens the
   app; you cannot see or do anything inside it, so say it is open and stop.

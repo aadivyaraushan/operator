@@ -97,6 +97,19 @@ import XCTest
         XCTAssertEqual(calls, 1)
     }
 
+    func testAnOutlookEventCardShowsTheTimesAndRefusesAnEmptyChange() async {
+        let presenter = FakePresenter(); let writer = FakeWriter()
+        let service = ForegroundAccountWriteConfirmationService(writer: writer, presenter: presenter, isAppActive: { true })
+        _ = await service.handleNodeCommand("connections.write", paramsJSON: #"{"operation":"outlookCalendarCreateEvent","subject":"Founders interview prep","startRFC3339":"2026-09-17T20:00:00-05:00","endRFC3339":"2026-09-17T21:00:00-05:00"}"#, timeoutMilliseconds: 1000)
+        XCTAssertEqual(presenter.requests.last?.preview, "New Outlook calendar event\nSubject: Founders interview prep\nStarts: 2026-09-17T20:00:00-05:00\nEnds: 2026-09-17T21:00:00-05:00")
+        _ = await service.handleNodeCommand("connections.write", paramsJSON: #"{"operation":"outlookCalendarUpdateEvent","eventID":"EV1","subject":"Prep (moved)"}"#, timeoutMilliseconds: 1000)
+        XCTAssertEqual(presenter.requests.last?.preview, "Change Outlook calendar event EV1\nNew subject: Prep (moved)")
+        let result = await service.handleNodeCommand("connections.write", paramsJSON: #"{"operation":"outlookCalendarUpdateEvent","eventID":"EV1","guests":[]}"#, timeoutMilliseconds: 1000)
+        XCTAssertEqual(result, .failure(code: "INVALID_REQUEST", message: "Connection write parameters were invalid"))
+        let calls = await writer.callCount()
+        XCTAssertEqual(calls, 2)
+    }
+
     func testATaskCardSaysWhatWillChangeAndRefusesACompletedThatIsNotTrueOrFalse() async {
         let presenter = FakePresenter(); let writer = FakeWriter()
         let service = ForegroundAccountWriteConfirmationService(writer: writer, presenter: presenter, isAppActive: { true })

@@ -206,8 +206,8 @@ final class DirectAccountReaderTests: XCTestCase {
 
     func testCalendarsReadRidesTheMicrosoftClientThatAlreadySignsIn() {
         XCTAssertEqual(AccountReadOperation.outlookCalendarEvents.provider, .microsoftOutlook)
-        XCTAssertTrue(OAuthProvider.microsoftOutlook.scopes.contains("Calendars.Read"))
-        XCTAssertTrue(OAuthProvider.microsoftOutlook.requiredAccessTokenScopes.contains("Calendars.Read"))
+        XCTAssertTrue(OAuthProvider.microsoftOutlook.scopes.contains("Calendars.ReadWrite"))
+        XCTAssertTrue(OAuthProvider.microsoftOutlook.requiredAccessTokenScopes.contains("Calendars.ReadWrite"))
         // Sign-in metadata is not an API permission and must stay out of the
         // access-token check, or a valid token reads as an incomplete one.
         XCTAssertFalse(OAuthProvider.microsoftOutlook.requiredAccessTokenScopes.contains("openid"))

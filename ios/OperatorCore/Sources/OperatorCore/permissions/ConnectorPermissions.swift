@@ -15,7 +15,7 @@ public enum ConnectorID: String, Codable, CaseIterable, Sendable, Hashable {
     case whatsapp
     case discord
     case canvas
-    case google, googleTasks, microsoft, slack, spotify
+    case google, googleTasks, microsoft, outlookCalendar, slack, spotify
     case notion
     case media
 }
@@ -232,9 +232,14 @@ public enum ConnectorCatalog {
               writeSummary: "Add a task, change one, or tick one off, each after you approve it.",
               readCommands: ["connections.read"], writeCommands: ["connections.write"],
               systemPermission: nil, requiresAccount: true),
-        .init(id: .microsoft, title: "Microsoft",
-              readSummary: "Outlook inbox and calendar.",
+        .init(id: .microsoft, title: "Outlook Mail",
+              readSummary: "Your Outlook inbox.",
               writeSummary: "Create a draft or send mail, after you approve it.",
+              readCommands: ["connections.read"], writeCommands: ["connections.write"],
+              systemPermission: nil, requiresAccount: true),
+        .init(id: .outlookCalendar, title: "Outlook Calendar",
+              readSummary: "Your Outlook calendar events. Uses your Microsoft sign-in.",
+              writeSummary: "Add an event or change one, each after you approve it.",
               readCommands: ["connections.read"], writeCommands: ["connections.write"],
               systemPermission: nil, requiresAccount: true),
         .init(id: .slack, title: "Slack",
@@ -304,6 +309,7 @@ public enum ConnectorCatalog {
     private static func provider(forAccountOperation operation: String) -> ConnectorID? {
         if operation.hasPrefix("googleTasks") { return .googleTasks }
         if operation.hasPrefix("google") || operation.hasPrefix("gmail") { return .google }
+        if operation.hasPrefix("outlookCalendar") { return .outlookCalendar }
         if operation.hasPrefix("outlook") { return .microsoft }
         if operation.hasPrefix("slack") { return .slack }
         if operation.hasPrefix("spotify") { return .spotify }

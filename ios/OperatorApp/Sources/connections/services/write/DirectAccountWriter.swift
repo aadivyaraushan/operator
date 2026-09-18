@@ -22,6 +22,8 @@ enum AccountWriteOperation: String, CaseIterable, Sendable {
     case googleTasksUpdateTask
     case outlookCreateDraft
     case outlookSendMail
+    case outlookCalendarCreateEvent
+    case outlookCalendarUpdateEvent
     case slackPostMessage
     case spotifyStartPlayback
 
@@ -32,7 +34,7 @@ enum AccountWriteOperation: String, CaseIterable, Sendable {
              .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
              .googleDriveMoveFile, .googleDriveCreateFile, .googleTasksCreateTask, .googleTasksUpdateTask:
             .google
-        case .outlookCreateDraft, .outlookSendMail:
+        case .outlookCreateDraft, .outlookSendMail, .outlookCalendarCreateEvent, .outlookCalendarUpdateEvent:
             .microsoftOutlook
         case .slackPostMessage:
             .slack
@@ -109,6 +111,29 @@ struct OutlookSendMailWrite: Sendable {
     let body: String
 }
 
+/// Times are RFC 3339 with an offset, as the calendar read returns them;
+/// Graph is sent them in UTC and shows them in the calendar's own zone.
+struct OutlookCalendarCreateEventWrite: Sendable {
+    let subject: String
+    let body: String
+    let startRFC3339: String
+    let endRFC3339: String
+}
+
+/// A PATCH of one existing event: only the fields given are sent. A time
+/// change needs both ends.
+struct OutlookCalendarUpdateEventWrite: Sendable {
+    let eventID: String
+    let subject: String?
+    let body: String?
+    let startRFC3339: String?
+    let endRFC3339: String?
+
+    var isEmpty: Bool {
+        self.subject == nil && self.body == nil && self.startRFC3339 == nil && self.endRFC3339 == nil
+    }
+}
+
 struct SlackPostMessageWrite: Sendable {
     let channelID: String
     let text: String
@@ -137,6 +162,8 @@ enum AccountWriteRequest: Sendable {
     case googleTasksUpdateTask(GoogleTasksUpdateTaskWrite)
     case outlookCreateDraft(OutlookCreateDraftWrite)
     case outlookSendMail(OutlookSendMailWrite)
+    case outlookCalendarCreateEvent(OutlookCalendarCreateEventWrite)
+    case outlookCalendarUpdateEvent(OutlookCalendarUpdateEventWrite)
     case slackPostMessage(SlackPostMessageWrite)
     case spotifyStartPlayback(SpotifyStartPlaybackWrite)
 
@@ -159,6 +186,8 @@ enum AccountWriteRequest: Sendable {
         case .googleTasksUpdateTask: .googleTasksUpdateTask
         case .outlookCreateDraft: .outlookCreateDraft
         case .outlookSendMail: .outlookSendMail
+        case .outlookCalendarCreateEvent: .outlookCalendarCreateEvent
+        case .outlookCalendarUpdateEvent: .outlookCalendarUpdateEvent
         case .slackPostMessage: .slackPostMessage
         case .spotifyStartPlayback: .spotifyStartPlayback
         }
@@ -177,6 +206,7 @@ enum AccountWriteReceipt: Equatable, Sendable {
     case googleTask(id: String)
     case outlookDraft(id: String)
     case outlookMailAccepted
+    case outlookCalendarEvent(id: String)
     case slackMessage(channelID: String, timestamp: String)
     case spotifyPlaybackStarted
 }
@@ -310,6 +340,11 @@ actor DirectAccountWriter {
             (2, value.subject.utf8.count + value.body.utf8.count)
         case let .outlookSendMail(value):
             (3, value.to.utf8.count + value.subject.utf8.count + value.body.utf8.count)
+        case let .outlookCalendarCreateEvent(value):
+            (4, value.subject.utf8.count + value.body.utf8.count + value.startRFC3339.utf8.count + value.endRFC3339.utf8.count)
+        case let .outlookCalendarUpdateEvent(value):
+            ([value.subject, value.body, value.startRFC3339, value.endRFC3339].compactMap { $0 }.count + 1,
+             [value.eventID, value.subject ?? "", value.body ?? "", value.startRFC3339 ?? "", value.endRFC3339 ?? ""].reduce(0) { $0 + $1.utf8.count })
         case let .slackPostMessage(value):
             (2, value.channelID.utf8.count + value.text.utf8.count)
         case let .spotifyStartPlayback(value):
@@ -358,6 +393,23 @@ actor DirectAccountWriter {
             return self.validEmail(value.to)
                 && self.validSingleLine(value.subject, maxBytes: 512, required: true)
                 && self.validBody(value.body, maxBytes: 32_768, required: true)
+        case let .outlookCalendarCreateEvent(value):
+            guard self.validSingleLine(value.subject, maxBytes: 512, required: true),
+                  self.validBody(value.body, maxBytes: 16_384),
+                  let start = self.graphDateTime(value.startRFC3339), let end = self.graphDateTime(value.endRFC3339)
+            else { return false }
+            return start < end
+        case let .outlookCalendarUpdateEvent(value):
+            guard !value.isEmpty, self.validRemoteID(value.eventID, maxBytes: 1_024), !value.eventID.contains("/") else { return false }
+            if let subject = value.subject, !self.validSingleLine(subject, maxBytes: 512, required: true) { return false }
+            if let body = value.body, !self.validBody(body, maxBytes: 16_384) { return false }
+            switch (value.startRFC3339, value.endRFC3339) {
+            case (nil, nil): return true
+            case let (startText?, endText?):
+                guard let start = self.graphDateTime(startText), let end = self.graphDateTime(endText) else { return false }
+                return start < end
+            default: return false
+            }
         case let .slackPostMessage(value):
             return self.matches(value.channelID, pattern: #"^[CDG][A-Z0-9]{1,99}$"#)
                 && self.validBody(value.text, maxBytes: 4_000, required: true)
@@ -414,6 +466,20 @@ actor DirectAccountWriter {
         if let date = formatter.date(from: value) { return date }
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: value)
+    }
+
+    /// The UTC wall-clock text Graph takes, paired with timeZone "UTC".
+    private static func graphDateTime(_ value: String) -> String? {
+        guard value.utf8.count <= 64, let date = self.rfc3339(value) else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate, .withTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter.string(from: date)
+    }
+
+    private static func graphTime(_ value: String) throws -> [String: String] {
+        guard let text = self.graphDateTime(value) else { throw AccountWriteError.invalidRequest }
+        return ["dateTime": text, "timeZone": "UTC"]
     }
 
     private static func request(for input: AccountWriteRequest) throws -> URLRequest {
@@ -506,6 +572,27 @@ actor DirectAccountWriter {
                 "saveToSentItems": true,
             ])
             contentType = "application/json"
+        case let .outlookCalendarCreateEvent(value):
+            url = URL(string: "https://graph.microsoft.com/v1.0/me/events")!
+            method = "POST"
+            body = try self.jsonData([
+                "subject": value.subject,
+                "body": ["contentType": "Text", "content": value.body],
+                "start": try self.graphTime(value.startRFC3339),
+                "end": try self.graphTime(value.endRFC3339),
+            ])
+            contentType = "application/json"
+        case let .outlookCalendarUpdateEvent(value):
+            guard let eventURL = URL(string: "https://graph.microsoft.com/v1.0/me/events/\(value.eventID)") else { throw AccountWriteError.invalidRequest }
+            url = eventURL
+            method = "PATCH"
+            var patch: [String: Any] = [:]
+            if let subject = value.subject { patch["subject"] = subject }
+            if let text = value.body { patch["body"] = ["contentType": "Text", "content": text] }
+            if let start = value.startRFC3339 { patch["start"] = try self.graphTime(start) }
+            if let end = value.endRFC3339 { patch["end"] = try self.graphTime(end) }
+            body = try self.jsonData(patch)
+            contentType = "application/json"
         case let .slackPostMessage(value):
             url = URL(string: "https://slack.com/api/chat.postMessage")!
             method = "POST"
@@ -560,9 +647,10 @@ actor DirectAccountWriter {
         case .googleCalendarCreateEvent, .googleCalendarUpdateEvent, .googleDriveCreateTextFile, .slackPostMessage,
              .googleSheetsUpdateCells, .googleSheetsAppendRows, .googleDocsAppendText, .googleDocsReplaceText,
              .googleSlidesReplaceText, .googleSlidesAddSlide, .googleDriveUpdateTextFile, .googleDriveRenameFile,
-             .googleDriveMoveFile, .googleDriveCreateFile, .googleTasksCreateTask, .googleTasksUpdateTask:
+             .googleDriveMoveFile, .googleDriveCreateFile, .googleTasksCreateTask, .googleTasksUpdateTask,
+             .outlookCalendarUpdateEvent:
             expected = 200
-        case .outlookCreateDraft:
+        case .outlookCreateDraft, .outlookCalendarCreateEvent:
             expected = 201
         case .outlookSendMail:
             expected = 202
@@ -612,6 +700,12 @@ actor DirectAccountWriter {
         case .outlookSendMail:
             guard data.isEmpty else { throw AccountWriteError.invalidResponse }
             return .outlookMailAccepted
+        case .outlookCalendarCreateEvent, .outlookCalendarUpdateEvent:
+            let object = try self.responseObject(data)
+            guard let id = object["id"] as? String, self.validRemoteID(id, maxBytes: 2_048) else {
+                throw AccountWriteError.invalidResponse
+            }
+            return .outlookCalendarEvent(id: id)
         case .slackPostMessage:
             let object = try self.responseObject(data)
             guard object["ok"] as? Bool == true,
@@ -642,7 +736,7 @@ actor DirectAccountWriter {
 
     private static func receiptFieldCount(_ receipt: AccountWriteReceipt) -> Int {
         switch receipt {
-        case .googleCalendarEvent, .googleDriveFile, .googleTask, .outlookDraft:
+        case .googleCalendarEvent, .googleDriveFile, .googleTask, .outlookDraft, .outlookCalendarEvent:
             1
         case .googleSheetCells, .googleFileEdited:
             2

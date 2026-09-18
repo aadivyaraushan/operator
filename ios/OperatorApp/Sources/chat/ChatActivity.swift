@@ -127,7 +127,7 @@ struct ChatActivityLabel: Equatable, Sendable {
         case "googleSlidesReplaceText", "googleSlidesAddSlide": "Google Slides"
         case "googleTasks", "googleTasksCreateTask", "googleTasksUpdateTask": "Google Tasks"
         case "outlookInbox", "outlookCreateDraft", "outlookSendMail": "Outlook"
-        case "outlookCalendarEvents": "Outlook Calendar"
+        case "outlookCalendarEvents", "outlookCalendarCreateEvent", "outlookCalendarUpdateEvent": "Outlook Calendar"
         case "slackChannels", "slackHistory", "slackPostMessage": "Slack"
         case "spotifyPlayback", "spotifySearch", "spotifyStartPlayback": "Spotify"
         default: "a connected account"

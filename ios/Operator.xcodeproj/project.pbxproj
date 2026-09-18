@@ -125,6 +125,7 @@
 		BF7981F27F123E155E792ECD /* NativeReadServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 826E52BF783031AB3018FF6C /* NativeReadServiceTests.swift */; };
 		BFE86801FE1F2D4954F0C351 /* ForegroundNodeCommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D5A293BE7C8252D848B61DE /* ForegroundNodeCommandRouter.swift */; };
 		C016266ACFDCD5A85D125BD3 /* ForegroundLocationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201F5539139E8F77225201B4 /* ForegroundLocationServiceTests.swift */; };
+		C17A7540EEB6730A5D3591AC /* OutlookCalendarWriterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4FBE1DFD856CDECDE957353 /* OutlookCalendarWriterTests.swift */; };
 		C3512DBBB74F4E7B8460FC83 /* LocalModelSetupGatewayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86ECCDBC4B74E8E94BD31A7B /* LocalModelSetupGatewayTests.swift */; };
 		C4FDFB65B65F048157366310 /* ChatActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D77EFF62D4E8D94BF0C1BF91 /* ChatActivity.swift */; };
 		C6CEC4DB03E3C4AD0F4E4BBF /* CanvasGuidedTokenSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A0C43953E827ADD2C2E944 /* CanvasGuidedTokenSetup.swift */; };
@@ -378,6 +379,7 @@
 		DDB2224A771339FACE9D92A1 /* ConnectorPermissionsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorPermissionsScreen.swift; sourceTree = "<group>"; };
 		E0BE63C783B303D5917456BF /* OperatorChatAppIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorChatAppIntent.swift; sourceTree = "<group>"; };
 		E10DAC4EEE0D33DB1BF4B953 /* android-handoff-catalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "android-handoff-catalog.json"; sourceTree = "<group>"; };
+		E4FBE1DFD856CDECDE957353 /* OutlookCalendarWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlookCalendarWriterTests.swift; sourceTree = "<group>"; };
 		E788A2294E792FA66F0324F5 /* RecordIncomingMessageIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordIncomingMessageIntent.swift; sourceTree = "<group>"; };
 		E8494D608BFF220294347A7F /* ChatEndToEndUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatEndToEndUITests.swift; sourceTree = "<group>"; };
 		EA855847FA0C15621EBE0F2F /* SystemWhatsAppComposePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemWhatsAppComposePresenter.swift; sourceTree = "<group>"; };
@@ -668,6 +670,7 @@
 				059336F82AB0485220F98599 /* DirectAccountWriterTests.swift */,
 				9E140F545EE051D6A69144BE /* GoogleTasksWriterTests.swift */,
 				028DD4F85059B37A93EF215A /* GoogleWorkspaceWriterTests.swift */,
+				E4FBE1DFD856CDECDE957353 /* OutlookCalendarWriterTests.swift */,
 			);
 			path = write;
 			sourceTree = "<group>";
@@ -1449,7 +1452,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_ACDCD568-BFFE-4D31-BFDC-69F0A7D553C2" /* embedded */ = {
+		"TEMP_BEB70A91-F161-4579-AD41-4C8FF4105BA9" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1673,6 +1676,7 @@
 				951A0E155F073F63DE0A69E9 /* NotionNodeTests.swift in Sources */,
 				F50494031EA799DF091E228F /* OfflineDictationModelTests.swift in Sources */,
 				CED0DD2CBF76656CC237E954 /* OperatorChatAppIntentTests.swift in Sources */,
+				C17A7540EEB6730A5D3591AC /* OutlookCalendarWriterTests.swift in Sources */,
 				AA41432EE6820F7979B54B41 /* PendingSendCenterTests.swift in Sources */,
 				63EB0E9E3C22DE2DF6E0B512 /* PhoneOAuthClientTests.swift in Sources */,
 				080B964E06F6A7EBCFC83B79 /* QuestionNotifierTests.swift in Sources */,

@@ -85,7 +85,7 @@ final class ConnectorPermissionsTests: XCTestCase {
     func testAccountCommandsResolveToTheProviderNamedInTheOperation() {
         let reads: [(String, ConnectorID)] = [
             ("googleCalendarEvents", .google), ("googleDriveFiles", .google), ("googleDriveFileContent", .google), ("gmailMessages", .google), ("googleTasks", .googleTasks),
-            ("outlookInbox", .microsoft), ("outlookCalendarEvents", .microsoft),
+            ("outlookInbox", .microsoft), ("outlookCalendarEvents", .outlookCalendar),
             ("slackChannels", .slack), ("slackHistory", .slack),
             ("spotifySearch", .spotify), ("spotifyPlayback", .spotify),
         ]
@@ -99,6 +99,7 @@ final class ConnectorPermissionsTests: XCTestCase {
             ("googleSheetsAppendRows", .google), ("googleDocsReplaceText", .google), ("googleSlidesAddSlide", .google), ("googleDriveMoveFile", .google),
             ("googleTasksCreateTask", .googleTasks), ("googleTasksUpdateTask", .googleTasks),
             ("outlookCreateDraft", .microsoft), ("outlookSendMail", .microsoft),
+            ("outlookCalendarCreateEvent", .outlookCalendar), ("outlookCalendarUpdateEvent", .outlookCalendar),
             ("slackPostMessage", .slack), ("spotifyStartPlayback", .spotify),
         ]
         for (operation, provider) in writes {
