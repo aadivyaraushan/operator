@@ -31,7 +31,7 @@ assert_value() {
 [ -f "$WIDGET_INFO_PLIST" ] || fail "Operator widget Info.plist does not exist"
 assert_contains "$PROJECT_SPEC" 'OperatorWidget:'
 assert_contains "$PROJECT_SPEC" 'type: app-extension'
-assert_contains "$PROJECT_SPEC" 'PRODUCT_BUNDLE_IDENTIFIER: app.operator.ios.widget'
+assert_contains "$PROJECT_SPEC" 'PRODUCT_BUNDLE_IDENTIFIER: $(OPERATOR_BUNDLE_ID_PREFIX).ios.widget'
 assert_contains "$PROJECT_SPEC" 'target: OperatorWidget'
 assert_contains "$PROJECT_SPEC" 'embed: true'
 assert_contains "$WIDGET_SOURCE" 'StaticConfiguration'
@@ -39,6 +39,9 @@ assert_contains "$WIDGET_SOURCE" '.systemSmall'
 assert_contains "$WIDGET_SOURCE" '.accessoryCircular'
 assert_contains "$WIDGET_SOURCE" '.accessoryRectangular'
 assert_contains "$WIDGET_SOURCE" 'Text("Open Operator")'
+assert_contains "$WIDGET_SOURCE" 'ControlWidgetButton(action: OpenOperatorIntent())'
+assert_contains "$WIDGET_SOURCE" 'static let openAppWhenRun = true'
+assert_contains "$WIDGET_SOURCE" 'OpenOperatorControl()'
 assert_contains "$WIDGET_INFO_PLIST" '<key>NSExtensionPointIdentifier</key>'
 assert_contains "$WIDGET_INFO_PLIST" '<string>com.apple.widgetkit-extension</string>'
 if grep -E 'widgetURL|Link\(' "$WIDGET_SOURCE" >/dev/null; then
