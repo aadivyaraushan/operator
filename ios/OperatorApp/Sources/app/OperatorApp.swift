@@ -57,6 +57,7 @@ struct OperatorApp: App {
     @StateObject private var discord: DiscordAccountSetupModel
     @StateObject private var canvas: CanvasAccountSetupModel
     private let canvasSession: CanvasSessionStore
+    @StateObject private var messagesReadSetup: MessagesReadSetupModel
     @StateObject private var permissions: ConnectorPermissionCenter
     @StateObject private var shortcutSend: ShortcutSendCoordinator
     private let locationNode: LocalLocationNodeGateway
@@ -277,7 +278,10 @@ struct OperatorApp: App {
             skip: { [weak chat] id in await chat?.skipQuestionAndWait(id: id) })
         let notificationResponses = NotificationResponseRouter(handlers: [sendConfirmations, questionResponses])
         UNUserNotificationCenter.current().delegate = notificationResponses
+        let incomingMessages = IncomingMessageStore(supportDirectory: supportDirectory)
+        _messagesReadSetup = StateObject(wrappedValue: MessagesReadSetupModel(store: incomingMessages))
         let messageSend = ForegroundMessageSendService(
+            store: incomingMessages,
             coordinator: shortcutSend,
             isAppActive: { UIApplication.shared.applicationState == .active })
         let locationNode = LocalLocationNodeGateway(
@@ -298,7 +302,7 @@ struct OperatorApp: App {
                 device: ForegroundDeviceService(),
                 messages: ForegroundMessageDispatchService(
                     compose: ForegroundMessageComposeService(
-                        presenter: SystemMessageComposer(),
+                        presenter: SystemMessageComposer(store: incomingMessages),
                         isAppActive: { UIApplication.shared.applicationState == .active }),
                     send: messageSend,
                     autosendAllowed: { permissions.grants.permits(.messagesAutosend, .write) },
@@ -322,7 +326,7 @@ struct OperatorApp: App {
                 media: mediaService,
                 notion: notionService,
                 discord: discordService,
-                incomingMessages: ForegroundIncomingMessagesService(store: IncomingMessageStore(supportDirectory: supportDirectory)),
+                incomingMessages: ForegroundIncomingMessagesService(store: incomingMessages),
                 contactCreate: ForegroundContactCreateService(
                     directory: contactDirectory,
                     presenter: SystemContactCreatePresenter(),
@@ -357,6 +361,7 @@ struct OperatorApp: App {
     var body: some Scene {
         WindowGroup {
             ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, discord: self.discord, canvas: self.canvas, canvasSession: self.canvasSession, permissions: self.permissions)
+                .environmentObject(self.messagesReadSetup)
                 .onOpenURL { url in
                     // Shortcuts returning from sms.send. The only thing known
                     // is what Shortcuts reported; it goes in the session log.

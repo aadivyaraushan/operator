@@ -82,3 +82,64 @@ foreground task does (OperatorApp.swift, `runtimeIsForeground`).
   coerces to the text; "Sender" is a property of the input).
 - Whether group messages carry the group name (not expected; the sender
   is still there).
+
+## Easier setup and two-sided summaries (2026-09-18)
+
+Implemented the follow-up setup plan:
+
+- Permissions → Messages now gives numbered steps and a Check setup button,
+  showing the last received preview, sender, relative time and retained count.
+  It refreshes on appearance and when Operator becomes active. Sent entries
+  never count as evidence that the incoming automation works.
+- A shared store feeds the setup model and read command. Writes from separate
+  store instances are serialized in-process so the background intent and send
+  callbacks cannot overwrite each other's entries.
+- Successful shortcut sends and the system composer's Sent result record a
+  `sent` entry. Failed, cancelled and unknown sends do not. Legacy entries
+  decode as `received`; incoming duplicate suppression does not drop actual
+  repeated sends. The read result uses `direction` and `from` / `to`.
+- Summary guidance groups recent activity by person and flags likely requests
+  for replies, while acknowledging that replies typed directly in Messages
+  remain unavailable.
+
+The follow-up plan's iOS 27 filterless-trigger and natural-language-builder
+claims were not verified. The shipped copy therefore describes the Message
+trigger and says what to do *if* Shortcuts requires a filter, without promising
+OS-specific features or complete coverage. Device confirmation of those
+Shortcuts behaviors and a real incoming test text remain manual checks.
+
+### iOS 27 setup documentation follow-up
+
+Apple's current iOS 27 guide confirms adding a trigger from a shortcut's
+Edit → Automation section, and Info → Privacy → Allow Running When Locked:
+https://support.apple.com/guide/shortcuts/add-automations-apdfbdbd7123/10.0/ios/27
+Apple also documents describing a shortcut with Apple Intelligence:
+https://support.apple.com/en-euro/guide/iphone/dom122pp864g/27/ios/27
+
+Setup now leads with that editor flow, offers a describe-it alternative with
+review of the generated trigger/text/sender, and collapses older-iOS/filter
+instructions into a disclosure. The undocumented create-automation URL is only
+shown below iOS 27. Check setup remains the evidence of incoming capture.
+
+Correction to the earlier follow-up plan: Apple's WWDC26 presentation lists
+screenshot, keyboard and **notification** as the three new triggers, not Message:
+https://developer.apple.com/videos/play/wwdc2026/310/
+The Message trigger already existed; Apple's communication-trigger guide still
+lists Sender and Message Contains. Filterless capture and correct generated
+Operator field wiring remain unverified on the phone.
+
+### Owner-verified prompt route
+
+The owner confirmed the generated Run Shortcut wrapper records an incoming text
+when Message Contains is one space and Run Shortcut receives Shortcut Input.
+The first run required Allow for the installed shortcut to run Operator actions.
+Asking the generator to add Operator's third-party action directly was refused;
+asking for an unfiltered trigger left a placeholder filter and did not work.
+
+Permissions now includes Copy setup prompt for the verified wrapper and first-run
+permission instructions. Its default target is the exact title of the current
+shared shortcut, with an editable override for renamed or duplicate installs.
+No renamed shortcut was published: the install link and default target name must
+be updated together if the shortcut is re-shared. The space filter is explicitly
+partial coverage. The setup check asks for a new text/time rather than treating
+historical received messages as proof of a newly configured automation.

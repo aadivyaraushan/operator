@@ -1,4 +1,5 @@
 import Foundation
+import MessageUI
 import XCTest
 @testable import OperatorApp
 
@@ -57,4 +58,48 @@ final class IncomingMessageStoreTests: XCTestCase {
         XCTAssertEqual(all.first?.text, "m\(IncomingMessageStore.countLimit + 4)", "the newest is kept")
         XCTAssertFalse(all.contains { $0.sender == "Old" }, "two weeks old is gone")
     }
+    @MainActor
+    func testSetupStatusIgnoresSentAndPrunesOldReceived() {
+        var clock = Date()
+        let store = IncomingMessageStore(supportDirectory: self.directory, now: { clock })
+        let model = MessagesReadSetupModel(store: store)
+        store.record(sender: "Mom", text: "hello", direction: .sent)
+        model.refresh()
+        XCTAssertNil(model.lastReceived)
+        XCTAssertEqual(model.recordedCount, 0)
+        store.record(sender: "Mom", text: "hello")
+        store.record(sender: "Mom", text: "hello")
+        model.refresh()
+        XCTAssertEqual(model.recordedCount, 1)
+        XCTAssertEqual(model.lastReceived?.direction, .received)
+        clock = clock.addingTimeInterval(IncomingMessageStore.ageLimit + 1)
+        model.refresh()
+        XCTAssertNil(model.lastReceived)
+        XCTAssertEqual(model.recordedCount, 0)
+    }
+
+    func testLegacyDecodingAndSentRoundTrip() throws {
+        let legacy = Data(#"{"id":"old","sender":"Mom","text":"hello","receivedAt":0}"#.utf8)
+        XCTAssertEqual(try JSONDecoder().decode(IncomingMessage.self, from: legacy).direction, .received)
+        let store = IncomingMessageStore(supportDirectory: self.directory)
+        store.record(sender: "Mom, Dad", text: "hello", direction: .sent)
+        store.record(sender: "Mom, Dad", text: "hello", direction: .sent)
+        let reopened = IncomingMessageStore(supportDirectory: self.directory)
+        XCTAssertEqual(reopened.count, 2, "two actual sends must not be deduplicated")
+        XCTAssertEqual(reopened.messages(limit: 1).first?.direction, .sent)
+        XCTAssertEqual(reopened.messages(limit: 1).first?.sender, "Mom, Dad")
+    }
+
+    @MainActor
+    func testComposerOnlyRecordsSent() {
+        let store = IncomingMessageStore(supportDirectory: self.directory)
+        let composer = SystemMessageComposer(store: store)
+        composer.recordCompletion(.cancelled, recipients: ["Mom"], body: "cancel")
+        composer.recordCompletion(.failed, recipients: ["Mom"], body: "fail")
+        XCTAssertEqual(store.count, 0)
+        composer.recordCompletion(.sent, recipients: ["Mom", "Dad"], body: "edited text")
+        XCTAssertEqual(store.messages(limit: 1).first?.text, "edited text")
+        XCTAssertEqual(store.messages(limit: 1).first?.direction, .sent)
+    }
+
 }

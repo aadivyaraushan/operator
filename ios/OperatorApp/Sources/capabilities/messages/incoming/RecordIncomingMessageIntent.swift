@@ -24,6 +24,17 @@ struct RecordIncomingMessageIntent: AppIntent {
     /// own name, "Automation 6A0C5F28…", until it is re-shared renamed.
     static let shortcutName = "OperatorRecordMessage"
     static let installURL: URL? = URL(string: "https://www.icloud.com/shortcuts/786adfe7e3d440ef93f1b9652dcf4bcc")
+    /// Actual title served by installURL; update together when re-sharing.
+    static let installedShortcutName = "Automation 6A0C5F28-28AA-4920-88F5-9ADCE0CFEDC8"
+
+    static func automationPrompt(shortcutName: String) -> String {
+        """
+        Create an automation that runs immediately when I receive a message from any sender. Set “Message contains” to exactly one space character (U+0020), not the word “space” and not an empty field.
+
+        Use Apple’s built-in Run Shortcut action to run my existing shortcut named “\(shortcutName)”. Pass Shortcut Input into that action, preserving the received message’s text and sender. Do not recreate the shortcut or add Operator actions directly. Run without confirmation whenever supported.
+        """
+    }
+
     static var parameterSummary: some ParameterSummary {
         Summary("Record \(\.$text) from \(\.$sender)")
     }

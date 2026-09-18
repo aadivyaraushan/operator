@@ -30,11 +30,11 @@ final class ForegroundIncomingMessagesService: GatewayNodeCommandHandler {
         let formatter = ISO8601DateFormatter()
         var payload: [String: Any] = [
             "messages": messages.map { message -> [String: Any] in
-                ["id": message.id, "from": message.sender, "text": message.text, "receivedAt": formatter.string(from: message.receivedAt)]
+                ["id": message.id, "direction": message.direction.rawValue, message.direction == .sent ? "to" : "from": message.sender, "text": message.text, "receivedAt": formatter.string(from: message.receivedAt)]
             },
             "storedCount": total,
             "readAt": formatter.string(from: Date()),
-            "nextStep": "These are texts received since the person set up the automation, newest first; nothing older, nothing they sent, and no read state. Report who said what and when. To reply, use the Messages send tools.",
+            "nextStep": "These are texts received since the person set up the automation, newest first; plus texts sent through Operator. direction identifies received or sent; sent entries use to for recipients. No earlier history, texts sent manually in Messages, or read state. Report who said what and when. To reply, use the Messages send tools.",
         ]
         if total == 0 {
             payload["note"] = "No texts have been recorded. Either none arrived since setup, or the \"When I get a message\" automation is not set up yet: the steps are on Operator's Permissions page under Messages."

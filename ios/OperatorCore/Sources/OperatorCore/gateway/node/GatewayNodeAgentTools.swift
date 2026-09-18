@@ -182,7 +182,7 @@ public enum GatewayNodeAgentTools {
             The texts (SMS and iMessage) the person has received since they set up Operator's \
             message automation, newest first, with sender and time. Use for "did anyone text me", \
             "what did X say", or to summarise a thread. It is a feed, not the inbox: nothing older \
-            than the setup, nothing the person sent, no read state, no attachments. To reply, use \
+            than the setup, no texts sent directly in Messages, no read state, no attachments. Includes texts sent through Operator with direction sent and to recipients. To reply, use \
             the Messages send tools.
             """,
             parameters: .init(properties: [

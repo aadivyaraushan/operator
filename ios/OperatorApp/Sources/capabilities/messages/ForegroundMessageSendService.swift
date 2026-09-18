@@ -56,11 +56,13 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
         let body: String
     }
 
+    private let store: IncomingMessageStore
     private let coordinator: ShortcutSendCoordinator
     private let isAppActive: @MainActor @Sendable () -> Bool
     private let logger = Logger(subsystem: "app.operator.ios", category: "message-send")
 
-    init(coordinator: ShortcutSendCoordinator, isAppActive: @escaping @MainActor @Sendable () -> Bool) {
+    init(store: IncomingMessageStore = .standard(), coordinator: ShortcutSendCoordinator, isAppActive: @escaping @MainActor @Sendable () -> Bool) {
+        self.store = store
         self.coordinator = coordinator
         self.isAppActive = isAppActive
     }
@@ -91,6 +93,7 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
                 code: "SHORTCUT_UNAVAILABLE",
                 message: "The \"\(Self.shortcutName)\" shortcut could not be opened. The person has to create it once in the Shortcuts app; the steps are on Operator's Permissions page under \"\(ConnectorCatalog.descriptor(.messagesAutosend).title)\". Nothing was sent.")
         case .success:
+            self.store.record(sender: parameters.recipients.joined(separator: ", "), text: parameters.body, direction: .sent)
             return .success(payloadJSON: """
             {"handedToShortcut":true,"sent":true,"outcome":"success","deliveryVerified":false,"nextStep":"The shortcut ran and handed the message to Messages without asking. Say it was sent; do not say it was delivered, because delivery is not reported. You may continue with anything else the person asked."}
             """)

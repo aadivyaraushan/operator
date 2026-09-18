@@ -1850,3 +1850,43 @@ To prove live: in Canvas (Account > Settings > Approved Integrations >
 New Access Token), then in Operator Connect accounts > Canvas, then
 Permissions > Canvas > Read, then "what's due this week". The first
 real read of each command goes in this file.
+
+## 2026-09-18 — Easier Messages reading setup
+
+Implemented numbered setup instructions, a Check setup result with the latest
+incoming preview/time/count, and refresh when returning to Operator. The setup
+model shares the read service's store and only received entries count as
+incoming-automation evidence. Successful Operator shortcut sends and system
+composer sends now appear in the feed with explicit direction and recipients;
+legacy entries remain received. Digests are instructed to group by person and
+flag likely reply requests without assuming manual replies are visible.
+
+Validation: 29 focused iOS Simulator messaging tests passed, covering store
+retention/dedupe, legacy decoding, sent direction and recipient payloads,
+setup-model refresh, and successful versus failed/cancelled/unknown sends.
+Also passed 9 permission tests, 54 chat regression tests, 21 native runtime
+tests, runtime restaging and the staged-runtime consistency check. Signed
+generic iPhone build succeeded. Direct device-targeted Xcode execution could
+not mount the phone's developer disk image.
+
+The plan's iOS 27 filterless-trigger / natural-language-automation assumptions
+remain unverified and are not advertised in the UI. Real incoming delivery,
+Shortcuts configuration, and an end-to-end chat digest still require the
+owner's live phone check; unit tests are not evidence of those behaviors.
+
+The signed update was successfully installed on the paired iPhone through
+CoreDevice (`app.operator.ios`). No real messages were sent during verification.
+
+### Owner live confirmation and prompt setup
+
+Owner verified in this task: an “operator test” filter fired, iOS asked to allow
+the called shortcut to run Operator actions, and the incoming text then appeared
+in Operator. Replacing the filter with a space also worked. The wrapper uses
+Apple's Run Shortcut action with Shortcut Input and the existing shared shortcut.
+This supersedes the earlier unverified incoming-delivery status above for that
+configuration. It does not establish complete message coverage or digest quality.
+
+Added Copy setup prompt under Read, with editable installed-shortcut name,
+first-run Allow instructions, and an explicit check of the new message/time.
+The direct-third-party natural-language suggestion was removed. The prompt does
+not claim filterless capture. No new shared shortcut was published.

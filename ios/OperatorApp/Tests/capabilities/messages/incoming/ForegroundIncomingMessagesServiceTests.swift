@@ -39,11 +39,22 @@ final class ForegroundIncomingMessagesServiceTests: XCTestCase {
         XCTAssertEqual(messages.map { $0["text"] as? String }, ["your code is 123456", "dinner at 7?"])
         XCTAssertEqual(messages.first?["receivedAt"] as? String, "2027-01-15T08:05:00Z")
         XCTAssertNil(all["note"])
-        XCTAssertTrue((all["nextStep"] as? String ?? "").contains("nothing they sent"))
+        XCTAssertTrue((all["nextStep"] as? String ?? "").contains("texts sent manually in Messages"))
 
         let recent = try self.object(await service.handleNodeCommand("messages.incoming", paramsJSON: #"{"sinceRFC3339":"2027-01-15T08:01:00Z","limit":1}"#, timeoutMilliseconds: nil))
         XCTAssertEqual((recent["messages"] as? [[String: Any]])?.map { $0["from"] as? String }, ["+1 555 0100"])
         XCTAssertEqual(recent["storedCount"] as? Int, 2)
+    }
+
+    func testSentMessagesHaveRecipientsRatherThanIncomingSenders() async throws {
+        let store = IncomingMessageStore(supportDirectory: self.directory)
+        store.record(sender: "Mom, Dad", text: "See you soon", direction: .sent)
+        let service = ForegroundIncomingMessagesService(store: store)
+        let payload = try self.object(await service.handleNodeCommand("messages.incoming", paramsJSON: nil, timeoutMilliseconds: nil))
+        let messages = try XCTUnwrap(payload["messages"] as? [[String: Any]])
+        XCTAssertEqual(messages.first?["direction"] as? String, "sent")
+        XCTAssertEqual(messages.first?["to"] as? String, "Mom, Dad")
+        XCTAssertNil(messages.first?["from"])
     }
 
     func testBadParametersAndOtherCommandsAreRefused() async {
@@ -75,7 +86,7 @@ final class ForegroundIncomingMessagesServiceTests: XCTestCase {
         let messages = ConnectorCatalog.descriptor(.messages)
         XCTAssertEqual(messages.readCommands, ["messages.incoming"])
         XCTAssertNil(messages.readAcknowledgement, "Apple's own automation: no ban warning")
-        XCTAssertTrue((messages.setupInstructions ?? "").contains("Record incoming message"))
+        XCTAssertTrue((messages.setupInstructions ?? "").contains("Check setup"))
         XCTAssertEqual(ConnectorCatalog.requirement(for: "messages.incoming", paramsJSON: nil), .access(.messages, .read))
         XCTAssertTrue(GatewayNativeNodeSurface.commands.contains("messages.incoming"))
         XCTAssertTrue(GatewayNativeNodeSurface.commandPolicyAllow.contains("messages.incoming"))

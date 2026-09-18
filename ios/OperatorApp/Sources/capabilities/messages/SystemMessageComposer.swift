@@ -15,6 +15,18 @@ final class SystemMessageComposer: NSObject, MessageComposePresenter, @preconcur
     private let logger = Logger(subsystem: "app.operator.ios", category: "message-compose")
     private var composer: MFMessageComposeViewController?
 
+    private let store: IncomingMessageStore
+
+    init(store: IncomingMessageStore = .standard()) {
+        self.store = store
+        super.init()
+    }
+
+    func recordCompletion(_ result: MessageComposeResult, recipients: [String], body: String) {
+        guard result == .sent else { return }
+        self.store.record(sender: recipients.joined(separator: ", "), text: body, direction: .sent)
+    }
+
     var isAvailable: Bool {
         MFMessageComposeViewController.canSendText()
     }
@@ -43,6 +55,7 @@ final class SystemMessageComposer: NSObject, MessageComposePresenter, @preconcur
         _ controller: MFMessageComposeViewController,
         didFinishWith result: MessageComposeResult)
     {
+        self.recordCompletion(result, recipients: controller.recipients ?? [], body: controller.body ?? "")
         let outcome: String
         switch result {
         case .sent: outcome = "sent"

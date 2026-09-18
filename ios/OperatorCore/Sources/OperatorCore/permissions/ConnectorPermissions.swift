@@ -146,17 +146,16 @@ public enum ConnectorCatalog {
               readCommands: ["device.status"], writeCommands: [],
               systemPermission: nil, requiresAccount: false),
         .init(id: .messages, title: "Messages",
-              readSummary: "Texts you receive from now on, through a Shortcuts automation you set up once. Not older messages, not ones you sent.",
+              readSummary: "Texts you receive from now on, through a Shortcuts automation you set up once. Also includes texts sent through Operator, but not older messages or texts sent directly in Messages.",
               writeSummary: "Open a text with the recipient and message filled in. You tap Send.",
               readCommands: ["messages.incoming"], writeCommands: ["sms.compose"],
               systemPermission: nil, requiresAccount: false,
               setupInstructions: """
-              Reading needs a Shortcuts automation, which iOS lets only you create (an app cannot hand itself your inbox; Shortcuts can hand it each new text). \
-              First tap Install shortcut, then Add Shortcut. Then tap Create automation: Message > leave Sender empty, type one space into Message Contains \
-              (Shortcuts insists on a filter; a space matches any text of two or more words) > Run Immediately > Next > choose the shortcut you just added \
-              (it is listed as "Automation 6A0C5F28…"). Without it: New Blank Automation > add "Record incoming message"; Message fills itself; set Sender to Shortcut Input > Sender. \
-              For one-word texts too, add the same automation for e, a, o, i and u; Operator files a text once however many fire. \
-              From then on every text you receive is filed on this iPhone for Operator; nothing leaves the phone.
+              1. Turn on Read. Tap Install shortcut, then Add Shortcut. Keep this shortcut: the automation will call it.
+              2. Tap Copy setup prompt below. In Shortcuts on iOS 27, tap + → Describe a Shortcut and paste it.
+              3. Generate the automation. When the first matching text arrives, tap Allow to let the installed shortcut run Operator’s actions.
+              4. Receive a new two-word text, return here, and tap Check setup. Confirm that new text and its time appear below; an older saved text does not verify this automation.
+              The prompt matches texts containing a space. One-word and emoji-only texts may be missed. Texts are kept for up to 14 days; messages sent directly in Messages are unavailable.
               """),
         .init(id: .messagesAutosend, title: "Messages, sent for you",
               readSummary: nil,

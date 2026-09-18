@@ -179,7 +179,7 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
             note = "Saves a new contact after the person sees it and taps Save. Refuses a number or email already in Contacts; never changes an existing contact."
         case "messages.incoming":
             parameters = schema(required: [], optional: ["sinceRFC3339", "limit"], limits: ["limit": "1...100", "sinceRFC3339": "RFC3339"])
-            note = "Texts the person received since they set up the message automation, newest first. A feed, not the inbox: no history, no sent messages, no read state."
+            note = "Texts the person received since they set up the message automation, newest first. A feed, not the inbox: no earlier history or read state. Includes texts sent through Operator with direction sent and to recipients, but not texts sent directly in Messages."
         case "notion.tools":
             parameters = schema(required: [], optional: [])
             note = "Lists bounded tools from the currently connected Notion server."

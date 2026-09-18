@@ -178,6 +178,10 @@ private struct ConnectorRow: View {
                     self.label("Read", readSummary)
                 }
                 .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-read")
+                if self.descriptor.id == .messages {
+                    self.setupSection
+                    Divider().padding(.vertical, 4)
+                }
             }
             if let writeSummary = self.descriptor.writeSummary {
                 Toggle(isOn: Binding(
@@ -191,36 +195,8 @@ private struct ConnectorRow: View {
                 .disabled(self.center.grants.readOnly)
                 .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-write")
             }
-            if let setup = self.descriptor.setupInstructions {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(setup)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    HStack(spacing: 16) {
-                        if self.descriptor.id == .messagesAutosend {
-                            Button("Install shortcut") {
-                                self.center.shortcutInstallStarted(for: self.descriptor.id)
-                                self.openURL(ForegroundMessageSendService.installURL)
-                            }
-                                .buttonStyle(.borderless)
-                                .font(.caption.weight(.semibold))
-                                .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-install")
-                        }
-                        if self.descriptor.id == .messages {
-                            if let install = RecordIncomingMessageIntent.installURL {
-                                Link("Install shortcut", destination: install)
-                                    .font(.caption.weight(.semibold))
-                                    .accessibilityIdentifier("permission-messages-install")
-                            }
-                            Link("Create automation", destination: RecordIncomingMessageIntent.createAutomationURL)
-                                .font(.caption.weight(.semibold))
-                                .accessibilityIdentifier("permission-messages-automation")
-                        }
-                        if let url = URL(string: "shortcuts://") {
-                            Link("Open Shortcuts", destination: url).font(.caption)
-                        }
-                    }
-                }
+            if self.descriptor.id != .messages {
+                self.setupSection
             }
             if let systemState {
                 HStack(spacing: 8) {
@@ -237,6 +213,54 @@ private struct ConnectorRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private var setupSection: some View {
+        if let setup = self.descriptor.setupInstructions {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(setup)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if self.descriptor.id == .messages {
+                    MessagesAutomationPrompt()
+                    DisclosureGroup("Set up manually or on older iOS") {
+                        Text("On older iOS, tap Create automation → Message → Run Immediately → Next, then choose the installed shortcut. If a filter is required, leave Sender empty and enter one space in Message Contains. This catches texts containing a space. Optional e, a, o, i and u triggers catch more one-word texts, but some texts may still be missed. Duplicate arrivals are combined. Test with a two-word text, then tap Check setup.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    MessagesReadSetupStatus(readGranted: self.readGranted)
+                }
+                HStack(spacing: 16) {
+                    if self.descriptor.id == .messagesAutosend {
+                        Button("Install shortcut") {
+                            self.center.shortcutInstallStarted(for: self.descriptor.id)
+                            self.openURL(ForegroundMessageSendService.installURL)
+                        }
+                            .buttonStyle(.borderless)
+                            .font(.caption.weight(.semibold))
+                            .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-install")
+                    }
+                    if self.descriptor.id == .messages {
+                        if let install = RecordIncomingMessageIntent.installURL {
+                            Link("Install shortcut", destination: install)
+                                .font(.caption.weight(.semibold))
+                                .accessibilityIdentifier("permission-messages-install")
+                        }
+                        if #available(iOS 27, *) {
+                            // iOS 27 adds triggers in the shortcut editor.
+                        } else {
+                            Link("Create automation", destination: RecordIncomingMessageIntent.createAutomationURL)
+                                .font(.caption.weight(.semibold))
+                                .accessibilityIdentifier("permission-messages-automation")
+                        }
+                    }
+                    if let url = URL(string: "shortcuts://") {
+                        Link("Open Shortcuts", destination: url).font(.caption)
+                    }
+                }
+            }
+        }
     }
 
     private func label(_ title: String, _ summary: String) -> some View {
@@ -312,5 +336,69 @@ struct PermissionRequestBanner: View {
         .padding(12)
         .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
         .accessibilityElement(children: .contain)
+    }
+}
+
+private struct MessagesReadSetupStatus: View {
+    @EnvironmentObject private var model: MessagesReadSetupModel
+    @Environment(\.scenePhase) private var scenePhase
+    let readGranted: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button("Check setup") { self.model.refresh() }
+                .buttonStyle(.borderless)
+                .accessibilityIdentifier("permission-messages-check")
+            if !self.readGranted {
+                Text("Turn on Read so Operator can summarise your texts.")
+            }
+            if let last = self.model.lastReceived {
+                Label("Automation received a text", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text("\(last.sender.isEmpty ? "Unknown sender" : last.sender): \(String(last.text.prefix(120)))")
+                    .lineLimit(3)
+                Text("Last received \(last.receivedAt, style: .relative) ago · \(self.model.recordedCount) received texts saved")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("No texts recorded yet. Send yourself a text with two words, then tap Check. If it still does not appear, check Run Immediately and the shortcut selected in Shortcuts.")
+            }
+        }
+        .font(.caption)
+        .accessibilityIdentifier("permission-messages-setup-status")
+        .onAppear { self.model.refresh() }
+        .onChange(of: self.scenePhase) { _, phase in
+            if phase == .active { self.model.refresh() }
+        }
+    }
+}
+
+private struct MessagesAutomationPrompt: View {
+    @State private var shortcutName = RecordIncomingMessageIntent.installedShortcutName
+    @State private var copied = false
+
+    private var selectedName: String {
+        self.shortcutName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(self.copied ? "Prompt copied" : "Copy setup prompt") {
+                UIPasteboard.general.string = RecordIncomingMessageIntent.automationPrompt(shortcutName: self.selectedName)
+                self.copied = true
+            }
+            .buttonStyle(.borderless)
+            .disabled(self.selectedName.isEmpty)
+            .accessibilityIdentifier("permission-messages-copy-prompt")
+            DisclosureGroup("Renamed the installed shortcut?") {
+                Text("The name must match the installed shortcut exactly. If you renamed it or installed a duplicate, enter the name shown in Shortcuts before copying the prompt.")
+                    .foregroundStyle(.secondary)
+                TextField("Installed shortcut name", text: self.$shortcutName)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .accessibilityIdentifier("permission-messages-shortcut-name")
+            }
+        }
+        .font(.caption)
+        .onChange(of: self.shortcutName) { _, _ in self.copied = false }
     }
 }

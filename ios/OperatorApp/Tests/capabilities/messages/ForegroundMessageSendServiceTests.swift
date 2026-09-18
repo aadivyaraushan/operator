@@ -34,7 +34,9 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
     }
 
     private func service(_ runner: FakeRunner, isAppActive: @escaping @MainActor @Sendable () -> Bool = { true }) -> ForegroundMessageSendService {
-        ForegroundMessageSendService(coordinator: runner.coordinator, isAppActive: isAppActive)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        self.addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+        return ForegroundMessageSendService(store: IncomingMessageStore(supportDirectory: directory), coordinator: runner.coordinator, isAppActive: isAppActive)
     }
 
     func testHandsTheMessageToTheNamedShortcutAndNeverClaimsDelivery() async throws {
@@ -195,4 +197,18 @@ final class ForegroundMessageSendServiceTests: XCTestCase {
             return all
         }()).contains { $0.command == "sms.send" }, "never offered as a tool the model can reach for on its own")
     }
+    func testOnlySuccessfulSendIsRecorded() async {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = IncomingMessageStore(supportDirectory: directory)
+        for outcome: ShortcutSendCoordinator.Outcome? in [.error, .cancel, nil, .success] {
+            let runner = FakeRunner()
+            runner.callback = outcome
+            let service = ForegroundMessageSendService(store: store, coordinator: runner.coordinator, isAppActive: { true })
+            _ = await service.handleNodeCommand("sms.send", paramsJSON: #"{"recipient":"Mom","body":"hello"}"#, timeoutMilliseconds: nil)
+        }
+        XCTAssertEqual(store.count, 1)
+        XCTAssertEqual(store.messages(limit: 1).first?.direction, .sent)
+    }
+
 }
