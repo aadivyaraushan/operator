@@ -67,3 +67,6 @@
 - Outlook "zero messages" earlier the same day: Microsoft returned 200 with an
   empty list; once a mail was sent to that account the read returned it. Sign-in
   uses Microsoft's personal-accounts-only address (`/consumers`).
+- 2026-09-17 afternoon: owner confirms Outlook read and send work in the real
+  app (inbox read returned the test mails; "hi" sent to ssdear@gmail.com,
+  status 202).
