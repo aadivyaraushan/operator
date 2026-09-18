@@ -77,7 +77,7 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
 
     private static let readOperations: [AccountReadOperation] = [
         .googleCalendarEvents, .googleDriveFiles, .googleDriveFileContent, .gmailMessages, .googleTasks, .outlookInbox, .outlookCalendarEvents, .slackChannels,
-        .slackHistory, .spotifySearch, .spotifyPlayback,
+        .slackHistory, .spotifySearch, .spotifyPlayback, .youtubeSubscriptions, .youtubeSubscriptionFeed,
     ]
 
     private static func detail(for command: String) -> [String: Any] {
@@ -209,6 +209,8 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
         "slackHistory": ["channel", "limit", "cursor?"],
         "spotifySearch": ["query", "limit", "cursor?"],
         "spotifyPlayback": ["limit", "cursor?"],
+        "youtubeSubscriptions": ["limit", "cursor?"],
+        "youtubeSubscriptionFeed": ["limit", "channel?"],
     ]
 
     private static let writeOperationParameters: [String: [String]] = [

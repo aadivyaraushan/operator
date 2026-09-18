@@ -18,6 +18,7 @@ public enum ConnectorID: String, Codable, CaseIterable, Sendable, Hashable {
     case google, googleTasks, microsoft, outlookCalendar, slack, spotify
     case notion
     case media
+    case youtubeSubscriptions
 }
 
 /// The iOS permission a connector also needs, when it needs one. Operator can
@@ -262,6 +263,11 @@ public enum ConnectorCatalog {
               writeSummary: "Open one inside Operator.",
               readCommands: ["youtube.search", "podcasts.search"], writeCommands: ["youtube.open", "podcasts.open"],
               systemPermission: nil, requiresAccount: false),
+        .init(id: .youtubeSubscriptions, title: "YouTube subscriptions",
+              readSummary: "Your subscribed channels and their newest videos. Uses your Google sign-in.",
+              writeSummary: nil,
+              readCommands: ["connections.read"], writeCommands: [],
+              systemPermission: nil, requiresAccount: true),
     ]
 
     public static func descriptor(_ id: ConnectorID) -> ConnectorDescriptor {
@@ -308,6 +314,8 @@ public enum ConnectorCatalog {
 
     private static func provider(forAccountOperation operation: String) -> ConnectorID? {
         if operation.hasPrefix("googleTasks") { return .googleTasks }
+        // Before the plain "google" rule, which would otherwise swallow these.
+        if operation.hasPrefix("youtube") { return .youtubeSubscriptions }
         if operation.hasPrefix("google") || operation.hasPrefix("gmail") { return .google }
         if operation.hasPrefix("outlookCalendar") { return .outlookCalendar }
         if operation.hasPrefix("outlook") { return .microsoft }

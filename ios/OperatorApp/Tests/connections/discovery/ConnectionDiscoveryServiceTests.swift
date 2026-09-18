@@ -25,6 +25,7 @@ final class ConnectionDiscoveryServiceTests: XCTestCase {
             "googleCalendarEvents", "googleDriveFiles", "googleDriveFileContent", "gmailMessages", "googleTasks",
             "outlookInbox", "outlookCalendarEvents", "slackChannels",
             "slackHistory", "spotifySearch", "spotifyPlayback",
+            "youtubeSubscriptions", "youtubeSubscriptionFeed",
         ]))
         XCTAssertEqual(Set(account["write"] as? [String] ?? []), Set(AccountWriteOperation.allCases.map(\.rawValue)))
         XCTAssertEqual(account["readParameters"] as? [String: [String]], [
@@ -39,6 +40,8 @@ final class ConnectionDiscoveryServiceTests: XCTestCase {
             "slackHistory": ["channel", "limit", "cursor?"],
             "spotifySearch": ["query", "limit", "cursor?"],
             "spotifyPlayback": ["limit", "cursor?"],
+            "youtubeSubscriptions": ["limit", "cursor?"],
+            "youtubeSubscriptionFeed": ["limit", "channel?"],
         ])
 
         let details = try XCTUnwrap(object["commandDetails"] as? [[String: Any]])

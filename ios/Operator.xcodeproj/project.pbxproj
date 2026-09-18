@@ -54,6 +54,7 @@
 		53B4DE4EF165DB133FA8D2EC /* ForegroundMessageDispatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BECAAB613F39B7900BC7D5 /* ForegroundMessageDispatchService.swift */; };
 		5796006793180C597B6B0F5C /* GoogleDriveContentReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD8E98D2432240D788CF4F2A /* GoogleDriveContentReaderTests.swift */; };
 		5A47B05B547DA8F74C543B96 /* CanvasClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8770BA2B59B9D7357626FC3 /* CanvasClient.swift */; };
+		5AAB69D3BB8720E387B8BEEC /* YouTubeSubscriptionReadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B6468645BA0291878B57759 /* YouTubeSubscriptionReadTests.swift */; };
 		5B273A5F80E03A1E0ADEB811 /* PublicMediaURLPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D61196FCC160ABACEA5517 /* PublicMediaURLPolicy.swift */; };
 		5D17545DF1BCF1F05DC12AC3 /* EmbeddedRuntimeHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51BDA4CB9ABC87C383F66FBC /* EmbeddedRuntimeHost.swift */; };
 		5F8D5118B87FA4BADFB5C490 /* ModelSetupContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421FA479133137B163DDDE9C /* ModelSetupContracts.swift */; };
@@ -237,6 +238,7 @@
 		072E929D31E7DD6401B0C04E /* LocalOpenClawChatGatewayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalOpenClawChatGatewayTests.swift; sourceTree = "<group>"; };
 		08BB5A4055F00F6468E370EF /* AVFAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFAudio.framework; path = System/Library/Frameworks/AVFAudio.framework; sourceTree = SDKROOT; };
 		095EB3E761A8C80A0054953A /* YouTubeAPIKeySetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeAPIKeySetup.swift; sourceTree = "<group>"; };
+		0B6468645BA0291878B57759 /* YouTubeSubscriptionReadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeSubscriptionReadTests.swift; sourceTree = "<group>"; };
 		0D110B013C1385F86E6F737B /* Simulator.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Simulator.entitlements; sourceTree = "<group>"; };
 		0E77E76B97FC6B2426E17FD3 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		0FCA0F3AC82EAE545D2FA2D2 /* DiscordAnnouncementsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordAnnouncementsTests.swift; sourceTree = "<group>"; };
@@ -471,6 +473,7 @@
 				777FA2CF77340DA64BF18129 /* ForegroundAccountReadServiceTests.swift */,
 				BD8E98D2432240D788CF4F2A /* GoogleDriveContentReaderTests.swift */,
 				8063DA3D8BFF92F1CCB91836 /* SlackReadMetadataTests.swift */,
+				0B6468645BA0291878B57759 /* YouTubeSubscriptionReadTests.swift */,
 			);
 			path = read;
 			sourceTree = "<group>";
@@ -1455,7 +1458,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_50360A28-9BE9-497A-A3AE-C39034EA2475" /* embedded */ = {
+		"TEMP_5ACA43CF-96AE-4A94-AE49-5661F484D289" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1689,6 +1692,7 @@
 				B300654E87D79A4B03A259F8 /* WhatsAppLinkFlowTests.swift in Sources */,
 				49AF45BACD7E0473CBAE247E /* WhatsAppSendGuardTests.swift in Sources */,
 				2294D2E94E9AFDEDA0E65B86 /* YouTubeAPIKeySetupTests.swift in Sources */,
+				5AAB69D3BB8720E387B8BEEC /* YouTubeSubscriptionReadTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -22,6 +22,7 @@ enum OAuthProvider: String, Codable, CaseIterable, Sendable {
                 // need a CASA security assessment first.
                 "https://www.googleapis.com/auth/gmail.readonly",
                 "https://www.googleapis.com/auth/tasks",
+                "https://www.googleapis.com/auth/youtube.readonly",
             ]
         case .microsoftOutlook:
             ["openid", "offline_access", "User.Read", "Mail.ReadWrite", "Mail.Send", "Calendars.ReadWrite"]

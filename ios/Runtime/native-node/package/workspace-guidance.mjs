@@ -86,6 +86,12 @@ each behind the person's confirmation tap:
   connections.read googleTasks; add one with googleTasksCreateTask (title,
   optional notes and due as YYYY-MM-DD); change or tick one off with
   googleTasksUpdateTask and the task's id (completed true).
+- YouTube: has its own Read switch. "What is the latest on my
+  subscriptions" is connections.read youtubeSubscriptionFeed, the newest
+  videos across every channel the person follows, last seven days, newest
+  first, each with a url. youtubeSubscriptions lists the channels, and
+  channel narrows the feed to one of them. youtube.search stays for
+  searching public videos.
 - Outlook Mail: create a draft or send mail. Outlook Calendar has its own
   Read and Act switches: read with outlookCalendarEvents; add an event with
   outlookCalendarCreateEvent (subject, startRFC3339, endRFC3339 with the

@@ -88,6 +88,9 @@ final class ConnectorPermissionsTests: XCTestCase {
             ("outlookInbox", .microsoft), ("outlookCalendarEvents", .outlookCalendar),
             ("slackChannels", .slack), ("slackHistory", .slack),
             ("spotifySearch", .spotify), ("spotifyPlayback", .spotify),
+            // Ahead of the plain "google" rule, or these would land on the
+            // Google row and the YouTube switch would never be consulted.
+            ("youtubeSubscriptions", .youtubeSubscriptions), ("youtubeSubscriptionFeed", .youtubeSubscriptions),
         ]
         for (operation, provider) in reads {
             XCTAssertEqual(

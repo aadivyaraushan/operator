@@ -81,7 +81,7 @@ struct ChatScreen: View {
     /// "Signed in" / "Not signed in" for the Permissions page's account rows.
     private func accountStatus(_ id: ConnectorID) -> String? {
         let provider: OAuthProvider? = switch id {
-        case .google, .googleTasks: .google
+        case .google, .googleTasks, .youtubeSubscriptions: .google
         case .microsoft, .outlookCalendar: .microsoftOutlook
         case .slack: .slack
         case .spotify: .spotify

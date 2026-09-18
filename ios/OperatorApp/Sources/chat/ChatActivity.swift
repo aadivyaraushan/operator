@@ -130,6 +130,7 @@ struct ChatActivityLabel: Equatable, Sendable {
         case "outlookCalendarEvents", "outlookCalendarCreateEvent", "outlookCalendarUpdateEvent": "Outlook Calendar"
         case "slackChannels", "slackHistory", "slackPostMessage": "Slack"
         case "spotifyPlayback", "spotifySearch", "spotifyStartPlayback": "Spotify"
+        case "youtubeSubscriptions", "youtubeSubscriptionFeed": "YouTube"
         default: "a connected account"
         }
         return .init(live: "\(live) \(service)", done: "\(done) \(service)")

@@ -3,10 +3,12 @@ import OSLog
 
 enum AccountReadOperation: String, Sendable {
     case googleCalendarEvents, googleDriveFiles, googleDriveFileContent, gmailMessages, googleTasks, outlookInbox,
-         outlookCalendarEvents, slackChannels, slackHistory, spotifySearch, spotifyPlayback
+         outlookCalendarEvents, slackChannels, slackHistory, spotifySearch, spotifyPlayback,
+         youtubeSubscriptions, youtubeSubscriptionFeed
     var provider: OAuthProvider {
         switch self {
-        case .googleCalendarEvents, .googleDriveFiles, .googleDriveFileContent, .gmailMessages, .googleTasks: .google
+        case .googleCalendarEvents, .googleDriveFiles, .googleDriveFileContent, .gmailMessages, .googleTasks,
+             .youtubeSubscriptions, .youtubeSubscriptionFeed: .google
         case .outlookInbox, .outlookCalendarEvents: .microsoftOutlook
         case .slackChannels, .slackHistory: .slack
         case .spotifySearch, .spotifyPlayback: .spotify
@@ -29,10 +31,17 @@ enum AccountReadError: Error, Equatable, Sendable { case invalidRequest, notConn
 actor DirectAccountReader {
     private let transport: any PhoneHTTPTransport
     private let bearer: @Sendable (OAuthProvider) async throws -> String
+    /// Injected so the feed's seven-day window can be tested against fixed
+    /// publication dates.
+    private let now: @Sendable () -> Date
     private let logger = Logger(subsystem: "app.operator.ios", category: "account-read")
 
-    init(transport: any PhoneHTTPTransport = URLSessionPhoneHTTPTransport(), bearer: @escaping @Sendable (OAuthProvider) async throws -> String) {
-        self.transport = transport; self.bearer = bearer
+    init(
+        transport: any PhoneHTTPTransport = URLSessionPhoneHTTPTransport(),
+        bearer: @escaping @Sendable (OAuthProvider) async throws -> String,
+        now: @escaping @Sendable () -> Date = { Date() })
+    {
+        self.transport = transport; self.bearer = bearer; self.now = now
     }
 
     func read(_ input: AccountReadRequest) async throws -> AccountReadPage {
@@ -42,6 +51,7 @@ actor DirectAccountReader {
         self.logger.info("[account-read] request provider=\(input.operation.provider.rawValue, privacy: .public) operation=\(input.operation.rawValue, privacy: .public) limit=\(input.limit)")
         if input.operation == .gmailMessages { return try await self.gmailPage(input) }
         if input.operation == .googleDriveFileContent { return try await self.driveContentPage(input) }
+        if input.operation == .youtubeSubscriptionFeed { return try await self.youtubeFeedPage(input) }
         let url = try self.url(for: input)
         let token: String
         do { token = try await self.bearer(input.operation.provider) } catch { throw AccountReadError.notConnected }
@@ -76,6 +86,14 @@ actor DirectAccountReader {
             // The task list id lands in the URL path, so it is checked here
             // and percent-encoded there. Absent means the default list.
             if let list = r.channel, !Self.isSafePathSegment(list) { return false }
+            return true
+        case .youtubeSubscriptions:
+            return r.query == nil && r.channel == nil && r.timeMin == nil && r.timeMax == nil
+        case .youtubeSubscriptionFeed:
+            // The feed merges every channel's newest uploads, so there is no
+            // page to ask for next and a cursor would silently do nothing.
+            guard r.query == nil, r.timeMin == nil, r.timeMax == nil, r.cursor == nil else { return false }
+            if let channel = r.channel, !Self.isSafePathSegment(channel) { return false }
             return true
         case .gmailMessages:
             guard r.channel == nil, r.timeMin == nil, r.timeMax == nil else { return false }
@@ -302,7 +320,9 @@ actor DirectAccountReader {
         switch r.operation {
         case .googleCalendarEvents:
             base = "https://www.googleapis.com"; path = "/calendar/v3/calendars/primary/events"; items = [.init(name:"singleEvents",value:"true"),.init(name:"orderBy",value:"startTime"),.init(name:"timeMin",value:r.timeMin),.init(name:"timeMax",value:r.timeMax),.init(name:"maxResults",value:String(r.limit))]; if let q=r.query { items.append(.init(name:"q",value:q)) }; if let c=r.cursor { items.append(.init(name:"pageToken",value:c)) }
-        case .googleDriveFileContent: throw AccountReadError.invalidRequest
+        // Both take more than one request, so they build their own URLs.
+        case .googleDriveFileContent, .youtubeSubscriptionFeed: throw AccountReadError.invalidRequest
+        case .youtubeSubscriptions: return try Self.youtubeSubscriptionsURL(limit: r.limit, cursor: r.cursor)
         case .googleDriveFiles:
             base = "https://www.googleapis.com"; path = "/drive/v3/files"; let safe = r.query!.replacingOccurrences(of:"\\",with:"\\\\").replacingOccurrences(of:"'",with:"\\'"); items=[.init(name:"q",value:"(name contains '\(safe)' or fullText contains '\(safe)') and trashed = false"),.init(name:"spaces",value:"drive"),.init(name:"pageSize",value:String(r.limit)),.init(name:"fields",value:"nextPageToken,files(id,name,mimeType,modifiedTime,webViewLink,parents)")]; if let c=r.cursor { items.append(.init(name:"pageToken",value:c)) }
         case .gmailMessages:
@@ -335,8 +355,12 @@ actor DirectAccountReader {
         // Tasks omits items entirely when the list is empty, which is an
         // empty result rather than a malformed one.
         case .googleTasks: array=(object["items"] as? [Any]) ?? []; next=object["nextPageToken"] as? String
+        // Subscriptions are flattened before the key filter, so the channel id
+        // reaches the row from inside resourceId.
+        case .youtubeSubscriptions:
+            array = (object["items"] as? [Any] ?? []).map(Self.youtubeSubscriptionRow); next = object["nextPageToken"] as? String
         // Unreachable: read() routes .gmailMessages to gmailPage before here.
-        case .gmailMessages, .googleDriveFileContent: throw AccountReadError.invalidResponse
+        case .gmailMessages, .googleDriveFileContent, .youtubeSubscriptionFeed: throw AccountReadError.invalidResponse
         case .outlookInbox:
             array=object["value"] as? [Any]; next=try self.microsoftCursor(object["@odata.nextLink"] as? String, path:"/v1.0/me/mailFolders/inbox/messages")
         case .outlookCalendarEvents:
@@ -446,6 +470,134 @@ actor DirectAccountReader {
         return encoded
     }
 
+    // MARK: YouTube subscriptions
+    //
+    // "What is the latest video on my subscriptions" has no endpoint. The
+    // activities API was retired, so the answer is the subscription list plus
+    // one uploads-playlist read per channel, merged here. A channel's uploads
+    // playlist is its id with the "UC" prefix swapped for "UU"; a channel id
+    // in any other shape has no such playlist and is skipped.
+
+    /// How many subscribed channels one feed read fans out over.
+    static let youtubeFeedMaximumChannels = 50
+
+    /// How old the newest uploads may be. Anything further back is not news.
+    static let youtubeFeedWindow: TimeInterval = 7 * 24 * 60 * 60
+
+    private func youtubeFeedPage(_ input: AccountReadRequest) async throws -> AccountReadPage {
+        self.logger.info("[account-read] youtube feed limit=\(input.limit) channel=\(input.channel ?? "all", privacy: .public)")
+        let channels: [String]
+        if let one = input.channel {
+            channels = [one]
+        } else {
+            let data = try await self.fetch(
+                Self.youtubeSubscriptionsURL(limit: Self.youtubeFeedMaximumChannels, cursor: nil),
+                provider: .google, operation: .youtubeSubscriptionFeed)
+            guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                throw AccountReadError.invalidResponse
+            }
+            channels = (object["items"] as? [Any] ?? []).compactMap {
+                ((($0 as? [String: Any])?["snippet"] as? [String: Any])?["resourceId"] as? [String: Any])?["channelId"] as? String
+            }
+        }
+        self.logger.info("[account-read] youtube feed channels=\(channels.count)")
+
+        // Only Data crosses the task boundary; [String: Any] is not Sendable.
+        // A channel that fails is dropped, the way the Slack lookups are.
+        let uploads = channels.filter { $0.hasPrefix("UC") }
+        let fetched: [String: Data] = await withTaskGroup(of: (String, Data)?.self) { group in
+            for channel in uploads {
+                group.addTask {
+                    guard let url = Self.youtubeUploadsURL(channelID: channel),
+                          let data = try? await self.fetch(url, provider: .google, operation: .youtubeSubscriptionFeed)
+                    else { return nil }
+                    return (channel, data)
+                }
+            }
+            var collected: [String: Data] = [:]
+            for await item in group { if let (id, data) = item { collected[id] = data } }
+            return collected
+        }
+        self.logger.info("[account-read] youtube feed resolved=\(fetched.count) failed=\(uploads.count - fetched.count)")
+
+        let cutoff = self.now().addingTimeInterval(-Self.youtubeFeedWindow)
+        var dated: [(Date, [String: Any])] = []
+        for data in fetched.values {
+            guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+            for item in object["items"] as? [Any] ?? [] {
+                guard let row = Self.youtubeFeedRow(item),
+                      let published = row["publishedAt"] as? String,
+                      let date = Self.rfc3339(published), date >= cutoff
+                else { continue }
+                dated.append((date, row))
+            }
+        }
+        let rows = dated.sorted { $0.0 > $1.0 }.prefix(input.limit)
+            .compactMap { self.sanitize($0.1, operation: .youtubeSubscriptionFeed) }
+        self.logger.info("[account-read] youtube feed rows=\(rows.count)")
+        guard let encoded = try? JSONSerialization.data(withJSONObject: rows, options: [.sortedKeys]), encoded.count <= 256_000
+        else { throw AccountReadError.invalidResponse }
+        return .init(payloadJSON: String(decoding: encoded, as: UTF8.self), count: rows.count, nextCursor: nil)
+    }
+
+    private static func youtubeSubscriptionsURL(limit: Int, cursor: String?) throws -> URL {
+        var components = URLComponents(string: "https://www.googleapis.com")!
+        components.path = "/youtube/v3/subscriptions"
+        components.queryItems = [
+            .init(name: "part", value: "snippet"),
+            .init(name: "mine", value: "true"),
+            .init(name: "maxResults", value: String(min(limit, 50))),
+        ]
+        if let cursor { components.queryItems?.append(.init(name: "pageToken", value: cursor)) }
+        guard let url = components.url else { throw AccountReadError.invalidRequest }
+        return url
+    }
+
+    private static func youtubeUploadsURL(channelID: String) -> URL? {
+        guard channelID.hasPrefix("UC") else { return nil }
+        var components = URLComponents(string: "https://www.googleapis.com")!
+        components.path = "/youtube/v3/playlistItems"
+        components.queryItems = [
+            .init(name: "part", value: "snippet,contentDetails"),
+            .init(name: "playlistId", value: "UU" + channelID.dropFirst(2)),
+            .init(name: "maxResults", value: "5"),
+        ]
+        return components.url
+    }
+
+    /// One subscription, with the channel id lifted out of resourceId so a
+    /// caller can pass it straight back as `channel`.
+    private static func youtubeSubscriptionRow(_ value: Any) -> Any {
+        guard let snippet = (value as? [String: Any])?["snippet"] as? [String: Any] else { return value }
+        var row: [String: Any] = [:]
+        if let id = (snippet["resourceId"] as? [String: Any])?["channelId"] as? String { row["channelId"] = id }
+        if let title = snippet["title"] as? String { row["title"] = title }
+        if let description = snippet["description"] as? String { row["description"] = description }
+        if let published = snippet["publishedAt"] as? String { row["subscribedAt"] = published }
+        return row
+    }
+
+    /// One upload. The watch URL is built here rather than taken from the
+    /// response, so the id it carries is the one that was checked.
+    private static func youtubeFeedRow(_ value: Any) -> [String: Any]? {
+        guard let item = value as? [String: Any], let snippet = item["snippet"] as? [String: Any] else { return nil }
+        let videoID = ((item["contentDetails"] as? [String: Any])?["videoId"] as? String)
+            ?? ((snippet["resourceId"] as? [String: Any])?["videoId"] as? String)
+        guard let videoID, (1 ... 64).contains(videoID.count),
+              videoID.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }),
+              let published = snippet["publishedAt"] as? String
+        else { return nil }
+        var row: [String: Any] = [
+            "videoId": videoID,
+            "publishedAt": published,
+            "url": "https://www.youtube.com/watch?v=\(videoID)",
+        ]
+        for key in ["title", "channelId", "channelTitle", "description"] {
+            if let text = snippet[key] as? String { row[key] = text }
+        }
+        return row
+    }
+
     private func microsoftCursor(_ link: String?, path: String) throws -> String? {
         guard let link else { return nil }; guard let url=URL(string:link), url.scheme=="https", url.host=="graph.microsoft.com", url.path==path, let skip=URLComponents(url:url,resolvingAgainstBaseURL:false)?.queryItems?.first(where:{$0.name=="$skip"})?.value, let value = Int(skip), value >= 0 else { throw AccountReadError.invalidResponse }; return String(value)
     }
@@ -465,6 +617,8 @@ actor DirectAccountReader {
         case .googleDriveFiles: keys = ["id", "name", "mimeType", "modifiedTime", "webViewLink", "parents"]
         case .googleDriveFileContent: keys = []
         case .googleTasks: keys = ["id", "title", "notes", "due", "status", "updated", "webViewLink"]
+        case .youtubeSubscriptions: keys = ["channelId", "title", "description", "subscribedAt"]
+        case .youtubeSubscriptionFeed: keys = ["videoId", "title", "channelId", "channelTitle", "publishedAt", "description", "url"]
         // Unreachable for the same reason; Gmail rows are constructed field
         // by field in gmailRow rather than filtered from a response.
         case .gmailMessages: keys = []

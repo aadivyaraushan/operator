@@ -419,6 +419,13 @@ final class DirectAccountReaderTests: XCTestCase {
         XCTAssertEqual(AccountReadOperation.googleTasks.provider, .google)
     }
 
+    func testYouTubeReadsUseTheExistingGoogleClient() {
+        XCTAssertEqual(OAuthProvider.allCases.count, 4, "no new OAuth client was introduced")
+        XCTAssertEqual(AccountReadOperation.youtubeSubscriptions.provider, .google)
+        XCTAssertEqual(AccountReadOperation.youtubeSubscriptionFeed.provider, .google)
+        XCTAssertTrue(OAuthProvider.google.scopes.contains("https://www.googleapis.com/auth/youtube.readonly"))
+    }
+
     // Dropped deliberately rather than forgotten. Google Contacts duplicated
     // the phone's own address book, which costs no OAuth and no review, and
     // Google Chat is a Workspace product with thin consumer use - two scopes
