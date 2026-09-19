@@ -71,6 +71,8 @@ final class OfflineDictationModel: ObservableObject {
     ) {
         switch event {
         case let .transcript(text):
+            // Words that arrive after the mic was turned off are dropped.
+            guard self.state == .recording || self.state == .requestingPermission else { return }
             guard !text.isEmpty else { return }
             let separator = self.draftBeforeTranscript.isEmpty ? "" : " "
             let updatedDraft = self.draftBeforeTranscript + separator + text

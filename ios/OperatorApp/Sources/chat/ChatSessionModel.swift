@@ -245,6 +245,10 @@ final class ChatSessionModel: ObservableObject {
 
         let id = UUID()
         let now = Date()
+        if self.dictation.state == .recording || self.dictation.state == .requestingPermission {
+            self.logger.info("[dictation] stopped because the message was sent")
+            self.dictation.stop()
+        }
         self.sounds.play(.send)
         self.draft = ""
         self.messages.append(ChatMessage(

@@ -807,7 +807,7 @@ final class ChatSessionModelTests: XCTestCase {
     }
 }
 
-private actor RecordingPersistence: ChatPersistence {
+actor RecordingPersistence: ChatPersistence {
     private var snapshot: ConversationSnapshot
     private var restores = 0
 
@@ -900,7 +900,7 @@ private actor HeldDeliveryGateway: ChatGateway {
     func deliveredKeys() -> [String] { keys }
 }
 
-private actor RuntimeGateGateway: ChatGateway {
+actor RuntimeGateGateway: ChatGateway {
     private var activations = 0
     private var deliveries = 0
     func activateApprovalUpdates(_ update: @escaping @Sendable (ChatApprovalUpdate) async -> Void) async throws { activations += 1 }

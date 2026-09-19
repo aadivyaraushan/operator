@@ -14,6 +14,7 @@
 		05CA76832C365332CEEC5991 /* ForegroundAccountWriteConfirmationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38581187BA3CDE1568086596 /* ForegroundAccountWriteConfirmationServiceTests.swift */; };
 		07A5FA5CD1091D9F8EE373C9 /* ForegroundNotionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 050195695EEB8466D0BF736C /* ForegroundNotionService.swift */; };
 		080B964E06F6A7EBCFC83B79 /* QuestionNotifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F1CE9C56C0FF23032EE420 /* QuestionNotifierTests.swift */; };
+		090A321EB8AF5B9CFA5806ED /* ReplyBlocksTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F4F29FCF37A91FF15C92095 /* ReplyBlocksTests.swift */; };
 		0A1C30B53C7F970919B154FA /* NativeAccountSetupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B6D712F69ADF6344534D5B5 /* NativeAccountSetupCoordinator.swift */; };
 		0A1C488A56BB8EC44AF34AEC /* LocalLocationNodeGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46B72B71A8F5A948B06185B /* LocalLocationNodeGateway.swift */; };
 		0B0FAA7524FE0381259D49D9 /* SystemContactCreatePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF4E7F6DCFD0B1441C04DF8C /* SystemContactCreatePresenter.swift */; };
@@ -134,6 +135,7 @@
 		A4ECC164BB85F656C7132BBC /* NativeAccountConnectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9492520A3BA851A694A077 /* NativeAccountConnectionSheet.swift */; };
 		A6E6C7B92112253D286B93C1 /* ConnectorPermissionCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F154D523ECF9750E20A2FF /* ConnectorPermissionCenter.swift */; };
 		A884BE925DAD7100F4E248C6 /* ForegroundWeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F656AC5615EE768928E80646 /* ForegroundWeatherService.swift */; };
+		A8CFB403C30BD2D89A75169F /* ReplyBlocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AF7B618A4D0C47E234BDB66 /* ReplyBlocks.swift */; };
 		AA41432EE6820F7979B54B41 /* PendingSendCenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC532C1EC6518F0D874328D8 /* PendingSendCenterTests.swift */; };
 		AA46805C6D338FDA5A9EF147 /* ForegroundContactCreateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6D4ABEE1296F78A61B0BC3E /* ForegroundContactCreateService.swift */; };
 		AB02FE2C3045C0E1420CFC81 /* WidgetSetupScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FFBEA10C8FFE404454F093 /* WidgetSetupScreen.swift */; };
@@ -205,6 +207,7 @@
 		F6555AAE42BD2A4FB7108CE4 /* OAuthTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D28413E654E17641C2A8767 /* OAuthTransport.swift */; };
 		F784AD59C98B8D7D361377E9 /* YouTubeAPIKeySetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 095EB3E761A8C80A0054953A /* YouTubeAPIKeySetup.swift */; };
 		F7F4BF5D98E4308A2CB5F01B /* SystemAccountWriteConfirmationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC01CB893AD10D7CA41775EF /* SystemAccountWriteConfirmationPresenter.swift */; };
+		F8653EB935A4711C48D68903 /* SendStopsDictationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007E32910708FDA09779C9BD /* SendStopsDictationTests.swift */; };
 		F8B5BE0C09A350F202B56B9D /* OperatorLettering.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15D4FAC5433A7DDBAE27B9CB /* OperatorLettering.swift */; };
 		FB39CBF6079950629E2B05BC /* runtime in Resources */ = {isa = PBXBuildFile; fileRef = A1AF3111A40D0B89366D2550 /* runtime */; };
 		FD66FBAF132FD1B8830F9CF4 /* ChatContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4D32786B344D6642DF4CC5 /* ChatContracts.swift */; };
@@ -263,6 +266,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		007E32910708FDA09779C9BD /* SendStopsDictationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendStopsDictationTests.swift; sourceTree = "<group>"; };
 		024B51C6C656B6B4C678DA5E /* IncomingMessageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomingMessageStore.swift; sourceTree = "<group>"; };
 		024EB25ABFAFDEDC1DC27761 /* ForegroundWhatsAppComposeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundWhatsAppComposeService.swift; sourceTree = "<group>"; };
 		028DD4F85059B37A93EF215A /* GoogleWorkspaceWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleWorkspaceWriterTests.swift; sourceTree = "<group>"; };
@@ -317,6 +321,7 @@
 		3D5A293BE7C8252D848B61DE /* ForegroundNodeCommandRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundNodeCommandRouter.swift; sourceTree = "<group>"; };
 		3EF11DDA8E39598571DF3662 /* ConnectorPermissionCenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorPermissionCenterTests.swift; sourceTree = "<group>"; };
 		3F39313C97E57CAD89A32CF8 /* IncomingMessageStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomingMessageStoreTests.swift; sourceTree = "<group>"; };
+		3F4F29FCF37A91FF15C92095 /* ReplyBlocksTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyBlocksTests.swift; sourceTree = "<group>"; };
 		3F9676D6F9E8AD88AAAC40E2 /* ChatSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSessionModel.swift; sourceTree = "<group>"; };
 		41554565367C9E5163358C22 /* PhoneOAuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneOAuthClient.swift; sourceTree = "<group>"; };
 		41AB67A22B4B72F26F99BD13 /* 6-left-it.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "6-left-it.wav"; sourceTree = "<group>"; };
@@ -352,6 +357,7 @@
 		61FC1CAA927881E1E5A7D049 /* ScenarioDriverUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioDriverUITests.swift; sourceTree = "<group>"; };
 		66E68FE88088C4AE52ED6FDD /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		68EE3AA8ABAE8C946B93A9FE /* 2-did-gmail.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "2-did-gmail.wav"; sourceTree = "<group>"; };
+		6AF7B618A4D0C47E234BDB66 /* ReplyBlocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyBlocks.swift; sourceTree = "<group>"; };
 		6B6D712F69ADF6344534D5B5 /* NativeAccountSetupCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAccountSetupCoordinator.swift; sourceTree = "<group>"; };
 		6BACC7C7C5D24B5E133FCEC2 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		6DCBB7A0034CB9F86454E312 /* ForegroundWhatsAppReadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundWhatsAppReadService.swift; sourceTree = "<group>"; };
@@ -858,6 +864,7 @@
 			children = (
 				D14A0E2BB86EC5DAE73831ED /* DictationSystemCallbacksTests.swift */,
 				8ACAACFE7B6DA3BFC9795838 /* OfflineDictationModelTests.swift */,
+				007E32910708FDA09779C9BD /* SendStopsDictationTests.swift */,
 			);
 			path = dictation;
 			sourceTree = "<group>";
@@ -1175,6 +1182,14 @@
 				858C7FC9AD08C75763590E8D /* ChatThoughtTests.swift */,
 			);
 			path = thinking;
+			sourceTree = "<group>";
+		};
+		86010F7420AE5C725FC2A75C /* reply-formatting */ = {
+			isa = PBXGroup;
+			children = (
+				3F4F29FCF37A91FF15C92095 /* ReplyBlocksTests.swift */,
+			);
+			path = "reply-formatting";
 			sourceTree = "<group>";
 		};
 		8750ED5AF31D5BF3CA63D928 /* native */ = {
@@ -1597,6 +1612,7 @@
 			children = (
 				FA07F7B34D039688D326A237 /* header */,
 				5B24393D75D13A84EF0CF460 /* questions */,
+				86010F7420AE5C725FC2A75C /* reply-formatting */,
 				F9DA0D00DE6D91044D64BA76 /* sounds */,
 				85DD193DD9E639C1FAE630D2 /* thinking */,
 			);
@@ -1627,6 +1643,14 @@
 			path = auth;
 			sourceTree = "<group>";
 		};
+		F819805979ACBE9A155EB5BC /* reply-formatting */ = {
+			isa = PBXGroup;
+			children = (
+				6AF7B618A4D0C47E234BDB66 /* ReplyBlocks.swift */,
+			);
+			path = "reply-formatting";
+			sourceTree = "<group>";
+		};
 		F8937FE49570D7C2070EB284 /* confirm */ = {
 			isa = PBXGroup;
 			children = (
@@ -1643,6 +1667,7 @@
 				3F9676D6F9E8AD88AAAC40E2 /* ChatSessionModel.swift */,
 				7F502A8874DBD909990C5441 /* header */,
 				7348DE5D84EFCF0C17D1F394 /* questions */,
+				F819805979ACBE9A155EB5BC /* reply-formatting */,
 				C038344CB4CD7989E7B337CC /* sounds */,
 				D7F512A8AD5A75CE7D29D1E1 /* thinking */,
 			);
@@ -1693,7 +1718,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_C8C1D86B-1168-4186-89E7-1DD5599C4EFE" /* embedded */ = {
+		"TEMP_940E2374-9A18-4B77-AD6C-7F55D47327DF" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1943,7 +1968,9 @@
 				AA41432EE6820F7979B54B41 /* PendingSendCenterTests.swift in Sources */,
 				63EB0E9E3C22DE2DF6E0B512 /* PhoneOAuthClientTests.swift in Sources */,
 				080B964E06F6A7EBCFC83B79 /* QuestionNotifierTests.swift in Sources */,
+				090A321EB8AF5B9CFA5806ED /* ReplyBlocksTests.swift in Sources */,
 				41A8A949CF0F2E5FABB3EB61 /* ReplyContinuationTests.swift in Sources */,
+				F8653EB935A4711C48D68903 /* SendStopsDictationTests.swift in Sources */,
 				D1C007E02391A31970079D5C /* SlackReadMetadataTests.swift in Sources */,
 				24341752AAD7E050880843F2 /* SpotifyLoopbackSetupTests.swift in Sources */,
 				B300654E87D79A4B03A259F8 /* WhatsAppLinkFlowTests.swift in Sources */,
@@ -2047,6 +2074,7 @@
 				5B273A5F80E03A1E0ADEB811 /* PublicMediaURLPolicy.swift in Sources */,
 				D61EC5779847E73DE05789AF /* QuestionNotifier.swift in Sources */,
 				32A4F5CE59EF216429A0B751 /* RecordIncomingMessageIntent.swift in Sources */,
+				A8CFB403C30BD2D89A75169F /* ReplyBlocks.swift in Sources */,
 				DAFCE568B53F22106F8ACDCE /* ReplyContinuation.swift in Sources */,
 				E02278F6D8BC696D9F8284EC /* ReplyNotifier.swift in Sources */,
 				2D6FE837716901D4C5020E23 /* SendConfirmationNotifier.swift in Sources */,
