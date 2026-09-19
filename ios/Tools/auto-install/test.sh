@@ -26,7 +26,7 @@ case "$*" in
 esac
 exit 0'
 stub xcodebuild 'mkdir -p "$OPERATOR_AUTO_INSTALL_DERIVED/Build/Products/Debug-iphoneos/Operator.app"; exit ${XCODEBUILD_EXIT:-0}'
-stub xcrun 'exit 0'
+stub xcrun 'case "$*" in *"list devices"*) print "phone  DEVICE-1 (UDID)  ${DEVICE_STATE:-available (paired)}  iPhone" ;; esac; exit 0'
 stub security 'print -- "-----BEGIN CERTIFICATE-----"'
 stub openssl 'read -r pem || exit 1; print "subject= /UID=x/CN=Apple Development: A B (X)/OU=TEAM123456/O=A B/C=US"'
 stub osascript 'exit 0'
@@ -47,6 +47,14 @@ check "first tick builds"   'grep -q "^xcodebuild" "$CALLS"'
 check "first tick installs" 'grep -q "devicectl device install app --device DEVICE-1" "$CALLS"'
 check "records sha"         'grep -q "installed_sha=c0ffee" "$OPERATOR_AUTO_INSTALL_STATE/state"'
 check "notifies installed"  'grep -q "osascript.*Installed" "$CALLS"'
+
+# Phone out of reach: no build, no "Failed", and the next tick tries again.
+reset; DEVICE_STATE=unavailable REMOTE_SHA=c0ffee "$DEPLOY" tick >/dev/null 2>&1
+check "unreachable skips build"   '! grep -q "^xcodebuild" "$CALLS"'
+check "unreachable is not Failed" '! grep -q "FAILED" "$OPERATOR_AUTO_INSTALL_LOG"'
+check "unreachable says waiting"  'grep -q "waiting for phone" "$OPERATOR_AUTO_INSTALL_LOG"'
+check "unreachable records nothing" '! grep -q "installed_sha=c0ffee" "$OPERATOR_AUTO_INSTALL_STATE/state" 2>/dev/null'
+REMOTE_SHA=c0ffee "$DEPLOY" tick >/dev/null 2>&1
 
 # Same commit again, same day: nothing runs.
 : > "$CALLS"; REMOTE_SHA=c0ffee "$DEPLOY" tick >/dev/null 2>&1

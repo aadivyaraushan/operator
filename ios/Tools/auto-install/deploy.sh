@@ -87,6 +87,13 @@ device_udid() {
     | sed -n 's/.*"udid" *: *"\([0-9A-F]\{8\}-[0-9A-F]\{16\}\)".*/\1/p' | head -1
 }
 
+# Whether the Mac's developer tools can talk to the phone right now. Being on
+# the same Wi-Fi is not enough: the wireless link drops while the phone is
+# locked or mirrored, and comes back by itself.
+device_reachable() {
+  xcrun devicectl list devices 2>/dev/null | grep -F -- "$1" | grep -qv unavailable
+}
+
 run_tick() {
   local force="$1"
   read_state
@@ -112,6 +119,10 @@ run_tick() {
   [[ -n "$team" ]] || fail "no Apple Development certificate: sign into Xcode > Settings > Accounts first"
   local dev; dev=$(device_udid)
   [[ -n "$dev" ]] || fail "no paired iPhone: plug it in once and tap Trust"
+  if ! device_reachable "$dev"; then
+    log "waiting for phone: $dev is out of reach (unlock it, or plug it in); will retry"
+    return 0
+  fi
 
   git -C "$src" checkout -q --detach "$remote_sha" || fail "checkout $remote_sha"
 
