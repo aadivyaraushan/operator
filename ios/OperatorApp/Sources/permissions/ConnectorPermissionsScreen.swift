@@ -311,6 +311,11 @@ private struct ConnectorRow: View {
                     .foregroundStyle(OperatorBrand.muted)
                 if self.descriptor.id == .messages {
                     MessagesAutomationPrompt()
+                    if RecordIncomingMessageIntent.installURL == nil {
+                        Text(RecordIncomingMessageIntent.buildByHandSteps)
+                            .font(OperatorLettering.font(.caption))
+                            .foregroundStyle(OperatorBrand.muted)
+                    }
                     ShortcutInstallStatusRow(shortcut: .record)
                     MessagesReadSetupStatus(readGranted: self.readGranted)
                 }

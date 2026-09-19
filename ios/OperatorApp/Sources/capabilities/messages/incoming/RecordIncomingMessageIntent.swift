@@ -25,7 +25,19 @@ struct RecordIncomingMessageIntent: AppIntent {
     /// automation on 2026-09-16, so Shortcuts shows it under the automation's
     /// own name, "Automation 6A0C5F28…", until it is re-shared renamed.
     static let shortcutName = "OperatorRecordMessage"
-    static let installURL: URL? = URL(string: "https://www.icloud.com/shortcuts/786adfe7e3d440ef93f1b9652dcf4bcc")
+    /// The shared shortcut names its action by bundle id, so it only finds
+    /// Operator in the build it was made with. Any other build (a personal
+    /// team's phone build has its own id) gets "an action could not be
+    /// found", and the person has to make the shortcut by hand instead.
+    static let sharedShortcutBundleID = "app.operator.ios"
+    static var installURL: URL? {
+        Bundle.main.bundleIdentifier == self.sharedShortcutBundleID
+            ? URL(string: "https://www.icloud.com/shortcuts/786adfe7e3d440ef93f1b9652dcf4bcc")
+            : nil
+    }
+    static let buildByHandSteps = """
+        This copy of Operator cannot use the shared shortcut, so make it once by hand: in Shortcuts tap +, add Operator's "Record incoming message" action, set Message to Shortcut Input and Sender to Shortcut Input's Sender, and name the shortcut. Enter that name under "Renamed the installed shortcut?" and tap Check.
+        """
     /// Actual title served by installURL; update together when re-sharing.
     static let installedShortcutName = "Automation 6A0C5F28-28AA-4920-88F5-9ADCE0CFEDC8"
 
