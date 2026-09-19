@@ -25,21 +25,42 @@ struct RecordIncomingMessageIntent: AppIntent {
     /// automation on 2026-09-16, so Shortcuts shows it under the automation's
     /// own name, "Automation 6A0C5F28…", until it is re-shared renamed.
     static let shortcutName = "OperatorRecordMessage"
-    /// The shared shortcut names its action by bundle id, so it only finds
-    /// Operator in the build it was made with. Any other build (a personal
-    /// team's phone build has its own id) gets "an action could not be
-    /// found", and the person has to make the shortcut by hand instead.
-    static let sharedShortcutBundleID = "app.operator.ios"
-    static var installURL: URL? {
-        Bundle.main.bundleIdentifier == self.sharedShortcutBundleID
-            ? URL(string: "https://www.icloud.com/shortcuts/786adfe7e3d440ef93f1b9652dcf4bcc")
-            : nil
+    /// A shortcut shared from the Shortcuts app, and the name it installs under.
+    struct SharedShortcut: Equatable {
+        let installURL: URL
+        let name: String
     }
+
+    /// A shared shortcut names its action by app id and team, so it only
+    /// finds Operator in the build it was shared from; any other build gets
+    /// "an action could not be found". Each build therefore has its own link.
+    /// On iOS 27 the shortcut can carry its "When I receive a message"
+    /// trigger, which survives sharing and arrives switched off.
+    private static let sharedShortcuts: [String: SharedShortcut] = [
+        // Shared 2026-09-16 from an automation, hence the name. No trigger
+        // inside; re-share from the final app id before release.
+        "app.operator.ios": SharedShortcut(
+            installURL: URL(string: "https://www.icloud.com/shortcuts/786adfe7e3d440ef93f1b9652dcf4bcc")!,
+            name: "Automation 6A0C5F28-28AA-4920-88F5-9ADCE0CFEDC8"),
+        // The owner's phone build (personal team D847CBTR4K), shared
+        // 2026-09-19 with the message trigger inside.
+        "app.operator.d847cbtr4k.ios": SharedShortcut(
+            installURL: URL(string: "https://www.icloud.com/shortcuts/73abec0edba649c89158523f25b951a5")!,
+            name: "Operator Read Messages"),
+    ]
+
+    static func sharedShortcut(forBundleID bundleID: String?) -> SharedShortcut? {
+        bundleID.flatMap { self.sharedShortcuts[$0] }
+    }
+
+    static var installURL: URL? { self.sharedShortcut(forBundleID: Bundle.main.bundleIdentifier)?.installURL }
     static let buildByHandSteps = """
         This copy of Operator has no install link. In Shortcuts tap +, then Automation, then Message, and set "Message contains" to one space. Add Operator's "Record incoming message" with Message and the Message's Sender. Enter the shortcut's name below.
         """
-    /// Actual title served by installURL; update together when re-sharing.
-    static let installedShortcutName = "Automation 6A0C5F28-28AA-4920-88F5-9ADCE0CFEDC8"
+    /// The name the installed shortcut has in Shortcuts, used to run it.
+    static var installedShortcutName: String {
+        self.sharedShortcut(forBundleID: Bundle.main.bundleIdentifier)?.name ?? self.shortcutName
+    }
 
     static var parameterSummary: some ParameterSummary {
         Summary("Record \(\.$text) from \(\.$sender)")

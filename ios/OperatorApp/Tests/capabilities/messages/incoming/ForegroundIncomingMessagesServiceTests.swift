@@ -82,6 +82,16 @@ final class ForegroundIncomingMessagesServiceTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: checkedIn.path), checkedIn.path)
     }
 
+    func testEachBuildGetsTheShortcutSharedFromIt() throws {
+        let phone = try XCTUnwrap(RecordIncomingMessageIntent.sharedShortcut(forBundleID: "app.operator.d847cbtr4k.ios"))
+        XCTAssertEqual(phone.name, "Operator Read Messages")
+        XCTAssertEqual(phone.installURL.host, "www.icloud.com")
+        let main = try XCTUnwrap(RecordIncomingMessageIntent.sharedShortcut(forBundleID: "app.operator.ios"))
+        XCTAssertNotEqual(main.installURL, phone.installURL, "a shortcut names its action by app id, so builds cannot share one")
+        XCTAssertNil(RecordIncomingMessageIntent.sharedShortcut(forBundleID: "app.operator.someoneelse.ios"))
+        XCTAssertNil(RecordIncomingMessageIntent.sharedShortcut(forBundleID: nil))
+    }
+
     func testTheCatalogGatesTheFeedBehindTheMessagesReadGrant() throws {
         let messages = ConnectorCatalog.descriptor(.messages)
         XCTAssertEqual(messages.readCommands, ["messages.incoming", "messages.conversations", "messages.conversation.review"])
