@@ -47,6 +47,7 @@ enum ShortcutCheck {
     /// - Parameter recordActionRan: Operator's own action ran during this
     ///   check. For the record shortcut that is the proof; what Shortcuts
     ///   reports is only used to explain a failure.
+    @MainActor
     static func status(
         of shortcut: MessageShortcut,
         completion: ShortcutSendCoordinator.Completion,
@@ -60,6 +61,13 @@ enum ShortcutCheck {
         case .couldNotOpen:
             return .problem("The Shortcuts app could not be opened.")
         case .error:
+            // The send shortcut run with no recipient gets as far as Send
+            // Message, which then fails - proof it is there. Only an error
+            // about the shortcut itself means it is not.
+            if shortcut == .send, let message = completion.message,
+               !message.localizedCaseInsensitiveContains(ForegroundMessageSendService.shortcutName) {
+                return .installed(checkedAt: now)
+            }
             return .problem(completion.message ?? "Shortcuts reported an error without saying why.")
         case .success, .cancel:
             return shortcut == .send

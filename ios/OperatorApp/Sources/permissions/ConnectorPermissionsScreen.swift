@@ -311,11 +311,6 @@ private struct ConnectorRow: View {
                     .foregroundStyle(OperatorBrand.muted)
                 if self.descriptor.id == .messages {
                     MessagesAutomationPrompt()
-                    DisclosureGroup("Set up manually or on older iOS") {
-                        Text("On older iOS, tap Create automation → Message → Run Immediately → Next, then choose the installed shortcut. If a filter is required, leave Sender empty and enter one space in Message Contains. This catches texts containing a space. Optional e, a, o, i and u triggers catch more one-word texts, but some texts may still be missed. Duplicate arrivals are combined. Test with a two-word text, then tap Check setup.")
-                            .font(OperatorLettering.font(.caption))
-                            .foregroundStyle(OperatorBrand.muted)
-                    }
                     ShortcutInstallStatusRow(shortcut: .record)
                     MessagesReadSetupStatus(readGranted: self.readGranted)
                 }

@@ -44,14 +44,26 @@ final class ShortcutInstallCheckerTests: XCTestCase {
         XCTAssertEqual(result, .notFound)
     }
 
-    func testAnErrorIsShownInShortcutsOwnWords() async {
+    /// Seen on the phone 2026-09-19: the installed shortcut runs, and Send
+    /// Message then fails because the test names no recipient.
+    func testSendShortcutThatFailsForLackOfARecipientIsInstalled() async {
         let (checker, coordinator, runner) = self.parts()
         async let status = checker.check(.send, recordShortcutName: "unused")
         await self.waitUntil { runner.opened != nil }
-        coordinator.resolve(.error, message: "Something went wrong")
+        coordinator.resolve(.error, message: "Send Message failed because Shortcuts couldn\u{2019}t convert from Text to Contact, Phone Number, or Email Address.")
 
         let result = await status
-        XCTAssertEqual(result, .problem("Something went wrong"))
+        XCTAssertEqual(result, .installed(checkedAt: self.now))
+    }
+
+    func testAnErrorNamingTheShortcutIsShownInShortcutsOwnWords() async {
+        let (checker, coordinator, runner) = self.parts()
+        async let status = checker.check(.send, recordShortcutName: "unused")
+        await self.waitUntil { runner.opened != nil }
+        coordinator.resolve(.error, message: "The shortcut \u{201C}OperatorSendMessage\u{201D} could not be found.")
+
+        let result = await status
+        XCTAssertEqual(result, .problem("The shortcut \u{201C}OperatorSendMessage\u{201D} could not be found."))
     }
 
     func testRecordShortcutIsInstalledOnlyWhenOperatorsActionRan() async {
