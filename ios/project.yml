@@ -81,6 +81,9 @@ targets:
       - path: OperatorApp/Assets.xcassets
       - path: OperatorApp/Resources/connections/handoff/android-handoff-catalog.json
       - path: OperatorApp/Resources/connections/handoff/app-links.json
+      - path: OperatorApp/Resources/sounds
+      - path: OperatorApp/Resources/fonts
+        excludes: ["OFL.txt"]
       - path: build/native-node/runtime
         type: folder
         buildPhase: resources

@@ -40,7 +40,7 @@ struct OperatorPrimaryButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.subheadline.weight(.medium))
+            .font(OperatorLettering.font(.subheadline, .medium))
             .foregroundStyle(OperatorBrand.nearBlack)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
@@ -55,7 +55,7 @@ struct OperatorQuietButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.subheadline.weight(.medium))
+            .font(OperatorLettering.font(.subheadline, .medium))
             .foregroundStyle(OperatorBrand.light)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)

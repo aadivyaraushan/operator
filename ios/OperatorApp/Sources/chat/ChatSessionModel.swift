@@ -82,6 +82,7 @@ final class ChatSessionModel: ObservableObject {
     private let store: any ChatPersistence
     private let gateway: any ChatGateway
     private let logger = Logger(subsystem: "app.operator.ios", category: "chat")
+    private let sounds: any OperatorSoundPlaying
     private var isFlushing = false
     private var isRestoring = false
     private var hasRestored = false
@@ -101,8 +102,10 @@ final class ChatSessionModel: ObservableObject {
         store: any ChatPersistence,
         gateway: any ChatGateway,
         dictation: OfflineDictationModel? = nil,
-        continuation: ReplyContinuation? = nil
+        continuation: ReplyContinuation? = nil,
+        sounds: (any OperatorSoundPlaying)? = nil
     ) {
+        self.sounds = sounds ?? OperatorSoundPlayer()
         self.store = store
         self.gateway = gateway
         self.dictation = dictation ?? OfflineDictationModel(service: AppleOnDeviceDictationService())
@@ -237,6 +240,7 @@ final class ChatSessionModel: ObservableObject {
 
         let id = UUID()
         let now = Date()
+        self.sounds.play(.send)
         self.draft = ""
         self.messages.append(ChatMessage(
             id: id,
@@ -310,6 +314,7 @@ final class ChatSessionModel: ObservableObject {
                     kind: approval.presentation.kind,
                     decision: decision)
                 self.applyApproval(snapshot)
+                self.sounds.play(decision == .deny ? .leftIt : .committed)
             } catch {
                 self.lastError = "Operator could not record that approval. Nothing was allowed."
                 self.logger.error("[approval] server resolution failed id=\(id, privacy: .public)")
@@ -368,6 +373,7 @@ final class ChatSessionModel: ObservableObject {
         do {
             try await self.gateway.cancelQuestion(id: id)
             self.settleQuestion(id: id)
+            self.sounds.play(.leftIt)
             self.logger.info("[question] skipped id=\(id, privacy: .public)")
         } catch {
             self.lastError = Self.userMessage(for: error, fallback: "Operator could not skip that question. Try again.")
@@ -537,7 +543,11 @@ final class ChatSessionModel: ObservableObject {
             case let .activity(activity):
                 self.inFlight.insert(entryID)
                 var live = self.liveActivity ?? ChatLiveActivity()
+                let stepsBefore = live.steps
                 live.apply(activity)
+                for sound in OperatorSound.forNewlyFinished(before: stepsBefore, after: live.steps) {
+                    self.sounds.play(sound)
+                }
                 self.liveActivity = live
                 self.connectionState = .working
                 // Each step moves the pill along; the subtitle is the step.
@@ -556,6 +566,7 @@ final class ChatSessionModel: ObservableObject {
             case let .reply(text):
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.apply(try await self.store.appendAssistant(text))
+                self.sounds.play(.done)
                 if let steps = self.liveActivity?.steps, !steps.isEmpty,
                    let reply = self.messages.last, reply.role == .assistant
                 {
@@ -578,6 +589,7 @@ final class ChatSessionModel: ObservableObject {
                 self.continuation?.finish(success: false)
                 if !self.isInForeground() { self.onReplyInBackground?(message) }
             case .stopped, .joinedEarlierReply:
+                if case .stopped = update { self.sounds.play(.leftIt) }
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.streamingReply = nil
                 self.liveActivity = nil
@@ -658,6 +670,8 @@ final class ChatSessionModel: ObservableObject {
     }
 
     private func refreshApprovals() {
+        let known = Set(self.approvals.map(\.id))
+        defer { if self.approvals.contains(where: { !known.contains($0.id) }) { self.sounds.play(.needsYou) } }
         self.approvals = self.approvalRecords.values
             .filter { $0.status == .pending && $0.isActionable() }
             .sorted { $0.createdAtMilliseconds < $1.createdAtMilliseconds }
@@ -710,6 +724,8 @@ final class ChatSessionModel: ObservableObject {
     }
 
     private func refreshQuestions() {
+        let known = Set(self.questions.map(\.id))
+        defer { if self.questions.contains(where: { !known.contains($0.id) }) { self.sounds.play(.needsYou) } }
         self.questions = self.questionRecords.values
             .filter { $0.isActionable() }
             .sorted { $0.createdAtMilliseconds < $1.createdAtMilliseconds }

@@ -197,7 +197,7 @@ struct ChatScreen: View {
                         }
                         if let lastError = self.model.lastError {
                             Text(lastError)
-                                .font(.footnote)
+                                .font(OperatorLettering.font(.footnote))
                                 .foregroundStyle(OperatorBrand.muted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 4)
@@ -262,6 +262,8 @@ struct ChatScreen: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
         }
+        .font(OperatorLettering.font(.body))
+        .narrowedLettering()
         .background(OperatorBrand.nearBlack)
         .foregroundStyle(OperatorBrand.light)
         .tint(OperatorBrand.vermilion)
@@ -299,12 +301,13 @@ private struct Header: View {
     var body: some View {
         HStack {
             OperatorMark(state: self.mark)
+                .keepsShape()
             Text("Operator")
-                .font(.headline)
+                .font(OperatorLettering.font(.headline, .bold))
             Spacer()
             Label(self.state.title, systemImage: self.state.symbol)
                 .labelStyle(.titleAndIcon)
-                .font(.caption.weight(.medium))
+                .font(OperatorLettering.font(.caption, .medium))
                 .foregroundStyle(self.state == .offline ? OperatorBrand.dim : OperatorBrand.muted)
         }
         .accessibilityElement(children: .combine)
@@ -322,9 +325,9 @@ private struct Welcome: View {
                 .foregroundStyle(.tint)
                 .accessibilityHidden(true)
             Text("What can I do for you?")
-                .font(.title2.weight(.semibold))
+                .font(OperatorLettering.font(.title2, .bold))
             Text("One conversation. Ask for anything.")
-                .font(.subheadline)
+                .font(OperatorLettering.font(.subheadline))
                 .foregroundStyle(OperatorBrand.muted)
             if self.setup.state == .needsSignIn {
                 Button("Connect ChatGPT") {
@@ -376,12 +379,12 @@ private struct SetupBanner: View {
             Image(systemName: "person.crop.circle.badge.plus")
                 .foregroundStyle(.tint)
             Text("Connect ChatGPT to start asking Operator.")
-                .font(.footnote)
+                .font(OperatorLettering.font(.footnote))
             Spacer()
             Button("Connect") {
                 Task { await self.setup.beginChatGPTSignIn() }
             }
-            .font(.footnote.weight(.semibold))
+            .font(OperatorLettering.font(.footnote, .medium))
         }
         .padding(10)
         .background(
@@ -402,7 +405,7 @@ private struct MessageBubble: View {
         VStack(alignment: self.message.role == .user ? .trailing : .leading, spacing: 4) {
             if !self.steps.isEmpty {
                 Text(self.steps.map(\.title).joined(separator: " · "))
-                    .font(.caption2)
+                    .font(OperatorLettering.font(.caption2))
                     .foregroundStyle(OperatorBrand.muted)
                     .padding(.horizontal, 4)
                     .accessibilityLabel("Operator " + self.steps.map(\.title).joined(separator: ", "))
@@ -418,7 +421,7 @@ private struct MessageBubble: View {
             }
             if let state = ChatMessageText.deliveryLabel(for: self.message, inFlight: self.inFlight) {
                 Text(state)
-                    .font(.caption2)
+                    .font(OperatorLettering.font(.caption2))
                     .foregroundStyle(OperatorBrand.muted)
             }
         }
@@ -435,12 +438,12 @@ private struct WeatherResultCard: View {
     @Environment(\.colorScheme) private var colorScheme
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Weather").font(.headline)
-            Text(self.card.condition).font(.subheadline)
-            Text("\(self.card.temperatureCelsius, format: .number.precision(.fractionLength(0)))°C").font(.title2.weight(.semibold))
-            if let apparent = self.card.apparentCelsius { Text("Feels like \(apparent, format: .number.precision(.fractionLength(0)))°C").font(.footnote).foregroundStyle(OperatorBrand.muted) }
-            if let high = self.card.highCelsius, let low = self.card.lowCelsius { Text("High \(high, format: .number.precision(.fractionLength(0)))° · Low \(low, format: .number.precision(.fractionLength(0)))°").font(.footnote).foregroundStyle(OperatorBrand.muted) }
-            HStack { AsyncImage(url: self.colorScheme == .dark ? self.card.attribution.combinedMarkDarkURL : self.card.attribution.combinedMarkLightURL) { $0.resizable().scaledToFit() } placeholder: { ProgressView() }.frame(height: 20).accessibilityLabel("Apple Weather"); Spacer(); Link("Legal", destination: self.card.attribution.legalPageURL).font(.footnote) }
+            Text("Weather").font(OperatorLettering.font(.headline, .bold))
+            Text(self.card.condition).font(OperatorLettering.font(.subheadline))
+            Text("\(self.card.temperatureCelsius, format: .number.precision(.fractionLength(0)))°C").font(OperatorLettering.font(.title2, .bold))
+            if let apparent = self.card.apparentCelsius { Text("Feels like \(apparent, format: .number.precision(.fractionLength(0)))°C").font(OperatorLettering.font(.footnote)).foregroundStyle(OperatorBrand.muted) }
+            if let high = self.card.highCelsius, let low = self.card.lowCelsius { Text("High \(high, format: .number.precision(.fractionLength(0)))° · Low \(low, format: .number.precision(.fractionLength(0)))°").font(OperatorLettering.font(.footnote)).foregroundStyle(OperatorBrand.muted) }
+            HStack { AsyncImage(url: self.colorScheme == .dark ? self.card.attribution.combinedMarkDarkURL : self.card.attribution.combinedMarkLightURL) { $0.resizable().scaledToFit() } placeholder: { ProgressView() }.frame(height: 20).accessibilityLabel("Apple Weather"); Spacer(); Link("Legal", destination: self.card.attribution.legalPageURL).font(OperatorLettering.font(.footnote)) }
         }
         .padding(14)
         .background(OperatorBrand.fill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -502,14 +505,14 @@ private struct ActivityStepRow: View {
                 case .running:
                     ProgressView().controlSize(.mini)
                 case .done:
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(OperatorBrand.vermilion)
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(OperatorBrand.vermilion).keepsShape()
                 case .failed:
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(OperatorBrand.rust)
                 }
             }
             .frame(width: 14, height: 14)
             Text(self.step.title)
-                .font(.footnote)
+                .font(OperatorLettering.font(.footnote))
                 .foregroundStyle(self.step.state == .running ? OperatorBrand.light : OperatorBrand.muted)
                 .lineLimit(2)
         }
@@ -536,12 +539,12 @@ private struct ThinkingBox: View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(Array(self.commentary.enumerated()), id: \.offset) { _, line in
                 Text(line)
-                    .font(.footnote)
+                    .font(OperatorLettering.font(.footnote))
                     .foregroundStyle(OperatorBrand.muted)
             }
             if !self.reasoning.isEmpty {
                 Text(self.reasoningTail)
-                    .font(.footnote)
+                    .font(OperatorLettering.font(.footnote))
                     .italic()
                     .foregroundStyle(OperatorBrand.dim)
                     .lineLimit(6)
@@ -564,6 +567,7 @@ private struct TypingDots: View {
                 Circle()
                     .fill(OperatorBrand.muted)
                     .frame(width: 8, height: 8)
+                    .keepsShape()
                     .opacity(self.isAnimating ? 1 : 0.3)
                     .animation(
                         .easeInOut(duration: 0.5).repeatForever(autoreverses: true).delay(Double(index) * 0.18),
@@ -582,16 +586,16 @@ private struct ApprovalCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Action needs your approval", systemImage: "exclamationmark.shield")
-                .font(.subheadline.weight(.semibold))
+                .font(OperatorLettering.font(.subheadline, .medium))
                 .foregroundStyle(OperatorBrand.vermilion)
             Text(self.approval.presentation.title)
-                .font(.subheadline.weight(.semibold))
+                .font(OperatorLettering.font(.subheadline, .medium))
             Text(self.approval.presentation.detail)
-                .font(.footnote)
+                .font(OperatorLettering.font(.footnote))
                 .textSelection(.enabled)
             if let warning = self.approval.presentation.warning {
                 Text(warning)
-                    .font(.footnote)
+                    .font(OperatorLettering.font(.footnote))
                     .foregroundStyle(OperatorBrand.muted)
             }
             HStack(spacing: 8) {
@@ -646,17 +650,17 @@ private struct QuestionCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Needs your answer", systemImage: "questionmark.diamond")
-                .font(.subheadline.weight(.semibold))
+                .font(OperatorLettering.font(.subheadline, .medium))
                 .foregroundStyle(OperatorBrand.vermilion)
             ForEach(self.record.questions) { question in
                 VStack(alignment: .leading, spacing: 8) {
                     if !question.header.isEmpty {
                         Text(question.header.uppercased())
-                            .font(.caption2.weight(.semibold))
+                            .font(OperatorLettering.font(.caption2, .medium))
                             .foregroundStyle(OperatorBrand.muted)
                     }
                     Text(question.question)
-                        .font(.subheadline.weight(.semibold))
+                        .font(OperatorLettering.font(.subheadline, .medium))
                         .textSelection(.enabled)
                     ForEach(question.options, id: \.label) { option in
                         self.optionButton(option, for: question)
@@ -714,10 +718,10 @@ private struct QuestionCard: View {
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(option.label)
-                        .font(.subheadline)
+                        .font(OperatorLettering.font(.subheadline))
                     if let description = option.description, !description.isEmpty {
                         Text(description)
-                            .font(.footnote)
+                            .font(OperatorLettering.font(.footnote))
                             .foregroundStyle(OperatorBrand.muted)
                     }
                 }
@@ -770,11 +774,11 @@ private struct AnsweredQuestionLine: View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(Array(self.answered.prompts.enumerated()), id: \.offset) { _, prompt in
                 Text(prompt)
-                    .font(.footnote)
+                    .font(OperatorLettering.font(.footnote))
                     .foregroundStyle(OperatorBrand.muted)
             }
             Text("You answered: \(self.answered.chosen.joined(separator: ", "))")
-                .font(.footnote.weight(.semibold))
+                .font(OperatorLettering.font(.footnote, .medium))
         }
         .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -810,8 +814,11 @@ private struct Composer: View {
                     Image(systemName: self.dictation.state == .recording ? "stop.fill" : "mic.fill")
                         .frame(width: 28, height: 28)
                 }
-                .buttonStyle(.bordered)
-                .tint(self.dictation.state == .recording ? OperatorBrand.rust : OperatorBrand.vermilion)
+                .buttonStyle(.plain)
+                .foregroundStyle(self.dictation.state == .recording ? OperatorBrand.nearBlack : OperatorBrand.light)
+                .background(
+                    self.dictation.state == .recording ? OperatorBrand.vermilion : OperatorBrand.fillStrong,
+                    in: Circle())
                 .frame(minWidth: 44, minHeight: 44)
                 .accessibilityLabel(self.dictation.state == .recording ? "Stop dictation" : "Start offline dictation")
                 .accessibilityHint("Adds on-device speech to the editable message draft")
@@ -826,23 +833,27 @@ private struct Composer: View {
                             .frame(width: 28, height: 28)
                             .foregroundStyle(OperatorBrand.nearBlack)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.plain)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .background(OperatorBrand.vermilion, in: Circle())
                     .accessibilityLabel("Stop Operator")
                 } else {
                     Button(action: self.model.send) {
                         Image(systemName: "arrow.up")
-                            .font(.headline)
+                            .font(OperatorLettering.font(.headline, .bold))
                             .frame(width: 28, height: 28)
-                            .foregroundStyle(OperatorBrand.nearBlack)
+                            .foregroundStyle(self.model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? OperatorBrand.dim : OperatorBrand.nearBlack)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.plain)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .background(self.model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? OperatorBrand.fillStrong : OperatorBrand.vermilion, in: Circle())
                     .disabled(self.model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityLabel("Send")
                 }
             }
             if case let .unavailable(message) = self.dictation.state {
                 Text(message)
-                    .font(.footnote)
+                    .font(OperatorLettering.font(.footnote))
                     .foregroundStyle(OperatorBrand.muted)
                     .accessibilityLabel("Dictation unavailable: \(message)")
             }
