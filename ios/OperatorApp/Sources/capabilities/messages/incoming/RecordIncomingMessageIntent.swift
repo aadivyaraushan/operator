@@ -43,9 +43,11 @@ struct RecordIncomingMessageIntent: AppIntent {
             installURL: URL(string: "https://www.icloud.com/shortcuts/786adfe7e3d440ef93f1b9652dcf4bcc")!,
             name: "Automation 6A0C5F28-28AA-4920-88F5-9ADCE0CFEDC8"),
         // The owner's phone build (personal team D847CBTR4K), shared
-        // 2026-09-19 with the message trigger inside.
+        // 2026-09-19. A message trigger must have a filter and only
+        // "contains" exists, so it carries eleven triggers joined by "or"
+        // (a space and ten common letters) to catch nearly every text.
         "app.operator.d847cbtr4k.ios": SharedShortcut(
-            installURL: URL(string: "https://www.icloud.com/shortcuts/73abec0edba649c89158523f25b951a5")!,
+            installURL: URL(string: "https://www.icloud.com/shortcuts/c8eafd8c7b924caa90aa086ada267dda")!,
             name: "Operator Read Messages"),
     ]
 

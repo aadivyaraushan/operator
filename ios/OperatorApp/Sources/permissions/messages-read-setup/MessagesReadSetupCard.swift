@@ -137,7 +137,7 @@ struct MessagesReadSetupCard: View {
 
     private var receivedNote: String {
         guard let last = self.model.lastReceived else {
-            let waiting = "No texts yet. One-word texts are missed. If none arrive, check the automation is still on."
+            let waiting = "No texts yet. If none arrive, check the automation is still on."
             return self.readGranted ? waiting : "Turn on Read first. " + waiting
         }
         let sender = last.sender.isEmpty ? "Unknown sender" : last.sender

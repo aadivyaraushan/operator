@@ -150,7 +150,7 @@ public enum ConnectorCatalog {
               writeSummary: "Open a text with the recipient and message filled in. You tap Send.",
               readCommands: ["messages.incoming", "messages.conversations", "messages.conversation.review"], writeCommands: ["sms.compose", "messages.conversation"],
               systemPermission: nil, requiresAccount: false,
-              setupInstructions: "Reading texts needs a shortcut that hands each new text to Operator. One-word texts are missed. Texts are kept for 14 days."),
+              setupInstructions: "Reading texts needs a shortcut that hands each new text to Operator. Emoji-only texts can be missed. Texts are kept for 14 days."),
         .init(id: .messagesAutosend, title: "Messages, sent for you",
               readSummary: nil,
               writeSummary: "When the agent texts someone, or a group of up to ten, send it with no confirmation tap through a shortcut you install once, instead of opening the composer. Also needs Messages > Act. Operator cannot see whether it was delivered, and a message the agent was tricked into writing goes out the same way.",
