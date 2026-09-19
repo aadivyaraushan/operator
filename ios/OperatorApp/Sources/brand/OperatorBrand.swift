@@ -63,3 +63,14 @@ struct OperatorQuietButtonStyle: ButtonStyle {
             .opacity(self.isEnabled ? 1 : 0.35)
     }
 }
+
+extension View {
+    /// Sheets are separate from the chat screen, so they are given the brand
+    /// accent, dark appearance and body lettering themselves.
+    func operatorSheetStyle() -> some View {
+        self
+            .font(OperatorLettering.font(.body))
+            .tint(OperatorBrand.vermilion)
+            .preferredColorScheme(.dark)
+    }
+}

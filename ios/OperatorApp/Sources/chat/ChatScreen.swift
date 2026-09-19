@@ -141,15 +141,18 @@ struct ChatScreen: View {
                     get: { self.whatsapp.isPresented },
                     set: { if !$0 { self.whatsapp.dismissTerminalState() } })) {
                     WhatsAppLinkSheet(model: self.whatsapp)
+                    .operatorSheetStyle()
                 }
                 .sheet(isPresented: self.$isConnectionsPresented) {
                     NativeAccountConnectionSheet(model: self.accounts, youtube: self.youtube, discord: self.discord, canvas: self.canvas, canvasSession: self.canvasSession)
+                    .operatorSheetStyle()
                 }
                 .sheet(isPresented: self.$isPermissionsPresented) {
                     ConnectorPermissionsScreen(
                         center: self.permissions, mode: .settings,
                         accountStatus: self.accountStatus,
                         onDone: { self.isPermissionsPresented = false })
+                    .operatorSheetStyle()
                 }
             }
                 .padding(.horizontal, 18)
@@ -177,10 +180,6 @@ struct ChatScreen: View {
                                 .id(message.id)
                         }
                         MessageConversationCards(service: self.conversations)
-                        ForEach(self.model.approvals) { approval in
-                            ApprovalCard(approval: approval, model: self.model)
-                                .id("approval-\(approval.id)")
-                        }
                         ForEach(self.model.answeredQuestions) { answered in
                             AnsweredQuestionLine(answered: answered)
                                 .id("answered-\(answered.id)")
@@ -262,6 +261,13 @@ struct ChatScreen: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
         }
+        .overlay {
+            if let approval = self.model.approvals.first {
+                ApprovalSheet(approval: approval, model: self.model)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.25), value: self.model.approvals.first?.id)
         .font(OperatorLettering.font(.body))
         .narrowedLettering()
         .background(OperatorBrand.nearBlack)
@@ -278,6 +284,7 @@ struct ChatScreen: View {
                 set: { if !$0 { self.setup.dismiss() } }))
         {
             ModelSetupSheet(model: self.setup)
+                    .operatorSheetStyle()
         }
         // First launch: the Permissions page before anything else, with
         // nothing selected. A cover rather than a sheet so it can coexist with
@@ -290,6 +297,7 @@ struct ChatScreen: View {
                 center: self.permissions, mode: .onboarding,
                 accountStatus: self.accountStatus,
                 onDone: { self.permissions.completeOnboarding() })
+                    .operatorSheetStyle()
         }
     }
 }
@@ -403,21 +411,25 @@ private struct MessageBubble: View {
 
     var body: some View {
         VStack(alignment: self.message.role == .user ? .trailing : .leading, spacing: 4) {
-            if !self.steps.isEmpty {
-                Text(self.steps.map(\.title).joined(separator: " · "))
-                    .font(OperatorLettering.font(.caption2))
-                    .foregroundStyle(OperatorBrand.muted)
-                    .padding(.horizontal, 4)
-                    .accessibilityLabel("Operator " + self.steps.map(\.title).joined(separator: ", "))
+            ForEach(self.steps) { step in
+                ActivityStepRow(step: step)
             }
             if case let .weather(card) = self.message.attachment {
                 WeatherResultCard(card: card)
             } else {
-                Text(ChatMessageText.displayText(for: self.message))
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(self.message.role == .user ? OperatorBrand.fillStrong : OperatorBrand.fill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                if self.message.role == .user {
+                    Text(ChatMessageText.displayText(for: self.message))
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 9)
+                        .background(OperatorBrand.fillStrong, in: PersonBubbleShape())
+                        .padding(.leading, 48)
+                } else {
+                    Text(ChatMessageText.displayText(for: self.message))
+                        .textSelection(.enabled)
+                        .lineSpacing(4)
+                        .padding(.horizontal, 2)
+                }
             }
             if let state = ChatMessageText.deliveryLabel(for: self.message, inFlight: self.inFlight) {
                 Text(state)
@@ -469,22 +481,16 @@ private struct ActivityBubble: View {
                 HStack(alignment: .bottom, spacing: 8) {
                     Text(ChatMessageText.assistantText(text))
                         .textSelection(.enabled)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            OperatorBrand.fill,
-                            in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .lineSpacing(4)
+                        .padding(.horizontal, 2)
                     ProgressView()
                         .controlSize(.small)
                         .accessibilityLabel("Operator is writing")
                 }
             } else {
                 TypingDots()
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
-                    .background(
-                        OperatorBrand.fill,
-                        in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 6)
                     .accessibilityLabel(self.activity.steps.contains { $0.state == .running } ? "Operator is running a tool" : "Operator is thinking")
             }
         }
@@ -498,25 +504,33 @@ private struct ActivityBubble: View {
 private struct ActivityStepRow: View {
     let step: ChatActivityStep
 
+    /// Reads stay a quiet line; something Operator did gets a card.
+    private var isWrite: Bool { OperatorSound.forFinishedStep(named: self.step.name) != nil }
+
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 9) {
             Group {
                 switch self.step.state {
                 case .running:
                     ProgressView().controlSize(.mini)
-                case .done:
+                case .done where self.isWrite:
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(OperatorBrand.vermilion).keepsShape()
+                case .done:
+                    Circle().fill(OperatorBrand.dim).frame(width: 6, height: 6).keepsShape()
                 case .failed:
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(OperatorBrand.rust)
                 }
             }
             .frame(width: 14, height: 14)
             Text(self.step.title)
-                .font(OperatorLettering.font(.footnote))
-                .foregroundStyle(self.step.state == .running ? OperatorBrand.light : OperatorBrand.muted)
+                .font(OperatorLettering.font(self.isWrite ? .subheadline : .footnote, self.isWrite ? .medium : .regular))
+                .foregroundStyle(self.isWrite || self.step.state == .running ? OperatorBrand.light : OperatorBrand.muted)
                 .lineLimit(2)
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, self.isWrite ? 14 : 2)
+        .padding(.vertical, self.isWrite ? 12 : 0)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(self.isWrite ? OperatorBrand.fill : .clear, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(self.step.state == .failed ? "\(self.step.title), failed. \(self.step.call)" : "\(self.step.title). \(self.step.call)")
     }
@@ -535,7 +549,32 @@ private struct ThinkingBox: View {
         return tail.count > 400 ? "…" + tail.suffix(400) : tail
     }
 
+    @State private var isOpen = false
+
     var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button { withAnimation(.easeOut(duration: 0.18)) { self.isOpen.toggle() } } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(OperatorBrand.rust)
+                        .rotationEffect(.degrees(self.isOpen ? 90 : 0))
+                    Text("Thinking")
+                        .font(OperatorLettering.font(.footnote))
+                        .foregroundStyle(OperatorBrand.muted)
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.vertical, -14)
+            .accessibilityHint(self.isOpen ? "Hides what Operator is thinking" : "Shows what Operator is thinking")
+            if self.isOpen { self.thoughts.padding(.leading, 17) }
+        }
+        .padding(.horizontal, 2)
+    }
+
+    private var thoughts: some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(Array(self.commentary.enumerated()), id: \.offset) { _, line in
                 Text(line)
@@ -551,7 +590,6 @@ private struct ThinkingBox: View {
                     .transaction { $0.animation = nil }
             }
         }
-        .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Operator is thinking: \(self.commentary.joined(separator: ". "))")
     }
@@ -579,48 +617,76 @@ private struct TypingDots: View {
     }
 }
 
-private struct ApprovalCard: View {
+/// One corner tight, the way a speech bubble points at its speaker.
+private struct PersonBubbleShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path(roundedRect: rect, cornerRadii: RectangleCornerRadii(topLeading: 16, bottomLeading: 16, bottomTrailing: 5, topTrailing: 16), style: .continuous)
+    }
+}
+
+/// Operator has stopped for a yes or no: everything else dims and the
+/// question rises from the bottom with one clear action.
+private struct ApprovalSheet: View {
     let approval: GatewayApprovalSnapshot
     @ObservedObject var model: ChatSessionModel
 
+    private var allows: [GatewayApprovalDecision] { self.approval.presentation.allowedDecisions.filter { $0 != .deny } }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Action needs your approval", systemImage: "exclamationmark.shield")
-                .font(OperatorLettering.font(.subheadline, .medium))
-                .foregroundStyle(OperatorBrand.vermilion)
-            Text(self.approval.presentation.title)
-                .font(OperatorLettering.font(.subheadline, .medium))
-            Text(self.approval.presentation.detail)
-                .font(OperatorLettering.font(.footnote))
-                .textSelection(.enabled)
-            if let warning = self.approval.presentation.warning {
-                Text(warning)
+        VStack(spacing: 0) {
+            OperatorBrand.nearBlack.opacity(0.74).ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 14) {
+                Text("OPERATOR NEEDS YOUR OK")
+                    .font(OperatorLettering.font(.caption2))
+                    .kerning(1.3)
+                    .foregroundStyle(OperatorBrand.vermilion)
+                Text(self.approval.presentation.title)
+                    .font(OperatorLettering.font(.title3, .bold))
+                Text(self.approval.presentation.detail)
                     .font(OperatorLettering.font(.footnote))
                     .foregroundStyle(OperatorBrand.muted)
-            }
-            HStack(spacing: 8) {
-                ForEach(self.approval.presentation.allowedDecisions, id: \.self) { decision in
-                    if decision == .deny {
-                        Button(self.label(for: decision)) {
-                            self.model.resolveApproval(id: self.approval.id, decision: decision)
+                    .textSelection(.enabled)
+                if let warning = self.approval.presentation.warning {
+                    Text(warning)
+                        .font(OperatorLettering.font(.footnote))
+                        .foregroundStyle(OperatorBrand.vermilion)
+                }
+                VStack(spacing: 8) {
+                    ForEach(Array(self.allows.enumerated()), id: \.offset) { index, decision in
+                        Button { self.model.resolveApproval(id: self.approval.id, decision: decision) } label: {
+                            Text(self.label(for: decision))
+                                .font(OperatorLettering.font(.subheadline, .medium))
+                                .foregroundStyle(index == 0 ? OperatorBrand.nearBlack : OperatorBrand.light)
+                                .frame(maxWidth: .infinity, minHeight: 50)
+                                .background(index == 0 ? OperatorBrand.vermilion : OperatorBrand.fillStrong, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
-                        .buttonStyle(OperatorQuietButtonStyle())
-                        .disabled(!self.approval.isActionable())
-                    } else {
-                        Button(self.label(for: decision)) {
-                            self.model.resolveApproval(id: self.approval.id, decision: decision)
+                        .buttonStyle(.plain)
+                    }
+                    if self.approval.presentation.allowedDecisions.contains(.deny) {
+                        Button { self.model.resolveApproval(id: self.approval.id, decision: .deny) } label: {
+                            Text(self.label(for: .deny))
+                                .font(OperatorLettering.font(.footnote))
+                                .foregroundStyle(OperatorBrand.light.opacity(0.8))
+                                .frame(maxWidth: .infinity, minHeight: 46)
                         }
-                        .buttonStyle(OperatorPrimaryButtonStyle())
-                        .disabled(!self.approval.isActionable())
+                        .buttonStyle(.plain)
                     }
                 }
+                .disabled(!self.approval.isActionable())
+                .padding(.top, 6)
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 22)
+            .padding(.bottom, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                ZStack { OperatorBrand.nearBlack; OperatorBrand.light.opacity(0.07) }
+                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous))
+                    .ignoresSafeArea(edges: .bottom))
         }
-        .padding(14)
-        .background(OperatorBrand.fill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Action needs your approval: \(self.approval.presentation.title)")
+        .accessibilityAddTraits(.isModal)
     }
 
     private func label(for decision: GatewayApprovalDecision) -> String {
@@ -649,8 +715,9 @@ private struct QuestionCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Needs your answer", systemImage: "questionmark.diamond")
-                .font(OperatorLettering.font(.subheadline, .medium))
+            Text("NEEDS YOUR ANSWER")
+                .font(OperatorLettering.font(.caption2))
+                .kerning(1.3)
                 .foregroundStyle(OperatorBrand.vermilion)
             ForEach(self.record.questions) { question in
                 VStack(alignment: .leading, spacing: 8) {
@@ -815,11 +882,11 @@ private struct Composer: View {
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
+                .frame(minWidth: 44, minHeight: 44)
                 .foregroundStyle(self.dictation.state == .recording ? OperatorBrand.nearBlack : OperatorBrand.light)
                 .background(
                     self.dictation.state == .recording ? OperatorBrand.vermilion : OperatorBrand.fillStrong,
                     in: Circle())
-                .frame(minWidth: 44, minHeight: 44)
                 .accessibilityLabel(self.dictation.state == .recording ? "Stop dictation" : "Start offline dictation")
                 .accessibilityHint("Adds on-device speech to the editable message draft")
 
