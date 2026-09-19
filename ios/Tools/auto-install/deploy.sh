@@ -24,7 +24,11 @@ LOG="${OPERATOR_AUTO_INSTALL_LOG:-$STATE_DIR/deploy.log}"
 DERIVED="${OPERATOR_AUTO_INSTALL_DERIVED:-$STATE_DIR/DerivedData}"
 BRANCH="${OPERATOR_AUTO_INSTALL_BRANCH:-main}"
 DEVICE="${OPERATOR_DEVICE_ID:-}"
-BUNDLE_ID="${OPERATOR_BUNDLE_ID:-app.operator.ios}"
+# "app.operator.ios" belongs to another Apple team, so a personal team
+# cannot register it. The phone build uses a prefix made from the team id
+# unless one is given. Sign-ins tied to the bundle id (Google, Microsoft)
+# may refuse this build.
+BUNDLE_PREFIX="${OPERATOR_BUNDLE_ID_PREFIX:-}"
 REINSTALL_AFTER_SECONDS=$((6 * 24 * 60 * 60))
 
 mkdir -p "$STATE_DIR"
@@ -69,11 +73,13 @@ team_id() {
     | sed -n 's/.*OU *= *\([A-Z0-9]\{10\}\).*/\1/p' | head -1
 }
 
-device_id() {
+# The hardware id xcodebuild knows the phone by. Building for the phone
+# itself, not for "any iPhone", is what lets Xcode register it with the team
+# the first time; without a registered device Apple issues no profile.
+device_udid() {
   if [[ -n "$DEVICE" ]]; then print -r -- "$DEVICE"; return; fi
   xcrun devicectl list devices --json-output - 2>/dev/null \
-    | plutil -extract result.devices json -o - - 2>/dev/null \
-    | sed -n 's/.*"identifier" *: *"\([0-9A-F-]\{36\}\)".*/\1/p' | head -1
+    | sed -n 's/.*"udid" *: *"\([0-9A-F]\{8\}-[0-9A-F]\{16\}\)".*/\1/p' | head -1
 }
 
 run_tick() {
@@ -91,7 +97,7 @@ run_tick() {
 
   local team; team=$(team_id)
   [[ -n "$team" ]] || fail "no Apple Development certificate: sign into Xcode > Settings > Accounts first"
-  local dev; dev=$(device_id)
+  local dev; dev=$(device_udid)
   [[ -n "$dev" ]] || fail "no paired iPhone: plug it in once and tap Trust"
 
   # Build from a clean checkout of the exact commit, never from the working
@@ -103,11 +109,22 @@ run_tick() {
     git clone -q --no-checkout "$(git -C "$REPO" remote get-url origin)" "$src" && git -C "$src" checkout -q --detach "$remote_sha" || fail "clone for $remote_sha"
   fi
 
-  log "building $remote_sha team=$team"
+  # The Node runtime is staged per machine and ignored by git; the clean
+  # checkout borrows this repo's staged copy. The build's own check fails
+  # if that copy is older than the commit being built.
+  if [[ ! -e "$src/ios/build" ]]; then
+    [[ -d "$IOS_DIR/build/native-node" ]] || fail "no staged runtime at $IOS_DIR/build (run ios/Runtime/bootstrap.sh once)"
+    ln -s "$IOS_DIR/build" "$src/ios/build" || fail "link staged runtime"
+  fi
+
+  local destination="platform=iOS,id=$dev"
+  local prefix="${BUNDLE_PREFIX:-app.operator.${team:l}}"
+  local bundle_id="$prefix.ios"
+  log "building $remote_sha team=$team bundle=$bundle_id"
   xcodebuild -quiet -project "$src/ios/Operator.xcodeproj" -scheme OperatorApp \
-    -destination "generic/platform=iOS" -configuration Debug \
-    -derivedDataPath "$DERIVED" -allowProvisioningUpdates \
-    DEVELOPMENT_TEAM="$team" CODE_SIGN_STYLE=Automatic \
+    -destination "$destination" -configuration Debug \
+    -derivedDataPath "$DERIVED" -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
+    DEVELOPMENT_TEAM="$team" CODE_SIGN_STYLE=Automatic OPERATOR_BUNDLE_ID_PREFIX="$prefix" \
     build >>"$LOG" 2>&1 || fail "xcodebuild for $remote_sha (see $LOG)"
 
   local app="$DERIVED/Build/Products/Debug-iphoneos/Operator.app"
@@ -115,7 +132,7 @@ run_tick() {
 
   log "installing on device=$dev"
   xcrun devicectl device install app --device "$dev" "$app" >>"$LOG" 2>&1 || fail "install on $dev (is the phone on this Wi-Fi and unlocked?)"
-  xcrun devicectl device process launch --device "$dev" --terminate-existing "$BUNDLE_ID" >>"$LOG" 2>&1 || log "launch failed; the app is installed but not opened"
+  xcrun devicectl device process launch --device "$dev" --terminate-existing "$bundle_id" >>"$LOG" 2>&1 || log "launch failed; the app is installed but not opened"
 
   write_state "$remote_sha" "$(date +%s)"
   log "installed $remote_sha"
