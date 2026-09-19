@@ -3,6 +3,7 @@ package app.codexlauncher
 import android.app.Application
 import androidx.core.app.NotificationManagerCompat
 import app.codexlauncher.capability.handoff.youtube.YouTubePlaybackAction
+import app.codexlauncher.capability.location.DeviceLocationAction
 import app.codexlauncher.capability.reply.access.DeviceNotificationAccess
 import app.codexlauncher.capability.reply.access.NotificationAccessAsk
 import app.codexlauncher.capability.reply.guard.DurableStops
@@ -95,6 +96,7 @@ class LauncherApplication : Application() {
             actionJournal = localState.actionJournal,
             carryOutDeviceReply = deviceReplyEntry::carryOut,
             carryOutYouTubePlayback = { watchUrl -> YouTubePlaybackAction.carryOut(this, watchUrl) },
+            fetchLocation = { DeviceLocationAction.fetchLocationJson(this) },
             clearConfirmedDraft = draftComposer::clearAfterConfirmedSend,
             onSuccessfulConnection = { pairingGeneration, epochMillis ->
                 localState.lastConnections.record(pairingGeneration, epochMillis)

@@ -1,0 +1,35 @@
+diff --git a/UTM.xcodeproj/project.pbxproj b/UTM.xcodeproj/project.pbxproj
+--- a/UTM.xcodeproj/project.pbxproj
++++ b/UTM.xcodeproj/project.pbxproj
+@@ -166,6 +166,7 @@
+ 		847BF9AB2A49C783000BD9AA /* VMData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 847BF9A92A49C783000BD9AA /* VMData.swift */; };
+ 		847BF9AC2A49C783000BD9AA /* VMData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 847BF9A92A49C783000BD9AA /* VMData.swift */; };
+ 		84818C0C2898A07A009EDB67 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84818C0B2898A07A009EDB67 /* AVFAudio.framework */; };
++		C1CA1E010000000000000001 /* EventKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C1CA1E020000000000000001 /* EventKit.framework */; };
+ 		84818C0D2898A07F009EDB67 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84818C0B2898A07A009EDB67 /* AVFAudio.framework */; };
+ 		848308D5278A1F2200E3E474 /* Virtualization.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 848308D4278A1F2200E3E474 /* Virtualization.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
+ 		848A98B0286A0F74006F0550 /* UTMAppleConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 848A98AF286A0F74006F0550 /* UTMAppleConfiguration.swift */; };
+@@ -1748,6 +1749,7 @@
+ 		8471772727CD3CAB00D3A50B /* DetailedSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailedSection.swift; sourceTree = "<group>"; };
+ 		847BF9A92A49C783000BD9AA /* VMData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VMData.swift; sourceTree = "<group>"; };
+ 		84818C0B2898A07A009EDB67 /* AVFAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFAudio.framework; path = System/Library/Frameworks/AVFAudio.framework; sourceTree = SDKROOT; };
++		C1CA1E020000000000000001 /* EventKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = EventKit.framework; path = System/Library/Frameworks/EventKit.framework; sourceTree = SDKROOT; };
+ 		848308D4278A1F2200E3E474 /* Virtualization.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Virtualization.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.1.sdk/System/Library/Frameworks/Virtualization.framework; sourceTree = DEVELOPER_DIR; };
+ 		848A98AF286A0F74006F0550 /* UTMAppleConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UTMAppleConfiguration.swift; sourceTree = "<group>"; };
+ 		848A98B1286A0FDE006F0550 /* UTMAppleConfigurationSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UTMAppleConfigurationSystem.swift; sourceTree = "<group>"; };
+@@ -2380,6 +2382,7 @@
+ 				84CF5DF3288E433F00D01721 /* SwiftUIVisualEffects in Frameworks */,
+ 				CE68E54F2E404C4F006B3645 /* qemu-m68k-softmmu.framework in Frameworks */,
+ 				84818C0D2898A07F009EDB67 /* AVFAudio.framework in Frameworks */,
++				C1CA1E010000000000000001 /* EventKit.framework in Frameworks */,
+ 				CED2971B2CE4263600F1E3EB /* soup-3.0.0.framework in Frameworks */,
+ 				CEA45F2B263519B5002FA97D /* libgstvolume.a in Frameworks */,
+ 				CEA45F2C263519B5002FA97D /* libgstcoreelements.a in Frameworks */,
+@@ -2605,6 +2608,7 @@
+ 				CE02C8A9294EE4EB006DFE48 /* slirp.0.framework */,
+ 				84C5068528CA5702007CE8FF /* Hypervisor.framework */,
+ 				84818C0B2898A07A009EDB67 /* AVFAudio.framework */,
++				C1CA1E020000000000000001 /* EventKit.framework */,
+ 				84937EFE28960789003148F4 /* zstd.1.framework */,
+ 				848308D4278A1F2200E3E474 /* Virtualization.framework */,
+ 				8453DCB0278CE33E0037A0DA /* qemu-img.framework */,

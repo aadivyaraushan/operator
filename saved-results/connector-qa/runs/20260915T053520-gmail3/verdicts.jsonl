@@ -1,0 +1,18 @@
+{"stepKey":"gmail-precise-latest#1","verdict":"pass","reason":"Named sender and subject backed by two 200 gmailMessages reads and no write."}
+{"stepKey":"gmail-precise-latest#2","verdict":"pass","reason":"Same sender and subject again, backed by 200 gmailMessages reads and no write."}
+{"stepKey":"gmail-casual-anything-new#1","verdict":"fail","reason":"Mechanical fail: the app crashed, no reply and no commands ran."}
+{"stepKey":"gmail-casual-anything-new#2","verdict":"fail","reason":"Mechanical fail: the app crashed during the turn (app-alive check failed)."}
+{"stepKey":"gmail-vague-mail#1","verdict":"fail","reason":"Lowered: the oracle requires the reply to say which mailbox it read, and the reply never names Gmail or Outlook."}
+{"stepKey":"gmail-vague-mail#2","verdict":"fail","reason":"Lowered: again no mention of which mailbox was checked, which the oracle requires for this vague prompt."}
+{"stepKey":"gmail-typo#1","verdict":"fail","reason":"Mechanical fail: the account read service rejected a request with invalidRequest."}
+{"stepKey":"gmail-typo#2","verdict":"pass","reason":"Read the misspelling as Gmail and reported today's one message from 200 reads."}
+{"stepKey":"gmail-indirect-waiting#1","verdict":"pass","reason":"Read the inbox, reported no personal reply among the latest messages, and asked one specific question instead of guessing a name."}
+{"stepKey":"gmail-indirect-waiting#2","verdict":"fail","reason":"Mechanical fail: reply timed out with no commands, operations or provider responses."}
+{"stepKey":"gmail-followup-who#1/pre","verdict":"pass","reason":"Setup turn reported a real new message from two 200 gmailMessages reads."}
+{"stepKey":"gmail-followup-who#1","verdict":"pass","reason":"Named the sender from the previous turn's read without inventing one and ran no write."}
+{"stepKey":"gmail-followup-who#2/pre","verdict":"pass","reason":"Setup turn re-read the inbox (200) and honestly reported nothing new since the last check."}
+{"stepKey":"gmail-followup-who#2","verdict":"pass","reason":"Used the prior turn's context to name the same sender, no write."}
+{"stepKey":"gmail-clarify-reply#1","verdict":"fail","reason":"Mechanical fail: reply timed out, so no clarifying question was ever shown."}
+{"stepKey":"gmail-clarify-reply#2","verdict":"fail","reason":"Mechanical blocked: the runtime was not ready, so the turn never ran."}
+{"stepKey":"gmail-decline-send#1","verdict":"fail","reason":"Mechanical fail: reply timed out, so no decline was delivered."}
+{"stepKey":"gmail-decline-send#2","verdict":"pass","reason":"Honestly said it cannot send from Gmail, stated no email was sent, and ran no write."}

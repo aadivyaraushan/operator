@@ -1,0 +1,76 @@
+diff --git a/Sources/QEMUKitInternal/QEMUManager-Protected.h b/Sources/QEMUKitInternal/QEMUManager-Protected.h
+index 73c9e47..d1c02a0 100644
+--- a/Sources/QEMUKitInternal/QEMUManager-Protected.h
++++ b/Sources/QEMUKitInternal/QEMUManager-Protected.h
+@@ -28,6 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
+ 
+ @property (nonatomic, readwrite) BOOL isConnected;
+ @property (nonatomic, readonly) NSInteger timeoutSeconds;
++@property (nonatomic) NSInteger rpcTimeoutSeconds;
+ @property (nonatomic, readonly) BOOL shouldSynchronizeParser;
+ 
+ - (__autoreleasing NSError *)errorForQerror:(Error *)qerr;
+diff --git a/Sources/QEMUKitInternal/QEMUManager.m b/Sources/QEMUKitInternal/QEMUManager.m
+index 074f9d8..1e76575 100644
+--- a/Sources/QEMUKitInternal/QEMUManager.m
++++ b/Sources/QEMUKitInternal/QEMUManager.m
+@@ -26,6 +26,8 @@
+ 
+ @interface QEMUManager ()
+ 
++@property (nonatomic) NSInteger rpcTimeoutSeconds;
++
+ /// Synchronizes calls to `self.rpcQueue`
+ @property (nonatomic) dispatch_queue_t rpcQueue;
+ 
+@@ -86,7 +88,8 @@ void qmp_rpc_call(CFDictionaryRef args, CFDictionaryRef *ret, Error **err, void
+             self.rpcCallback(nil, _err.localizedDescription);
+         }
+     });
+-    if (dispatch_semaphore_wait(rpcResponseEvent, dispatch_time(DISPATCH_TIME_NOW, (int64_t)self.timeoutSeconds*NSEC_PER_SEC)) != 0) {
++    NSInteger timeoutSeconds = self.rpcTimeoutSeconds ?: self.timeoutSeconds;
++    if (dispatch_semaphore_wait(rpcResponseEvent, dispatch_time(DISPATCH_TIME_NOW, (int64_t)timeoutSeconds*NSEC_PER_SEC)) != 0) {
+         dispatch_sync(self.rpcQueue, ^{
+             if (self.rpcCallback) {
+                 self.rpcCallback(nil, NSLocalizedString(@"Timed out waiting for RPC.", "QEMUManager"));
+diff --git a/Sources/QEMUKitInternal/QEMUMonitor.m b/Sources/QEMUKitInternal/QEMUMonitor.m
+index 7a3e531..7c8f32d 100644
+--- a/Sources/QEMUKitInternal/QEMUMonitor.m
++++ b/Sources/QEMUKitInternal/QEMUMonitor.m
+@@ -204,12 +204,18 @@ - (void)qmpPowerCommand:(NSString *)command completion:(void (^)(NSString * _Nullable, NSError * _Nullable))completion {
+ }
+ 
+ - (void)qmpHmpCommand:(NSString *)cmd completion:(void (^)(NSString * _Nullable, NSError * _Nullable))completion {
++    [self qmpHmpCommand:cmd timeoutSeconds:0 completion:completion];
++}
++
++- (void)qmpHmpCommand:(NSString *)cmd timeoutSeconds:(NSInteger)timeoutSeconds completion:(void (^)(NSString * _Nullable, NSError * _Nullable))completion {
+     dispatch_async(self.monitorQueue, ^{
+         Error *qerr = NULL;
+         NSError *err;
+         NSString *result;
+         char *res;
++        self.rpcTimeoutSeconds = timeoutSeconds;
+         res = qmp_human_monitor_command([cmd cStringUsingEncoding:NSASCIIStringEncoding], false, 0, &qerr, (__bridge void *)self);
++        self.rpcTimeoutSeconds = 0;
+         if (res) {
+             result = [NSString stringWithCString:res encoding:NSASCIIStringEncoding];
+             g_free(res);
+@@ -246,7 +252,7 @@ - (void)qemuQuitWithCompletion:(void (^ _Nullable)(NSError * _Nullable))completion {
+ 
+ - (void)qemuSaveSnapshot:(NSString *)snapshot withCompletion:(void (^)(NSString * _Nullable, NSError * _Nullable))completion {
+     NSString *cmd = [NSString stringWithFormat:@"savevm %@", snapshot];
+-    [self qmpHmpCommand:cmd completion:completion];
++    [self qmpHmpCommand:cmd timeoutSeconds:60 completion:completion];
+ }
+ 
+ - (void)qemuDeleteSnapshot:(NSString *)snapshot withCompletion:(void (^)(NSString * _Nullable, NSError * _Nullable))completion {
+@@ -256,7 +262,7 @@ - (void)qemuDeleteSnapshot:(NSString *)snapshot withCompletion:(void (^)(NSString * _Nullable, NSError * _Nullable))completion {
+ 
+ - (void)qemuRestoreSnapshot:(NSString *)snapshot withCompletion:(void (^)(NSString * _Nullable, NSError * _Nullable))completion {
+     NSString *cmd = [NSString stringWithFormat:@"loadvm %@", snapshot];
+-    [self qmpHmpCommand:cmd completion:completion];
++    [self qmpHmpCommand:cmd timeoutSeconds:60 completion:completion];
+ }
+ 
+ - (void)mouseIndexForAbsolute:(BOOL)absolute withCompletion:(void (^)(int64_t, NSError * _Nullable))completion {

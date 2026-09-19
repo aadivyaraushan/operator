@@ -1,0 +1,81 @@
+#!/sbin/openrc-run
+# Starts the phone-local Gateway as an unprivileged account.
+
+name="OpenClaw Gateway"
+description="Phone-local OpenClaw Gateway"
+command="/usr/local/libexec/openclaw/read-fw-cfg-token.sh"
+command_args="/usr/local/bin/openclaw gateway --bind lan --port 18789 --auth token"
+command_user="openclaw:openclaw"
+command_background="yes"
+pidfile="/run/openclaw/gateway.pid"
+umask="0077"
+retry="TERM/30/KILL/5"
+stopgroup="yes"
+
+export HOME=/var/lib/openclaw
+export OPENCLAW_GATEWAY_STARTUP_TRACE=1
+# Keep runtime-generated module compilation across guest cold boots.
+export NODE_COMPILE_CACHE=/var/tmp/openclaw-compile-cache
+# Match OpenClaw's startup flag without a second process just to set it.
+# Do not disable respawning: certificate setup may still require it.
+export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--disable-warning=ExperimentalWarning"
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/usr/libexec/rc/bin
+
+launch_dir=/run/openclaw/launch
+workspace_dir=/var/lib/openclaw/.openclaw/workspace
+skills_dir=$workspace_dir/skills
+log_dir=/var/lib/openclaw/.openclaw/logs
+output_log=$log_dir/stdout.log
+error_log=$log_dir/stderr.log
+output_previous_log=$log_dir/stdout.previous.log
+error_previous_log=$log_dir/stderr.previous.log
+
+stage_fw_cfg() {
+  launch_value_name=$1
+  launch_source_path=/sys/firmware/qemu_fw_cfg/by_name/opt/openclaw/$launch_value_name/raw
+  launch_destination_path=$launch_dir/$launch_value_name
+  test -r "$launch_source_path" || {
+    eerror "OpenClaw launch value is unavailable: $launch_value_name"
+    return 1
+  }
+  LC_ALL=C tr -d '\000' <"$launch_source_path" >"$launch_destination_path"
+  chown openclaw:openclaw "$launch_destination_path"
+  chmod 0400 "$launch_destination_path"
+}
+
+depend() {
+  need localmount
+  use net
+  after bootmisc
+}
+
+prepare_log_stream() {
+  current_log=$1
+  previous_log=$2
+  if test -f "$current_log"; then
+    mv -f "$current_log" "$previous_log"
+  fi
+  checkpath --file --owner openclaw:openclaw --mode 0600 "$current_log" "$previous_log"
+}
+
+start_pre() {
+  checkpath --directory --owner openclaw:openclaw --mode 0700 "$NODE_COMPILE_CACHE"
+  checkpath --directory --owner openclaw:openclaw --mode 0700 /run/openclaw
+  checkpath --directory --owner openclaw:openclaw --mode 0700 "$workspace_dir"
+  checkpath --directory --owner openclaw:openclaw --mode 0700 "$skills_dir"
+  checkpath --directory --owner openclaw:openclaw --mode 0700 "$log_dir"
+  prepare_log_stream "$output_log" "$output_previous_log"
+  prepare_log_stream "$error_log" "$error_previous_log"
+  rm -f "$launch_dir/gateway-token" "$launch_dir/device-id" \
+    "$launch_dir/device-public-key"
+  checkpath --directory --owner openclaw:openclaw --mode 0700 "$launch_dir"
+  stage_fw_cfg gateway-token
+  stage_fw_cfg device-id
+  stage_fw_cfg device-public-key
+}
+
+stop_post() {
+  rm -f "$launch_dir/gateway-token" "$launch_dir/device-id" \
+    "$launch_dir/device-public-key"
+  rmdir "$launch_dir" 2>/dev/null || true
+}

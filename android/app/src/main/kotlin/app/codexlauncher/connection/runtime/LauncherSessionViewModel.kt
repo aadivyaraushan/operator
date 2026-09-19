@@ -26,6 +26,7 @@ import app.codexlauncher.storage.actions.ActionJournal
 import app.codexlauncher.storage.connection.lastseen.shouldRecordSuccessfulConnection
 import app.codexlauncher.task.summary.TaskEventReducer
 import app.codexlauncher.task.summary.TaskQueueState
+import app.codexlauncher.task.summary.TaskState
 import app.codexlauncher.task.management.TaskAction
 import app.codexlauncher.task.management.TaskActionBridge
 import app.codexlauncher.task.management.TaskActionOutcome
@@ -88,6 +89,7 @@ class LauncherSessionViewModel(
     private val actionJournal: ActionJournal,
     private val carryOutDeviceReply: (handle: String, text: String) -> String = { _, _ -> "refused" },
     private val carryOutYouTubePlayback: (watchUrl: String) -> String = { "refused" },
+    private val fetchLocation: suspend () -> String = { "" },
     private val clearConfirmedDraft: suspend (DraftVersion) -> Boolean = { false },
     private val onSuccessfulConnection: suspend (pairingGeneration: String, epochMillis: Long) -> Unit = { _, _ -> },
     private val recordResumeCursor: suspend (pairingGeneration: String, throughSequence: Long) -> Boolean = { _, _ -> true },
@@ -136,6 +138,13 @@ class LauncherSessionViewModel(
     private var retryToken = 0L
 
     val state: StateFlow<LauncherSessionState> = mutableState.asStateFlow()
+    private val mutableNeedsLocationPermission = MutableStateFlow(false)
+    val needsLocationPermission: StateFlow<Boolean> = mutableNeedsLocationPermission.asStateFlow()
+
+    fun consumeLocationPermissionRequest() {
+        mutableNeedsLocationPermission.value = false
+    }
+
     val attachments = attachmentUploader.state
     private val capabilityController =
         CapabilityInteraction(
@@ -171,6 +180,18 @@ class LauncherSessionViewModel(
         retryComputer = paired
         startConnection(paired, force)
     }
+
+    /**
+     * True when the live session is already this exact endpoint and online, so a
+     * send can reuse the warm socket instead of forcing a teardown+reconnect. The
+     * Home send handler used to force a reconnect on every phone-agent send, which
+     * closed and rebuilt the socket (fresh TLS + snapshot re-sync) each time and
+     * added seconds of dead-wait before the prompt even left. It only needs to
+     * force when the active connection is a different (possibly offline) endpoint.
+     */
+    fun isOnlineTo(deviceId: String): Boolean =
+        activeDeviceId == deviceId &&
+            mutableState.value.connection.phase == app.codexlauncher.connection.state.ConnectionPhase.ONLINE
 
     @Synchronized
     fun reconnectNow(reason: String) {
@@ -535,7 +556,10 @@ class LauncherSessionViewModel(
         val outcome = queueTaskFollowUp(taskId, prompt)
         val delivered =
             outcome is ExistingTaskControlOutcome.Accepted || outcome is ExistingTaskControlOutcome.Queued
-        if (delivered) clearConfirmedDraft(draftVersion)
+        if (delivered) {
+            clearConfirmedDraft(draftVersion)
+            markTaskWorkingOptimistically(taskId)
+        }
         AppLog.info(
             feature = "standalone",
             message = "home prompt sent to phone agent task",
@@ -682,6 +706,27 @@ class LauncherSessionViewModel(
         if (index < 0) return
         val tasks = snapshot.tasks.toMutableList()
         tasks[index] = tasks[index].copy(queueState = queueState)
+        mutableState.value = current.copy(snapshot = snapshot.copy(tasks = tasks))
+    }
+
+    /**
+     * Optimistically show a just-submitted task as WORKING so the user gets
+     * instant feedback instead of a stale "Replied" (or nothing) for the whole
+     * pre-first-token dead-wait. The runtime does not push a working event until
+     * the reply starts, so without this the phone looks frozen for ~20s after a
+     * send. The first real [TaskEventReducer] event supersedes this the moment it
+     * arrives, so a wrong optimistic guess self-corrects; we only set it when the
+     * send was actually delivered.
+     */
+    private fun markTaskWorkingOptimistically(taskId: String) {
+        val current = mutableState.value
+        val snapshot = current.snapshot ?: return
+        val index = snapshot.tasks.indexOfFirst { it.id == taskId }
+        if (index < 0) return
+        val existing = snapshot.tasks[index]
+        if (existing.state == TaskState.WORKING) return
+        val tasks = snapshot.tasks.toMutableList()
+        tasks[index] = existing.copy(state = TaskState.WORKING)
         mutableState.value = current.copy(snapshot = snapshot.copy(tasks = tasks))
     }
 
@@ -1259,6 +1304,33 @@ class LauncherSessionViewModel(
         val handle = message.body.getValue("handle").jsonPrimitive.content
         val text = message.body.getValue("text").jsonPrimitive.content
 
+        if (kind == "get_location") {
+            submissionScope.launch {
+                val payload =
+                    try {
+                        fetchLocation()
+                    } catch (error: Exception) {
+                        AppLog.error(
+                            feature = "connection-runtime",
+                            message = "get_location attempt threw",
+                            error = error,
+                            fields = mapOf("request_id" to requestId, "decision" to "answer_failed"),
+                        )
+                        """{"error":"location_unavailable","message":"the location attempt failed unexpectedly"}"""
+                    }
+                if (payload.contains("\"error\":\"permission_denied\"")) {
+                    // DeviceLocationAction is the one place that ever writes this
+                    // exact literal into a payload, so a substring check is a safe,
+                    // cheap way to notice "go ask the user" without re-parsing JSON
+                    // we already validated on the way out.
+                    mutableNeedsLocationPermission.value = true
+                }
+                if (generation.get() != expectedGeneration) return@launch
+                sendDeviceActionResult(requestId, "handed_to_the_app", payload)
+            }
+            return
+        }
+
         val outcome =
             try {
                 when (kind) {
@@ -1277,13 +1349,24 @@ class LauncherSessionViewModel(
             }
 
         if (generation.get() != expectedGeneration) return
+        sendDeviceActionResult(requestId, outcome, null)
+    }
+
+    private fun sendDeviceActionResult(requestId: String, outcome: String, payload: String?) {
         val encoded =
             buildJsonObject {
                 put("version", buildJsonObject { put("major", ProtocolCodec.PROTOCOL_MAJOR); put("minor", 0) })
                 put("messageId", UUID.randomUUID().toString())
                 put("sender", "phone")
                 put("type", "device_action_result")
-                put("body", buildJsonObject { put("requestId", requestId); put("outcome", outcome) })
+                put(
+                    "body",
+                    buildJsonObject {
+                        put("requestId", requestId)
+                        put("outcome", outcome)
+                        if (payload != null) put("payload", payload)
+                    },
+                )
             }.toString().also(ProtocolCodec::decodeText)
         activeConnection?.sendText(encoded)
     }

@@ -128,6 +128,15 @@ func TestWave1DeepLinkSpecsAreHandsOffPrepareAndOpen(t *testing.T) {
 		{"claude", "Claude", "com.anthropic.claude", "messaging", "claude_prepare_open_smoke", []manifest.Verb{manifest.Compose}},
 		{"chatgpt", "ChatGPT", "com.openai.chatgpt", "messaging", "chatgpt_prepare_open_smoke", []manifest.Verb{manifest.Compose}},
 		{"grok", "Grok", "ai.x.grok", "messaging", "grok_prepare_open_smoke", []manifest.Verb{manifest.Compose}},
+		// Wave1Specs 76 → 84; ids and destinations verified 2026-09-10.
+		{"gmail", "Gmail", "com.google.android.gm", "messaging", "gmail_prepare_open_smoke", []manifest.Verb{manifest.Compose}},
+		{"gcalendar", "Google Calendar", "com.google.android.calendar", "calendar", "gcalendar_prepare_open_smoke", []manifest.Verb{manifest.Write}},
+		{"slack", "Slack", "com.Slack", "slack", "slack_prepare_open_smoke", []manifest.Verb{manifest.Compose}},
+		{"notion", "Notion", "notion.id", "notes", "notion_prepare_open_smoke", []manifest.Verb{manifest.Write}},
+		{"waze", "Waze", "com.waze", "travel", "waze_prepare_open_smoke", []manifest.Verb{manifest.Read}},
+		{"zoom", "Zoom", "us.zoom.videomeetings", "services", "zoom_prepare_open_smoke", []manifest.Verb{manifest.Read}},
+		{"ticketmaster", "Ticketmaster", "com.ticketmaster.mobile.android.na", "travel", "ticketmaster_prepare_open_smoke", []manifest.Verb{manifest.Read}},
+		{"instacart", "Instacart", "com.instacart.client", "food", "instacart_prepare_open_smoke", []manifest.Verb{manifest.Read}},
 	}
 	if len(Wave1Specs()) != len(want) {
 		t.Fatalf("Wave1Specs count = %d, want %d", len(Wave1Specs()), len(want))
@@ -280,6 +289,14 @@ func TestDeepLinkComposeHandsOffWithoutClaimingCompletion(t *testing.T) {
 		{"claude", "prompt", "draft a Claude prompt about weekend plans", manifest.Compose},
 		{"chatgpt", "prompt", "draft a ChatGPT prompt about weekend plans", manifest.Compose},
 		{"grok", "prompt", "draft a Grok prompt about weekend plans", manifest.Compose},
+		{"gmail", "Maya", "draft a reply saying I will send the deck tonight", manifest.Compose},
+		{"gcalendar", "Design review", "hold 30 minutes Thursday afternoon", manifest.Write},
+		{"slack", "#design", "draft a note that the build is green", manifest.Compose},
+		{"notion", "Weekly notes", "start a page for this week's notes", manifest.Write},
+		{"waze", "home", "drive home avoiding tolls", manifest.Read},
+		{"zoom", "standup", "open my next meeting", manifest.Read},
+		{"ticketmaster", "Chicago Symphony", "tickets for a Saturday performance", manifest.Read},
+		{"instacart", "oat milk", "nearby stores carrying oat milk", manifest.Read},
 	}
 	for _, tc := range cases {
 		t.Run(tc.id+"/"+string(tc.verb), func(t *testing.T) {

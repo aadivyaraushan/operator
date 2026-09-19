@@ -1,0 +1,674 @@
+[
+  {
+    "id": "venmo",
+    "displayName": "Venmo",
+    "url": "https://venmo.com/home",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:49",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "cashapp",
+    "displayName": "Cash App",
+    "url": "https://cash.app",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:50",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "zelle",
+    "displayName": "Zelle",
+    "url": "https://www.zelle.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:51",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "starbucks",
+    "displayName": "Starbucks",
+    "url": "https://www.starbucks.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:52",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "chipotle",
+    "displayName": "Chipotle",
+    "url": "https://www.chipotle.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:53",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "spotify",
+    "displayName": "Spotify",
+    "url": "https://www.spotify.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:54",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "audible",
+    "displayName": "Audible",
+    "url": "https://www.audible.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:55",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "applemusic",
+    "displayName": "Apple Music",
+    "url": "https://music.apple.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:57",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "messages",
+    "displayName": "Messages",
+    "url": null,
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:59",
+    "verification": "nativeHandled",
+    "provesOnly": "Native iOS Messages compose service; not a website handoff."
+  },
+  {
+    "id": "discord",
+    "displayName": "Discord",
+    "url": null,
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:61",
+    "verification": "excluded",
+    "provesOnly": "Personal Discord explicitly excluded."
+  },
+  {
+    "id": "uber",
+    "displayName": "Uber",
+    "url": "https://www.uber.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:63",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "ubereats",
+    "displayName": "Uber Eats",
+    "url": "https://www.ubereats.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:65",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "resy",
+    "displayName": "Resy",
+    "url": "https://resy.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:67",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "doordash",
+    "displayName": "DoorDash",
+    "url": "https://www.doordash.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:69",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "googlephotos",
+    "displayName": "Google Photos",
+    "url": "https://photos.google.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:71",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "teams",
+    "displayName": "Teams",
+    "url": "https://www.microsoft.com/microsoft-teams",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:73",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "booking",
+    "displayName": "Booking.com",
+    "url": "https://www.booking.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:75",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "tripadvisor",
+    "displayName": "Tripadvisor",
+    "url": "https://www.tripadvisor.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:77",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "viator",
+    "displayName": "Viator",
+    "url": "https://www.viator.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:79",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "stubhub",
+    "displayName": "StubHub",
+    "url": "https://www.stubhub.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:81",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "alltrails",
+    "displayName": "AllTrails",
+    "url": "https://www.alltrails.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:83",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "taskrabbit",
+    "displayName": "Taskrabbit",
+    "url": "https://www.taskrabbit.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:85",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "thumbtack",
+    "displayName": "Thumbtack",
+    "url": "https://www.thumbtack.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:87",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "creditkarma",
+    "displayName": "Credit Karma",
+    "url": "https://www.creditkarma.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:89",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "turbotax",
+    "displayName": "TurboTax",
+    "url": "https://turbotax.intuit.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:91",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "lyft",
+    "displayName": "Lyft",
+    "url": "https://www.lyft.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:93",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "googlekeep",
+    "displayName": "Google Keep",
+    "url": "https://keep.google.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:95",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "whatsapp",
+    "displayName": "WhatsApp",
+    "url": null,
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:98",
+    "verification": "nativeHandled",
+    "provesOnly": "WhatsApp is handled by the native WhatsApp CLI path; no website handoff."
+  },
+  {
+    "id": "messenger",
+    "displayName": "Messenger",
+    "url": "https://www.messenger.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:100",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "signal",
+    "displayName": "Signal",
+    "url": "https://signal.org",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:102",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "googlemaps",
+    "displayName": "Google Maps",
+    "url": "https://maps.google.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:104",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "netflix",
+    "displayName": "Netflix",
+    "url": "https://www.netflix.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:106",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "facebook",
+    "displayName": "Facebook",
+    "url": "https://www.facebook.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:109",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "united",
+    "displayName": "United",
+    "url": "https://www.united.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:111",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "delta",
+    "displayName": "Delta",
+    "url": "https://www.delta.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:113",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "southwest",
+    "displayName": "Southwest",
+    "url": "https://www.southwest.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:115",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "american",
+    "displayName": "American Airlines",
+    "url": "https://www.aa.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:117",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "citymapper",
+    "displayName": "Citymapper",
+    "url": "https://citymapper.com/company",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:119",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "youtube",
+    "displayName": "YouTube",
+    "url": "https://www.youtube.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:121",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "airbnb",
+    "displayName": "Airbnb",
+    "url": "https://www.airbnb.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:123",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "opentable",
+    "displayName": "OpenTable",
+    "url": "https://www.opentable.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:125",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "grubhub",
+    "displayName": "Grubhub",
+    "url": "https://www.grubhub.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:127",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "threads",
+    "displayName": "Threads",
+    "url": "https://www.threads.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:130",
+    "verification": "officialSearchVerified",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "tiktok",
+    "displayName": "TikTok",
+    "url": "https://www.tiktok.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:133",
+    "verification": "officialSearchVerified",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "expedia",
+    "displayName": "Expedia",
+    "url": "https://www.expedia.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:135",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "target",
+    "displayName": "Target",
+    "url": "https://www.target.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:138",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "walmart",
+    "displayName": "Walmart",
+    "url": "https://www.walmart.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:139",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "nike",
+    "displayName": "Nike",
+    "url": "https://www.nike.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:140",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "sephora",
+    "displayName": "Sephora",
+    "url": "https://www.sephora.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:142",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "wayfair",
+    "displayName": "Wayfair",
+    "url": "https://www.wayfair.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:144",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "kayak",
+    "displayName": "Kayak",
+    "url": "https://www.kayak.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:146",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "priceline",
+    "displayName": "Priceline",
+    "url": "https://www.priceline.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:150",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "linkedin",
+    "displayName": "LinkedIn",
+    "url": "https://www.linkedin.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:152",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "ebay",
+    "displayName": "eBay",
+    "url": "https://www.ebay.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:154",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "pinterest",
+    "displayName": "Pinterest",
+    "url": "https://www.pinterest.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:158",
+    "verification": "officialSearchVerified",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "duolingo",
+    "displayName": "Duolingo",
+    "url": "https://www.duolingo.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:162",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "fitbit",
+    "displayName": "Fitbit",
+    "url": "https://www.fitbit.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:164",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "shazam",
+    "displayName": "Shazam",
+    "url": "https://www.shazam.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:166",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "chromecast",
+    "displayName": "Chromecast",
+    "url": "https://www.google.com/chromecast",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:170",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "youtubemusic",
+    "displayName": "YouTube Music",
+    "url": "https://music.youtube.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:172",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "soundcloud",
+    "displayName": "SoundCloud",
+    "url": "https://soundcloud.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:174",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "pandora",
+    "displayName": "Pandora",
+    "url": "https://www.pandora.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:178",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "asana",
+    "displayName": "Asana",
+    "url": "https://asana.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:180",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "trello",
+    "displayName": "Trello",
+    "url": "https://trello.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:182",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "mstodo",
+    "displayName": "Microsoft To Do",
+    "url": "https://www.microsoft.com/microsoft-365/microsoft-to-do-list-app",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:186",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "googledocs",
+    "displayName": "Google Docs",
+    "url": "https://docs.google.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:188",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "dropbox",
+    "displayName": "Dropbox",
+    "url": "https://www.dropbox.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:190",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "googlesheets",
+    "displayName": "Google Sheets",
+    "url": "https://sheets.google.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:194",
+    "verification": "officialSearchVerified",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "evernote",
+    "displayName": "Evernote",
+    "url": "https://evernote.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:196",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "googleslides",
+    "displayName": "Google Slides",
+    "url": "https://slides.google.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:198",
+    "verification": "officialSearchVerified",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "pocketcasts",
+    "displayName": "Pocket Casts",
+    "url": "https://pocketcasts.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:203",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "goodreads",
+    "displayName": "Goodreads",
+    "url": "https://www.goodreads.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:205",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "kindle",
+    "displayName": "Kindle",
+    "url": "https://read.amazon.com/landing",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:207",
+    "verification": "officialSearchVerified",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "claude",
+    "displayName": "Claude",
+    "url": "https://claude.ai",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:212",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "chatgpt",
+    "displayName": "ChatGPT",
+    "url": "https://chatgpt.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:214",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "grok",
+    "displayName": "Grok",
+    "url": "https://grok.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:216",
+    "verification": "officialSearchVerified",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "gmail",
+    "displayName": "Gmail",
+    "url": "https://mail.google.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:233",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "gcalendar",
+    "displayName": "Google Calendar",
+    "url": "https://calendar.google.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:234",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "slack",
+    "displayName": "Slack",
+    "url": "https://slack.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:235",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "notion",
+    "displayName": "Notion",
+    "url": "https://www.notion.so",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:236",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "waze",
+    "displayName": "Waze",
+    "url": "https://www.waze.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:237",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "zoom",
+    "displayName": "Zoom",
+    "url": "https://zoom.us",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:238",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "ticketmaster",
+    "displayName": "Ticketmaster",
+    "url": "https://www.ticketmaster.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:239",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  },
+  {
+    "id": "instacart",
+    "displayName": "Instacart",
+    "url": "https://www.instacart.com",
+    "sourceURL": "companion/internal/capability/adapters/deeplink/adapter.go:240",
+    "verification": "webOpenedOfficial",
+    "provesOnly": "Official HTTPS landing page only; does not prove native app availability or any action completion."
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "runId": "20260915T051956-gmail",
+  "marker": "qa20260915051996be",
+  "udid": "49A153C3-BA69-468F-BD21-D827A84E6F07",
+  "simName": "Operator iPhone 14 Pro",
+  "startedAt": "2026-09-15T05:20:00.341Z",
+  "repeats": 2,
+  "scenarioIds": [
+    "gmail-precise-latest",
+    "gmail-casual-anything-new",
+    "gmail-vague-mail",
+    "gmail-typo",
+    "gmail-indirect-waiting",
+    "gmail-followup-who",
+    "gmail-clarify-reply",
+    "gmail-decline-send"
+  ],
+  "account": "ssdear@gmail.com (ChatGPT, personal, owner-approved 2026-09-14)"
+}

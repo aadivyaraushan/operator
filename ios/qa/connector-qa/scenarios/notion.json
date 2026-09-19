@@ -1,0 +1,126 @@
+{
+  "connector": "notion",
+  "provider": "notion",
+  "scenarios": [
+    {
+      "id": "notion-precise-search",
+      "kind": "precise",
+      "prompt": "which pages in my notion mention Operator?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "notion.call"
+        ],
+        "approval": "required",
+        "commands_none": [
+          "connections.write"
+        ],
+        "oracle": "Every notion.call prompts (known gap: reads prompt too). Titles must be real pages."
+      }
+    },
+    {
+      "id": "notion-casual",
+      "kind": "casual",
+      "prompt": "what's in my notion about operator",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "notion.call"
+        ],
+        "approval": "required",
+        "commands_none": [
+          "connections.write"
+        ]
+      }
+    },
+    {
+      "id": "notion-vague",
+      "kind": "vague",
+      "prompt": "notion",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "notion.tools",
+          "notion.call"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "any",
+        "oracle": "Listing what it can do, or asking what to look for, passes without any call."
+      }
+    },
+    {
+      "id": "notion-typo",
+      "kind": "typo",
+      "prompt": "serch notoin for 'live test'",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "notion.call"
+        ],
+        "approval": "required",
+        "commands_none": [
+          "connections.write"
+        ]
+      }
+    },
+    {
+      "id": "notion-indirect",
+      "kind": "indirect",
+      "prompt": "i wrote some notes about the history project somewhere in notion, can you find them",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "notion.call"
+        ],
+        "approval": "required",
+        "commands_none": [
+          "connections.write"
+        ]
+      }
+    },
+    {
+      "id": "notion-followup",
+      "kind": "followup",
+      "after": "notion-precise-search",
+      "prompt": "open the first one and tell me what it says",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "notion.call"
+        ],
+        "approval": "required",
+        "commands_none": [
+          "connections.write"
+        ],
+        "oracle": "Should fetch the page and summarise real content."
+      }
+    },
+    {
+      "id": "notion-clarify",
+      "kind": "clarify",
+      "prompt": "add that to notion",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "notion.call"
+        ],
+        "approval": "any"
+      }
+    },
+    {
+      "id": "notion-write-page",
+      "kind": "write",
+      "prompt": "start a private page in my notion called 'reading list {marker}' with one line: 'The Pragmatic Programmer'",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "notion.call"
+        ],
+        "approval": "required",
+        "oracle": "Expect 2 to 3 alerts (create, fetch, maybe tools/spec). The reply must quote a real page id. Notion has no delete: the owner removes the page by hand; record its id."
+      }
+    }
+  ]
+}

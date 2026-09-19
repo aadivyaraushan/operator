@@ -1,0 +1,29 @@
+import Foundation
+
+@main struct HostChecks {
+    @MainActor static func main() async throws {
+        var launches = 0
+        var status: Data? = Data(#"{"runID":"old","status":"ready"}"#.utf8)
+        let host = EmbeddedRuntimeHost(runID: "fresh", gatewayPort: 19123, launch: { _ in launches += 1 }, readStatus: { status })
+        try host.start(token: "test-only")
+        try host.start(token: "test-only")
+        precondition(launches == 1, "Only one Node launch per host")
+        let staleReady = try host.isReady()
+        precondition(!staleReady, "Old readiness must not open chat")
+        status = Data(#"{"runID":"fresh","status":"starting"}"#.utf8)
+        let startingReady = try host.isReady()
+        precondition(!startingReady)
+        status = Data(#"{"runID":"fresh","status":"ready"}"#.utf8)
+        let ready = try host.isReady()
+        precondition(ready)
+        status = Data(#"{"runID":"fresh","status":"failed","error":"secret must not surface"}"#.utf8)
+        do { _ = try host.isReady(); fatalError("Expected failure") }
+        catch { precondition(!error.localizedDescription.contains("secret")) }
+        var attempts = 0
+        let broken = EmbeddedRuntimeHost(runID: "broken", gatewayPort: 19123, launch: { _ in attempts += 1; throw CocoaError(.fileNoSuchFile) }, readStatus: { nil })
+        do { try broken.start(token: "test-only") } catch {}
+        do { try broken.start(token: "test-only") } catch {}
+        precondition(attempts == 1, "Never try to restart Node after launch failure")
+        print("PASS: 6 embedded host checks (launch once, stale status, starting, ready, safe failure, no retry)")
+    }
+}

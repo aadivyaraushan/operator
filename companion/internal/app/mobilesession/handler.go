@@ -967,6 +967,7 @@ func (handler *Handler) handleDeviceActionResult(_ context.Context, sender trans
 	var body struct {
 		RequestID string `json:"requestId"`
 		Outcome   string `json:"outcome"`
+		Payload   string `json:"payload"`
 	}
 	if err := json.Unmarshal(message.Body, &body); err != nil {
 		return err
@@ -974,6 +975,11 @@ func (handler *Handler) handleDeviceActionResult(_ context.Context, sender trans
 	record, deliver, claimed := handler.deviceWork.Claim(body.RequestID)
 	if !claimed {
 		handler.logger.Info("[mobile-session] device action result for a request nobody is waiting on", "device_id", sender.DeviceID(), "request_id", body.RequestID)
+		return nil
+	}
+	if record.Kind == "get_location" {
+		deliver <- devicework.Result{Answered: true, Reached: record.Ceiling.OrHandsOff(), Done: true, Detail: body.Payload}
+		handler.logger.Info("[mobile-session] device action result delivered to its waiter", "device_id", sender.DeviceID(), "request_id", record.RequestID, "adapter_id", record.AdapterID, "outcome", body.Outcome, "ceiling", string(record.Ceiling.OrHandsOff()), "done", true)
 		return nil
 	}
 	var done bool

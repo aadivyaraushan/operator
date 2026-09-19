@@ -214,6 +214,30 @@ func Wave1Specs() []Spec {
 		{ID: "chatgpt", AppName: "ChatGPT", AndroidPackage: "com.openai.chatgpt", Verbs: []manifest.Verb{manifest.Compose}, AppClass: "messaging", ProvesCeiling: "chatgpt_prepare_open_smoke"},
 		// Play Store id=ai.x.grok — HTTP 200 (2026-08-02). Messaging compose hand-off.
 		{ID: "grok", AppName: "Grok", AndroidPackage: "ai.x.grok", Verbs: []manifest.Verb{manifest.Compose}, AppClass: "messaging", ProvesCeiling: "grok_prepare_open_smoke"},
+		// Wave1Specs 76 → 84. Play package ids and destinations verified 2026-09-10
+		// by the same method the earlier rows record: a Play Store id that does not
+		// exist answers 404, which this run reproduced for com.lyft.android and
+		// com.viator.mobile.consumer, the two already noted above.
+		//
+		// slack, notion and gcalendar deliberately reuse the ids of the credentialed
+		// adapters. production.go skips a deep-link spec whose id a credentialed
+		// adapter has taken, so these are the floor a signed-out install gets and
+		// the credentialed adapter replaces them rather than sitting beside them.
+		// Their AppClass matches what production.go files the credentialed version
+		// under, so an adapter's class does not change with its credential state.
+		//
+		// Yelp was prepared and left out: www.yelp.com answers 403 to any
+		// non-browser request, so its destination could not be verified the way
+		// every other row here was, and adding it would mean either recording an
+		// unfinished check or weakening the officialDomainUnchecked === 0 rule.
+		{ID: "gmail", AppName: "Gmail", AndroidPackage: "com.google.android.gm", Verbs: []manifest.Verb{manifest.Compose}, AppClass: "messaging", ProvesCeiling: "gmail_prepare_open_smoke"},
+		{ID: "gcalendar", AppName: "Google Calendar", AndroidPackage: "com.google.android.calendar", Verbs: []manifest.Verb{manifest.Write}, AppClass: "calendar", ProvesCeiling: "gcalendar_prepare_open_smoke"},
+		{ID: "slack", AppName: "Slack", AndroidPackage: "com.Slack", Verbs: []manifest.Verb{manifest.Compose}, AppClass: "slack", ProvesCeiling: "slack_prepare_open_smoke"},
+		{ID: "notion", AppName: "Notion", AndroidPackage: "notion.id", Verbs: []manifest.Verb{manifest.Write}, AppClass: "notes", ProvesCeiling: "notion_prepare_open_smoke"},
+		{ID: "waze", AppName: "Waze", AndroidPackage: "com.waze", Verbs: []manifest.Verb{manifest.Read}, AppClass: "travel", ProvesCeiling: "waze_prepare_open_smoke"},
+		{ID: "zoom", AppName: "Zoom", AndroidPackage: "us.zoom.videomeetings", Verbs: []manifest.Verb{manifest.Read}, AppClass: "services", ProvesCeiling: "zoom_prepare_open_smoke"},
+		{ID: "ticketmaster", AppName: "Ticketmaster", AndroidPackage: "com.ticketmaster.mobile.android.na", Verbs: []manifest.Verb{manifest.Read}, AppClass: "travel", ProvesCeiling: "ticketmaster_prepare_open_smoke"},
+		{ID: "instacart", AppName: "Instacart", AndroidPackage: "com.instacart.client", Verbs: []manifest.Verb{manifest.Read}, AppClass: "food", ProvesCeiling: "instacart_prepare_open_smoke"},
 	}
 }
 

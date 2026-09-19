@@ -365,7 +365,7 @@ func (b *Bridge) handleDisconnectCall(w http.ResponseWriter, r *http.Request, re
 	// Revoke is always gated, so decision.Allow is always false here, but
 	// this mirrors the gated branch in handleCall rather than assuming it.
 	gate := *decision.Gate
-	preview := execution.Preview{adapter.Preview{
+	preview := execution.Preview{Preview: adapter.Preview{
 		Headline: "Disconnect " + req.Adapter,
 		Confirm:  "Disconnect",
 	}}

@@ -1,0 +1,11 @@
+{
+  "id": "operator-iphone-whatsapp-link",
+  "name": "Operator iPhone WhatsApp linking",
+  "description": "Shows a temporary WhatsApp phone-link code only to its paired iPhone owner.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "activation": { "onStartup": true }
+}

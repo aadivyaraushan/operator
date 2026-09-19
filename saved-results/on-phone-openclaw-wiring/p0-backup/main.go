@@ -1,3 +1,11 @@
+//go:build ignore
+
+// A backup copy kept as evidence, not a package anyone builds. It imports
+// companion/internal/phoneruntime, which Go forbids from outside companion/,
+// so `go test ./...` has failed on it since it was saved here — including on
+// main, in CI, continuously. Excluded rather than deleted because
+// saved-results/ exists to keep records.
+
 package main
 
 import (

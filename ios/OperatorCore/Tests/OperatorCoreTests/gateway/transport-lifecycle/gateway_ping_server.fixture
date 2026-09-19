@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+import argparse, base64, hashlib, pathlib, socket, struct, time
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--mode", required=True)
+parser.add_argument("--port-file", required=True)
+args = parser.parse_args()
+
+def exact(conn, count):
+    data = b""
+    while len(data) < count:
+        chunk = conn.recv(count - len(data))
+        if not chunk: raise EOFError()
+        data += chunk
+    return data
+
+def frame(conn):
+    first, second = exact(conn, 2)
+    length = second & 0x7f
+    if length == 126: length = struct.unpack("!H", exact(conn, 2))[0]
+    elif length == 127: length = struct.unpack("!Q", exact(conn, 8))[0]
+    mask = exact(conn, 4) if second & 0x80 else b""
+    payload = exact(conn, length)
+    if mask: payload = bytes(value ^ mask[index % 4] for index, value in enumerate(payload))
+    return first & 0x0f, payload
+
+def send_frame(conn, opcode, payload):
+    conn.sendall(bytes([0x80 | opcode, len(payload)]) + payload)
+
+def handshake(conn):
+    request = b""
+    while b"\r\n\r\n" not in request: request += conn.recv(4096)
+    key = next(line.split(b": ", 1)[1] for line in request.split(b"\r\n") if line.lower().startswith(b"sec-websocket-key:"))
+    accept = base64.b64encode(hashlib.sha1(key + b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11").digest())
+    conn.sendall(b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept + b"\r\n\r\n")
+
+def keepalive(conn, result):
+    conn.settimeout(.2)
+    started, sent, pongs = time.monotonic(), 0, 0
+    next_tick, awaiting = 25, False
+    while time.monotonic() - started < 80:
+        elapsed = time.monotonic() - started
+        if elapsed >= next_tick:
+            if awaiting:
+                conn.close(); break
+            payload = f"gateway-{sent}".encode()
+            send_frame(conn, 0x9, payload)
+            sent += 1; awaiting = True; next_tick += 25
+        try:
+            opcode, payload = frame(conn)
+            if opcode == 0xA:
+                pongs += 1; awaiting = False
+            elif opcode in (0x1, 0x2):
+                result.write_text(f"{pongs} {payload.decode()}")
+                return
+        except socket.timeout: pass
+        except EOFError: break
+    result.write_text(f"{pongs} NO_TEXT")
+
+def one_connection(listener):
+    conn, _ = listener.accept()
+    handshake(conn)
+    return conn
+
+result = args.port_file + ".result"
+ready = args.port_file + ".ready"
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("127.0.0.1", 0)); listener.listen(2)
+    open(args.port_file, "w").write(str(listener.getsockname()[1]))
+    if args.mode == "keepalive":
+        conn = one_connection(listener); open(ready, "w").write("ready"); keepalive(conn, pathlib.Path(result)); conn.close()
+    elif args.mode == "sequence":
+        conn = one_connection(listener); send_frame(conn, 0x1, b"first"); send_frame(conn, 0x1, b"second"); time.sleep(.2); conn.close()
+    elif args.mode == "reopen":
+        conn = one_connection(listener); send_frame(conn, 0x1, b"old"); time.sleep(.5); conn.close()
+        conn = one_connection(listener); send_frame(conn, 0x1, b"fresh"); time.sleep(.2); conn.close()
+    elif args.mode == "cancel":
+        conn = one_connection(listener); time.sleep(.4); send_frame(conn, 0x1, b"old"); time.sleep(.2); send_frame(conn, 0x1, b"fresh"); time.sleep(.2); conn.close()

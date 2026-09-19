@@ -1,0 +1,179 @@
+diff --git a/Intents/UTMActionIntent.swift b/Intents/UTMActionIntent.swift
+index 25c9a54..3744cb2 100644
+--- a/Intents/UTMActionIntent.swift
++++ b/Intents/UTMActionIntent.swift
+@@ -86,12 +86,6 @@ struct UTMStartActionIntent: AppIntent, UTMIntent {
+         NSApp.activate(ignoringOtherApps: true)
+         #endif
+         data.run(vm: boxed, options: options)
+-        // For platforms that support foreground continuation, request it (no-op on older SDKs).
+-        if !vm.isHeadless {
+-            if #available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *), systemContext.currentMode.canContinueInForeground {
+-                try await continueInForeground(alwaysConfirm: false)
+-            }
+-        }
+         return .result()
+     }
+ }
+@@ -180,11 +174,6 @@ struct UTMResumeActionIntent: AppIntent, UTMIntent {
+     @MainActor
+     func perform(with vm: any UTMVirtualMachine, boxed: VMData) async throws -> some IntentResult {
+         try await vm.resume()
+-        if !vm.isHeadless {
+-            if #available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *), systemContext.currentMode.canContinueInForeground {
+-                try await continueInForeground(alwaysConfirm: false)
+-            }
+-        }
+         return .result()
+     }
+ }
+@@ -206,11 +195,6 @@ struct UTMRestartActionIntent: AppIntent, UTMIntent {
+     @MainActor
+     func perform(with vm: any UTMVirtualMachine, boxed: VMData) async throws -> some IntentResult {
+         try await vm.restart()
+-        if !vm.isHeadless {
+-            if #available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *), systemContext.currentMode.canContinueInForeground {
+-                try await continueInForeground(alwaysConfirm: false)
+-            }
+-        }
+         return .result()
+     }
+ }
+diff --git a/Intents/UTMIntent.swift b/Intents/UTMIntent.swift
+index 92b8e80..9f98a82 100644
+--- a/Intents/UTMIntent.swift
++++ b/Intents/UTMIntent.swift
+@@ -31,11 +31,6 @@ extension UTMIntent {
+     static var openAppWhenRun: Bool { true }
+ }
+ 
+-@available(iOS 26, macOS 26, tvOS 26, watchOS 26, visionOS 26, *)
+-extension UTMIntent {
+-    static var supportedModes: IntentModes { [.background, .foreground(.dynamic)] }
+-}
+-
+ @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
+ extension UTMIntent {
+     @MainActor
+diff --git a/Platform/Shared/VMDetailsView.swift b/Platform/Shared/VMDetailsView.swift
+index 4ff632a..39d1184 100644
+--- a/Platform/Shared/VMDetailsView.swift
++++ b/Platform/Shared/VMDetailsView.swift
+@@ -281,11 +281,7 @@ struct Screenshot: View {
+ private extension View {
+     @ViewBuilder
+     func optionalBackgroundExtensionEffect() -> some View {
+-        if #available(iOS 26, macOS 26, visionOS 26, *) {
+-            self.backgroundExtensionEffect()
+-        } else {
+-            self
+-        }
++        self
+     }
+ }
+ 
+diff --git a/Platform/Shared/VMPlaceholderView.swift b/Platform/Shared/VMPlaceholderView.swift
+index 99df021..4ea60e5 100644
+--- a/Platform/Shared/VMPlaceholderView.swift
++++ b/Platform/Shared/VMPlaceholderView.swift
+@@ -139,8 +139,6 @@ private struct TileButton: View {
+                 }
+             })
+             .buttonStyle(.bordered)
+-            .buttonSizing(.fitted)
+-            .buttonBorderShape(.roundedRectangle)
+         } else {
+             Button(action: action, label: {
+                 if compact {
+diff --git a/Platform/iOS/VMSettingsView.swift b/Platform/iOS/VMSettingsView.swift
+index 2d4bb70..a20009d 100644
+--- a/Platform/iOS/VMSettingsView.swift
++++ b/Platform/iOS/VMSettingsView.swift
+@@ -251,7 +251,6 @@ private extension View {
+                     addDeviceContent()
+                 }
+                 #if os(iOS)
+-                ToolbarSpacer(placement: .topBarLeading)
+                 #endif
+                 ToolbarItem(placement: .topBarLeading) {
+                     editContent()
+@@ -260,7 +259,6 @@ private extension View {
+                     cancelContent()
+                 }
+                 #if os(iOS)
+-                ToolbarSpacer(placement: .topBarTrailing)
+                 #endif
+                 ToolbarItem(placement: .topBarTrailing) {
+                     saveContent()
+diff --git a/Platform/iOS/VMToolbarView.swift b/Platform/iOS/VMToolbarView.swift
+index c60645c..e655758 100644
+--- a/Platform/iOS/VMToolbarView.swift
++++ b/Platform/iOS/VMToolbarView.swift
+@@ -81,13 +81,7 @@ struct VMToolbarView: View {
+     }
+     
+     var body: some View {
+-        if #available(iOS 26, *) {
+-            GlassEffectContainer(spacing: spacing) {
+-                toolbarBody
+-            }
+-        } else {
+-            toolbarBody
+-        }
++        toolbarBody
+     }
+     
+     @ViewBuilder
+@@ -367,31 +361,15 @@ struct ToolbarMenuStyle: MenuStyle, ToolbarButtonBaseStyle {
+ private extension View {
+     @ViewBuilder
+     func toolbarButtonStyle(horizontalSizeClass: UserInterfaceSizeClass? = nil, verticalSizeClass: UserInterfaceSizeClass? = nil) -> some View {
+-        if #available(iOS 26, *) {
+-            self
+-                .menuStyle(.button)
+-                .buttonStyle(.glass)
+-                .buttonBorderShape(.circle)
+-                .labelStyle(.iconOnly)
+-                .foregroundStyle(.primary)
+-                .controlSize(forHorizontalSizeClass: horizontalSizeClass)
+-        } else {
+-            self
+-                .buttonStyle(.toolbar(horizontalSizeClass: horizontalSizeClass, verticalSizeClass: verticalSizeClass))
+-                .menuStyle(.toolbar)
+-        }
++        self
++            .buttonStyle(.toolbar(horizontalSizeClass: horizontalSizeClass, verticalSizeClass: verticalSizeClass))
++            .menuStyle(.toolbar)
+     }
+     
+     @ViewBuilder
+     func animationUniqueID(_ id: (some Hashable & Sendable)?, in namespace: Namespace.ID) -> some View {
+-        if #available(iOS 26, *) {
+-            self
+-                .glassEffectID(id, in: namespace)
+-                .matchedGeometryEffect(id: id, in: namespace)
+-        } else {
+-            self
+-                .matchedGeometryEffect(id: id, in: namespace)
+-        }
++        self
++            .matchedGeometryEffect(id: id, in: namespace)
+     }
+     
+     @available(iOS 15, *)
+diff --git a/UTM.xcodeproj/project.pbxproj b/UTM.xcodeproj/project.pbxproj
+index 89104b6..fa7154b 100644
+--- a/UTM.xcodeproj/project.pbxproj
++++ b/UTM.xcodeproj/project.pbxproj
+@@ -3493,11 +3493,9 @@
+ 				CEA45F67263519B5002FA97D /* Localizable.strings in Resources */,
+ 				CEC1B00C2BBB211C0088119D /* PrivacyInfo.xcprivacy in Resources */,
+ 				CEA45F69263519B5002FA97D /* qemu in Resources */,
+-				CE061CE7289EB6250000351C /* VMDisplayMetalViewInputAccessory.xib in Resources */,
+				CED8DF7628A120C100C34345 /* Localizable.stringsdict in Resources */,
+				CEA45F6D263519B5002FA97D /* Settings.bundle in Resources */,
+-				846F8D622E4072960037162B /* AppIcon.icon in Resources */,
+				CEA45F6F263519B5002FA97D /* Assets.xcassets in Resources */,
+			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 		};

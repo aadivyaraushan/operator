@@ -1,0 +1,13 @@
+{
+  "name": "operator-iphone-whatsapp-link",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "openclaw": {
+    "extensions": ["./index.js"],
+    "compat": { "pluginApi": ">=2026.9.1" }
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.9.1"
+  }
+}

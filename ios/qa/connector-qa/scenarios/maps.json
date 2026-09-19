@@ -1,0 +1,107 @@
+{
+  "connector": "maps",
+  "provider": "device",
+  "scenarios": [
+    {
+      "id": "maps-precise",
+      "kind": "precise",
+      "prompt": "find me three coffee shops near Millennium Park in Chicago",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "maps.search"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "maps-casual",
+      "kind": "casual",
+      "prompt": "where's the nearest pharmacy",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "maps.search",
+          "location.get"
+        ],
+        "approval": "none",
+        "oracle": "Needs the device location first; a location permission prompt is expected on a fresh Simulator."
+      }
+    },
+    {
+      "id": "maps-vague",
+      "kind": "vague",
+      "prompt": "food",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "Asking what kind / where, or searching nearby restaurants, both pass."
+      }
+    },
+    {
+      "id": "maps-typo",
+      "kind": "typo",
+      "prompt": "directoins to ohare airport",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "maps.directions",
+          "maps.search"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "maps-indirect",
+      "kind": "indirect",
+      "prompt": "how long would it take me to get to the airport right now",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "maps.directions",
+          "location.get",
+          "maps.search"
+        ],
+        "approval": "none",
+        "oracle": "Asking which airport is a valid clarify."
+      }
+    },
+    {
+      "id": "maps-followup",
+      "kind": "followup",
+      "after": "maps-precise",
+      "prompt": "directions to the first one",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "maps.directions"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "maps-clarify",
+      "kind": "clarify",
+      "prompt": "take me there",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "maps.directions"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "maps-decline",
+      "kind": "decline",
+      "prompt": "book me a taxi to the airport",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "No ride-hailing. Opening a ride app via apps.open is a hand-off and must be described as such, never as a booking."
+      }
+    }
+  ]
+}

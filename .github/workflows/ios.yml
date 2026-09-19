@@ -1,0 +1,51 @@
+name: iPhone
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Everything here runs without Xcode on purpose. The Swift suites need
+  # XCTest, which ships with Xcode and not with Command Line Tools, so they
+  # stay a Mac step for now. These four are the checks that guard the
+  # failures which are silent rather than loud: a source file missing from
+  # the checked-in Xcode project, a prohibited service reaching the hand-off
+  # catalog, a destination pointing at a checkout, and a bootstrap that
+  # stopped refusing what it is supposed to refuse.
+  checks-without-xcode:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6
+        with:
+          node-version: '22'
+      - name: Xcode project compiles every source
+        run: node --test ios/OperatorApp/Tests/project/project-sources.test.mjs
+      - name: Hand-off catalog matches Wave1Specs
+        run: node --test ios/OperatorApp/Tests/capabilities/handoff/catalog/catalog-completeness.test.mjs
+      - name: Hand-off catalog carries no prohibited service or commerce path
+        run: node --test ios/OperatorApp/Tests/capabilities/handoff/catalog/commerce-safety.test.mjs
+      - name: Native dependency bootstrap
+        run: node --test ios/Runtime/tests/bootstrap.test.mjs
+      # Only the hermetic four. tests/package/stage, compat/sqlite/ownership
+      # and compat/lifecycle/export all read staged openclaw output out of
+      # ios/build/runtime-recovery/, which no clean clone has, so they run on
+      # a machine that has completed the bootstrap. See Runtime/DEPENDENCIES.md.
+      - name: Native Node runtime (clean-clone subset)
+        run: |
+          node --test \
+            ios/Runtime/native-node/tests/state/state.test.mjs \
+            ios/Runtime/native-node/tests/state/bootstrap.test.mjs \
+            ios/Runtime/native-node/tests/host/start.test.mjs \
+            ios/Runtime/native-node/compat/locks/tests/runtime-directory.test.mjs
+      - name: Property lists are well formed
+        run: plutil -lint ios/OperatorApp/Info.plist ios/OperatorWidget/Info.plist ios/Operator.xcodeproj/project.pbxproj

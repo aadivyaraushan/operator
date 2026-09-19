@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operator Sounds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap">
+<style>
+  :root { --bg:#0B0B0B; --ink:#E8E6E2; --muted:#9C968E; --dim:#5C5752; --accent:#FF5934; --accent-soft:#FF8C70; --rust:#9E3924; --fill:#171412; --fill2:#1C1917; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0B0B0B; } }
+  :root[data-theme="dark"] { --bg:#0B0B0B; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:Montserrat, system-ui, sans-serif; font-size:15px; line-height:1.55; }
+  main { max-width: 860px; margin: 0 auto; padding: 40px 16px 72px; }
+  .mark { width:28px; height:28px; position:relative; display:inline-block; vertical-align:middle; margin-right:10px; }
+  .mark i { position:absolute; border-radius:50%; }
+  .mark .big { right:0; top:0; width:20px; height:20px; background:var(--accent); }
+  .mark .small { left:0; bottom:0; width:10px; height:10px; background:var(--rust); }
+  h1 { font-size: 22px; font-weight: 500; margin: 0; display:flex; align-items:center; letter-spacing:.01em; }
+  h1 span { display:inline-block; transform:scaleX(.92); transform-origin:left; }
+  .sub { color: var(--muted); margin: 8px 0 28px; max-width: 620px; }
+  .rules { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 32px; }
+  .rule { background: var(--fill); border-radius: 14px; padding: 12px 14px; font-size: 13px; color: var(--muted); }
+  .rule b { display:block; color: var(--ink); font-weight: 500; margin-bottom: 2px; }
+  .row { display:grid; grid-template-columns: 56px 1fr; gap: 14px; padding: 16px 0; border-top: 1px solid #1f1c1a; align-items:start; }
+  .row:first-of-type { border-top: 0; }
+  button.play { width:56px; height:56px; border:0; border-radius:50%; background:var(--fill2); color:var(--accent-soft); cursor:pointer; display:flex; align-items:center; justify-content:center; transition: transform .12s ease, background .12s ease; }
+  button.play:hover { background:#2A1310; }
+  button.play:active, button.play.on { transform: scale(.94); background: var(--accent); color:#111010; }
+  .n { font-size: 11px; letter-spacing:.12em; text-transform:uppercase; color: var(--dim); }
+  .name { font-size: 16px; font-weight: 500; margin: 2px 0 2px; }
+  .when { color: var(--ink); }
+  .shape { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .why { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .apps { display:flex; gap:6px; flex-wrap:wrap; margin-top: 8px; }
+  .apps button { min-height:34px; padding:0 12px; border:0; border-radius:999px; background:var(--fill2); color:#BDB8B1; font-family:inherit; font-size:12px; cursor:pointer; }
+  .apps button:hover { color: var(--accent-soft); }
+  .vol { margin-top: 32px; }
+  .vol h2, .set h2 { font-size: 11px; letter-spacing:.12em; text-transform:uppercase; color: var(--dim); font-weight:500; margin: 0 0 10px; }
+  .bars { display:flex; flex-direction:column; gap:6px; }
+  .bar { display:grid; grid-template-columns: 110px 1fr 36px; gap: 10px; align-items:center; font-size: 13px; color: var(--muted); }
+  .bar i { display:block; height: 6px; border-radius: 3px; background: var(--accent); opacity:.85; }
+  .set { margin-top: 28px; color: var(--muted); font-size: 13px; }
+  .set p { margin: 0 0 6px; }
+  .seq { margin-top: 28px; }
+  .seq button { min-height: 44px; padding: 0 16px; border:0; border-radius: 999px; background: var(--accent); color:#111010; font-family: inherit; font-size: 13.5px; font-weight: 500; cursor:pointer; }
+  .seq button:hover { background: var(--accent-soft); }
+  .seq p { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1><span class="mark"><i class="big"></i><i class="small"></i></span><span>Operator sounds</span></h1>
+  <p class="sub">One instrument, one key (A), silence by default. Pitch direction carries meaning: rising leaves you, falling arrives to you, flat is a fact, low is a stop. Tap a circle to hear it.</p>
+
+  <div class="rules">
+    <div class="rule"><b>Never sounds</b>typing, scrolling, opening the app, thinking, reads</div>
+    <div class="rule"><b>Rising vs falling</b>Send and Done are mirrors: the round trip</div>
+    <div class="rule"><b>The low register</b>Needs-you, Left-it, Committed live near A3: stopping</div>
+    <div class="rule"><b>One per-app voice</b>only Did is pitched by app; the rest is Operator's own voice</div>
+  </div>
+
+  <div class="row">
+    <button class="play" data-src="sounds/1-send.wav" aria-label="Play Send"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l12 8-12 8z"/></svg></button>
+    <div><div class="n">1 · Send</div><div class="when">You send a request</div><div class="shape">Two quick notes rising, A5 → E6, 120 ms. Light haptic tap.</div><div class="why">Your words leaving your hands. Rising = away from you.</div></div>
+  </div>
+
+  <div class="row">
+    <button class="play" data-src="sounds/2-did-calendar.wav" aria-label="Play Did"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l12 8-12 8z"/></svg></button>
+    <div><div class="n">2 · Did</div><div class="when">Operator changed something in an app (held a date, saved a draft, moved files). Writes only; reads stay silent.</div><div class="shape">One soft note with its octave below, 500 ms with a slow fade, pitched per app within the key.</div><div class="why">The "watch it happen" sound. Per-app pitch teaches you which app without looking. Quiet because it fires on every write; long enough to register on a phone speaker.</div>
+      <div class="apps">
+        <button data-src="sounds/2-did-calendar.wav">Calendar · A</button>
+        <button data-src="sounds/2-did-gmail.wav">Gmail · C♯</button>
+        <button data-src="sounds/2-did-maps.wav">Maps · E</button>
+        <button data-src="sounds/2-did-drive.wav">Drive · F♯</button>
+      </div></div>
+  </div>
+
+  <div class="row">
+    <button class="play" data-src="sounds/3-done.wav" aria-label="Play Done"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l12 8-12 8z"/></svg></button>
+    <div><div class="n">3 · Done</div><div class="when">The turn finishes and the answer lands</div><div class="shape">Two notes falling, E6 → A5, 300 ms.</div><div class="why">Mirror of Send: something arriving to you. This is the Cursor "message" moment.</div></div>
+  </div>
+
+  <div class="row">
+    <button class="play" data-src="sounds/4-needs-you.wav" aria-label="Play Needs you"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l12 8-12 8z"/></svg></button>
+    <div><div class="n">4 · Needs you</div><div class="when">Operator stops and needs you; the sheet rises</div><div class="shape">One low held note, A3, with a soft fifth on top, 500 ms. Firm haptic.</div><div class="why">The only sound allowed to interrupt. Low and long so it is unmistakably different from the quick high ones. Never repeats; the pulsing logo carries it after.</div></div>
+  </div>
+
+  <div class="row">
+    <button class="play" data-src="sounds/5-committed.wav" aria-label="Play Committed"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l12 8-12 8z"/></svg></button>
+    <div><div class="n">5 · Committed</div><div class="when">You confirm on the sheet (Book it, Send, Pay)</div><div class="shape">Did note, then Done fall, 540 ms.</div><div class="why">Two known sounds chained: it acted, then it is back to you. No new vocabulary for a rare moment.</div></div>
+  </div>
+
+  <div class="row">
+    <button class="play" data-src="sounds/6-left-it.wav" aria-label="Play Left it"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l12 8-12 8z"/></svg></button>
+    <div><div class="n">6 · Left it</div><div class="when">You decline on the sheet, or press Stop</div><div class="shape">Two low notes stepping down, A3 → E3, 620 ms. Same shape as Done, two octaves lower and slower.</div><div class="why">Closing a door quietly. Low like Needs-you (same family: stopping), short because nothing is demanded.</div></div>
+  </div>
+
+  <div class="row">
+    <button class="play" data-src="sounds/7-unsure.wav" aria-label="Play Unsure"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l12 8-12 8z"/></svg></button>
+    <div><div class="n">7 · Unsure</div><div class="when">Something failed, or the outcome is unknown (connection dropped mid-batch)</div><div class="shape">Two identical flat notes, D5 D5, 420 ms, second slightly detuned.</div><div class="why">Flat = no direction, no progress. The detune feels "off" without being an alarm. Never a buzzer; Operator is not in trouble, it is telling you the truth.</div></div>
+  </div>
+
+  <div class="row">
+    <button class="play" data-src="sounds/8-incoming.wav" aria-label="Play Incoming"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l12 8-12 8z"/></svg></button>
+    <div><div class="n">8 · Incoming</div><div class="when">A message from someone else arrives that Operator offers to reply to</div><div class="shape">One falling note, E5 → A4, 200 ms.</div><div class="why">Half of Done: something arrived, nothing finished. Quieter than Done.</div></div>
+  </div>
+
+  <div class="seq">
+    <button id="story">▶ Play the Goa story as sound only</button>
+    <p>Send · Did ×3 (Calendar, Maps, Gmail) · Done · Needs you · Committed. Hear whether the set reads as one voice.</p>
+  </div>
+
+  <div class="vol">
+    <h2>Volume ladder</h2>
+    <div class="bars">
+      <div class="bar"><span>Needs you</span><i style="width:100%"></i><span>100</span></div>
+      <div class="bar"><span>Done</span><i style="width:70%"></i><span>70</span></div>
+      <div class="bar"><span>Committed</span><i style="width:70%"></i><span>70</span></div>
+      <div class="bar"><span>Send</span><i style="width:60%"></i><span>60</span></div>
+      <div class="bar"><span>Incoming</span><i style="width:50%"></i><span>50</span></div>
+      <div class="bar"><span>Unsure</span><i style="width:50%"></i><span>50</span></div>
+      <div class="bar"><span>Left it</span><i style="width:60%"></i><span>60</span></div>
+      <div class="bar"><span>Did</span><i style="width:45%"></i><span>45</span></div>
+    </div>
+  </div>
+
+  <div class="set">
+    <h2>Settings</h2>
+    <p>"Sounds" on or off. "Only when it needs me" keeps Needs-you and Unsure only.</p>
+    <p>Follows the iPhone silent switch; Needs-you still haptics when silent.</p>
+  </div>
+</main>
+<script>
+  const VOL = { '1-send': .6, '2-did': .45, '3-done': .7, '4-needs-you': 1, '5-committed': .7, '6-left-it': .6, '7-unsure': .5, '8-incoming': .5 };
+  const cache = {};
+  function play(src) {
+    const key = Object.keys(VOL).find(k => src.indexOf(k) >= 0) || '';
+    const a = cache[src] || (cache[src] = new Audio(src));
+    a.currentTime = 0; a.volume = VOL[key] || .5;
+    return a.play().catch(() => {});
+  }
+  document.querySelectorAll('[data-src]').forEach(b => b.addEventListener('click', () => {
+    b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 180);
+    play(b.dataset.src);
+  }));
+  document.getElementById('story').addEventListener('click', () => {
+    const seq = [[0, '1-send'], [900, '2-did-calendar'], [1500, '2-did-maps'], [2100, '2-did-gmail'], [3000, '3-done'], [3900, '4-needs-you'], [5200, '5-committed']];
+    seq.forEach(([t, n]) => setTimeout(() => play('sounds/' + n + '.wav'), t));
+  });
+</script>
+</body>
+</html>

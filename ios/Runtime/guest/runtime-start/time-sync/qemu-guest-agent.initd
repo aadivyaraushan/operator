@@ -1,0 +1,25 @@
+#!/sbin/openrc-run
+# Lets the host correct guest time through the dedicated virtio channel only.
+
+description="Operator QEMU guest time agent"
+command=/usr/bin/qemu-ga
+command_args="--config /etc/qemu/qemu-ga.conf"
+command_background=yes
+pidfile=/run/qemu-ga.pid
+retry="TERM/10/KILL/5"
+
+# The allowed RPCs contain no file, process, or network access. Keep agent
+# diagnostics root-only because transport failures can include host details.
+log_dir=/var/log/qemu-guest-agent
+output_log=$log_dir/agent.log
+error_log=$log_dir/agent.err
+
+depend() {
+  need localmount
+  after bootmisc
+}
+
+start_pre() {
+  checkpath --directory --owner root:root --mode 0700 "$log_dir"
+  checkpath --file --owner root:root --mode 0600 "$output_log" "$error_log"
+}

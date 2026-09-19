@@ -589,9 +589,15 @@ func validateBody(message Message) error {
 		// than a sentence, because the sentence the user actually reads is
 		// assembled on the Mac alongside every other capability's outcome —
 		// letting the phone phrase its own would mean the same result could
-		// read two different ways depending on which machine wrote it.
-		if message.Sender != "phone" || !exactKeys(body, "requestId", "outcome") ||
-			!validID(stringValue(body["requestId"])) || !knownDeviceActionOutcome(stringValue(body["outcome"])) {
+		// read two different ways depending on which machine wrote it. payload
+		// is the one exception: a data-fetch capability like get_location has
+		// no sentence for the Mac to assemble, because the Mac never saw the
+		// answer — only the phone did. payload carries that answer through
+		// verbatim; it stays optional because every other kind still has
+		// nothing to put there.
+		if message.Sender != "phone" || !onlyAllowedKeys(body, "requestId", "outcome", "payload") ||
+			!validID(stringValue(body["requestId"])) || !knownDeviceActionOutcome(stringValue(body["outcome"])) ||
+			(body["payload"] != nil && !boundedString(body["payload"], 4096)) {
 			return ErrInvalidEnvelope
 		}
 	case "action_result":
@@ -1068,7 +1074,7 @@ func validateAction(sender string, body map[string]json.RawMessage) error {
 
 func knownDeviceActionKind(value string) bool {
 	switch value {
-	case "notification_reply", "youtube_play":
+	case "notification_reply", "youtube_play", "get_location":
 		return true
 	default:
 		return false

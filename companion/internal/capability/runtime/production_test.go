@@ -321,7 +321,7 @@ func (*fakeProductionBeeper) UpdateChat(context.Context, string, beeper.UpdateCh
 	return beeper.Chat{ID: "chat-1"}, nil
 }
 func (*fakeProductionBeeper) SetReminder(context.Context, string, time.Time, bool) error { return nil }
-func (*fakeProductionBeeper) ClearReminder(context.Context, string) error                 { return nil }
+func (*fakeProductionBeeper) ClearReminder(context.Context, string) error                { return nil }
 
 func TestBeeperConnectionReplacesTheThreeMessagingHandoffsWithConfirmedSendAdapters(t *testing.T) {
 	inv, err := NewProduction(ProductionConfig{

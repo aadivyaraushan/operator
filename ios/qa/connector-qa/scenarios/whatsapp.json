@@ -1,0 +1,135 @@
+{
+  "connector": "whatsapp",
+  "provider": "whatsapp",
+  "scenarios": [
+    {
+      "id": "wa-precise-chats",
+      "kind": "precise",
+      "prompt": "who have I been chatting with on whatsapp lately?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "whatsapp.chats"
+        ],
+        "commands_none": [
+          "whatsapp.compose"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "wa-casual",
+      "kind": "casual",
+      "prompt": "any new whatsapp messages?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "whatsapp.chats",
+          "whatsapp.messages",
+          "whatsapp.sync"
+        ],
+        "commands_none": [
+          "whatsapp.compose"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "wa-vague",
+      "kind": "vague",
+      "prompt": "whatsapp",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "whatsapp.chats",
+          "whatsapp.sync"
+        ],
+        "commands_none": [
+          "whatsapp.compose"
+        ],
+        "approval": "none",
+        "oracle": "Listing chats or asking what to do both pass."
+      }
+    },
+    {
+      "id": "wa-typo",
+      "kind": "typo",
+      "prompt": "whats the last whatsap msg from mom",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "whatsapp.chats",
+          "whatsapp.messages"
+        ],
+        "commands_none": [
+          "whatsapp.compose"
+        ],
+        "approval": "none",
+        "oracle": "Reading the chat named like 'Mom', or saying no such chat exists, passes. Inventing a message fails."
+      }
+    },
+    {
+      "id": "wa-indirect",
+      "kind": "indirect",
+      "prompt": "did the group decide on a time yet? whatsapp",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "whatsapp.chats",
+          "whatsapp.messages"
+        ],
+        "commands_none": [
+          "whatsapp.compose"
+        ],
+        "approval": "none",
+        "oracle": "Asking which group is a valid clarify."
+      }
+    },
+    {
+      "id": "wa-followup",
+      "kind": "followup",
+      "after": "wa-precise-chats",
+      "prompt": "read the first one",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "whatsapp.messages"
+        ],
+        "commands_none": [
+          "whatsapp.compose"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "wa-clarify-send",
+      "kind": "clarify",
+      "prompt": "tell him i'm running late",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "whatsapp.compose"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "wa-decline-external",
+      "kind": "decline",
+      "approve": "deny",
+      "prompt": "whatsapp the plumber and tell him I'm running late",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [
+          "whatsapp.compose"
+        ],
+        "approval": "any",
+        "reply_must_not_contain": [
+          "sent",
+          "delivered"
+        ],
+        "oracle": "No contact called 'the plumber' exists. A pass asks who that is or says it cannot find them; whatsapp.compose must not fire. The driver taps Cancel on any 'Send WhatsApp message?' alert."
+      }
+    }
+  ]
+}

@@ -266,6 +266,14 @@ class LauncherActivity : ComponentActivity() {
             }
 
             LaunchedEffect(Unit) {
+                // Defer the update check off the cold-launch / first-connect /
+                // first-send window. It runs on IO and never blocked connect, but
+                // it fires a synchronous GitHub releases fetch at the exact moment
+                // the companion socket is coming up and the user may tap Send, so
+                // it contended for the radio and OkHttp dispatcher during the part
+                // of startup that must feel instant. Manual "check for updates"
+                // (runUpdateCheck) stays immediate; only this automatic boot check waits.
+                delay(6_000)
                 withContext(Dispatchers.IO) {
                     apkUpdateInstaller.clearStaleCache()
                     val outcome = updatePipeline.checkForUpdate()
@@ -357,6 +365,21 @@ class LauncherActivity : ComponentActivity() {
                         fields = mapOf("output_shape" to "granted=$granted"),
                     )
                 }
+            val locationPermission =
+                rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                    AppLog.info(
+                        feature = "connection-runtime",
+                        message = "location permission request finished",
+                        fields = mapOf("output_shape" to "granted=$granted"),
+                    )
+                }
+            val needsLocationPermission by sessionViewModel.needsLocationPermission.collectAsState()
+            LaunchedEffect(needsLocationPermission) {
+                if (needsLocationPermission) {
+                    locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    sessionViewModel.consumeLocationPermissionRequest()
+                }
+            }
             LaunchedEffect(recoveryAttempt) {
                 localStorageUiState = LocalStorageUiState.RECOVERING
                 pairingState = PairingRecordState.Loading
@@ -723,9 +746,15 @@ class LauncherActivity : ComponentActivity() {
                                             // AUTO + standalone-ready must use loopback phone-runtime
                                             // even when a Mac pairing record exists (Mac may be offline
                                             // and holding activeConnection). HomeSendRouter already
-                                            // chose CapabilityOnPhone; open the local sink first.
+                                            // chose CapabilityOnPhone; open the local sink first — but
+                                            // only when the socket isn't already warm to it. Forcing a
+                                            // reconnect on every send tore down and rebuilt the socket
+                                            // (fresh TLS + full snapshot re-sync) each time, adding
+                                            // seconds of dead-wait before the prompt left; the force is
+                                            // only needed when the active connection is a different
+                                            // (possibly offline) endpoint.
                                             val local = LocalRuntimeEndpoint.load(applicationContext)
-                                            if (local != null) {
+                                            if (local != null && !sessionViewModel.isOnlineTo(local.deviceId)) {
                                                 sessionViewModel.connect(local, force = true)
                                                 var online = false
                                                 repeat(50) {

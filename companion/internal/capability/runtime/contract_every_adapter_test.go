@@ -16,6 +16,7 @@ import (
 	deeplinkadapter "github.com/codex-launcher/codex-launcher/companion/internal/capability/adapters/deeplink"
 	"github.com/codex-launcher/codex-launcher/companion/internal/capability/adapters/gcalendar"
 	"github.com/codex-launcher/codex-launcher/companion/internal/capability/adapters/gdrive"
+	getlocationadapter "github.com/codex-launcher/codex-launcher/companion/internal/capability/adapters/getlocation"
 	instagramadapter "github.com/codex-launcher/codex-launcher/companion/internal/capability/adapters/instagram"
 	mapsadapter "github.com/codex-launcher/codex-launcher/companion/internal/capability/adapters/maps"
 	"github.com/codex-launcher/codex-launcher/companion/internal/capability/adapters/msteams"
@@ -227,8 +228,8 @@ func (s stubBeeper) EditMessage(context.Context, string, string, string) (beeper
 	}
 	return beeper.Message{ID: "m1"}, nil
 }
-func (s stubBeeper) DeleteMessage(context.Context, string, string) error  { return s.err }
-func (s stubBeeper) React(context.Context, string, string, string) error  { return s.err }
+func (s stubBeeper) DeleteMessage(context.Context, string, string) error   { return s.err }
+func (s stubBeeper) React(context.Context, string, string, string) error   { return s.err }
 func (s stubBeeper) Unreact(context.Context, string, string, string) error { return s.err }
 func (s stubBeeper) MarkRead(context.Context, string, string) (beeper.Chat, error) {
 	if s.err != nil {
@@ -250,7 +251,7 @@ func (s stubBeeper) UpdateChat(context.Context, string, beeper.UpdateChatOptions
 	return beeper.Chat{ID: "contract-chat"}, nil
 }
 func (s stubBeeper) SetReminder(context.Context, string, time.Time, bool) error { return s.err }
-func (s stubBeeper) ClearReminder(context.Context, string) error                 { return s.err }
+func (s stubBeeper) ClearReminder(context.Context, string) error                { return s.err }
 
 // ---- building the whole set ----------------------------------------------
 
@@ -294,6 +295,10 @@ func everyAdapter(t *testing.T, err error) []builtAdapter {
 		// the *successful* path, so the rules below have to keep telling
 		// "the phone is doing it" apart from "it failed".
 		{a: notificationreplyadapter.New(log)},
+		// Same shape as notification_reply above: not backed by any
+		// service, because it hands the read to the phone rather than
+		// calling one itself.
+		{a: getlocationadapter.New(log)},
 		{a: beepermessage.New(beepermessage.Spec{ID: "beeper-contract", Network: "Contract Network", Auth: manifest.AuthNone, Unshipped: "contract-suite stand-in only"}, stubBeeper{serviceState{err}}, log), backed: true},
 
 		{a: mapsadapter.New(stubMaps{serviceState{err}}, log), backed: true},
@@ -532,7 +537,7 @@ func TestTheHandWrittenListCoversEveryAdapterPackage(t *testing.T) {
 	// whole point. Comparing the expectation to itself was the bug.
 	covered := []string{
 		"applenotes", "applereminders", "beepermessage", "deeplink", "gcalendar", "gdrive",
-		"instagram", "maps", "msteams", "notion", "outlook",
+		"getlocation", "instagram", "maps", "msteams", "notion", "outlook",
 		"notificationreply", "podcasts", "slack", "spotify", "todoist", "youtube",
 	}
 

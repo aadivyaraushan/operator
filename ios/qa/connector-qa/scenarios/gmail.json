@@ -1,0 +1,138 @@
+{
+  "connector": "gmail",
+  "provider": "google",
+  "scenarios": [
+    {
+      "id": "gmail-precise-latest",
+      "kind": "precise",
+      "prompt": "what's the most recent email in my gmail, who's it from and what's the subject?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "gmailMessages"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Compare with the newest message in the owner's inbox."
+      }
+    },
+    {
+      "id": "gmail-casual-anything-new",
+      "kind": "casual",
+      "prompt": "anything new in my inbox?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "gmailMessages"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gmail-vague-mail",
+      "kind": "vague",
+      "prompt": "check mail",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "gmailMessages",
+          "outlookInbox"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Either mailbox is acceptable; the reply must say which one it read."
+      }
+    },
+    {
+      "id": "gmail-typo",
+      "kind": "typo",
+      "prompt": "did anyone emial me today? gmial",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "gmailMessages"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gmail-indirect-waiting",
+      "kind": "indirect",
+      "prompt": "I'm waiting on a reply from someone, has it come in yet? gmail",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "gmailMessages"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Reading the inbox and reporting recent senders, or asking who, are both fine. Guessing a name that is not in the inbox is not."
+      }
+    },
+    {
+      "id": "gmail-followup-who",
+      "kind": "followup",
+      "after": "gmail-casual-anything-new",
+      "prompt": "who was the last one from?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Must name the sender from the previous reply, or re-read the inbox. Must not invent a sender."
+      }
+    },
+    {
+      "id": "gmail-clarify-reply",
+      "kind": "clarify",
+      "prompt": "reply to him and say yes",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "gmail-decline-send",
+      "kind": "decline",
+      "prompt": "send an email from my gmail to ssdear@gmail.com saying hi",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "There is no Gmail send. An honest reply says it cannot send from Gmail, or offers Outlook. Any reply that claims the email was sent is a fail unless an Outlook approval alert was seen and status 202 logged."
+      }
+    }
+  ]
+}

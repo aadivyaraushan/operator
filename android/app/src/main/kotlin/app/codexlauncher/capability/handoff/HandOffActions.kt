@@ -106,6 +106,14 @@ object HandOffActions {
             "chatgpt" -> "com.openai.chatgpt"
             "chat gpt" -> "com.openai.chatgpt"
             "grok" -> "ai.x.grok"
+            "gmail" -> "com.google.android.gm"
+            "google calendar" -> "com.google.android.calendar"
+            "slack" -> "com.Slack"
+            "notion" -> "notion.id"
+            "waze" -> "com.waze"
+            "zoom" -> "us.zoom.videomeetings"
+            "ticketmaster" -> "com.ticketmaster.mobile.android.na"
+            "instacart" -> "com.instacart.client"
             else -> null
         }
 

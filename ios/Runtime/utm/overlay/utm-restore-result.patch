@@ -1,0 +1,11 @@
+diff --git a/Services/UTMQemuVirtualMachine.swift b/Services/UTMQemuVirtualMachine.swift
+--- a/Services/UTMQemuVirtualMachine.swift
++++ b/Services/UTMQemuVirtualMachine.swift
+@@ -401,6 +401,6 @@ public actor UTMQemuVirtualMachine: UTMVirtualMachine {
+         // load saved state if requested
+         let isSuspended = await registryEntry.isSuspended
+         if !isRunningAsDisposible && isSuspended {
+-            try await monitor.qemuRestoreSnapshot(kSuspendSnapshotName)
++            try await _restoreSnapshot(name: kSuspendSnapshotName)
+             try Task.checkCancellation()
+         }

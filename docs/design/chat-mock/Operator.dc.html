@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-7a0dba14-10fc-4a26-b4d2-3ad81f6c9b71/styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap">
+<script src="_ds/nocturne-7a0dba14-10fc-4a26-b4d2-3ad81f6c9b71/_ds_bundle.js"></script>
+<style>
+  /* Brand lettering is narrowed to 94%; symbols and icons keep their shape. */
+  .op-squeeze svg, .op-squeeze .op-round { scale: 1.06383 1; }
+  body { margin: 0; background: #0B0B0B; }
+  a { color: #FF5934; }
+  a:hover { color: #E8E6E2; }
+  @keyframes op-in { from { opacity: 0; transform: translateY(10px) scale(.985) } to { opacity: 1; transform: none } }
+  @keyframes op-rise { from { transform: translateY(100%) } to { transform: none } }
+  @keyframes op-dim { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes op-breathe { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.06) } }
+  @keyframes op-orbit { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+  @keyframes op-pulse-big { 0% { box-shadow: 0 0 0 0 rgba(255,89,52,.6); transform: scale(1) } 18% { transform: scale(1.08) } 60%, 100% { box-shadow: 0 0 0 7px rgba(255,89,52,0); transform: scale(1) } }
+  @keyframes op-pulse-small { 0% { box-shadow: 0 0 0 0 rgba(158,57,36,.75); transform: scale(1) } 18% { transform: scale(1.14) } 60%, 100% { box-shadow: 0 0 0 5px rgba(158,57,36,0); transform: scale(1) } }
+  @keyframes op-chip { 0% { transform: scale(1) } 40% { transform: scale(.94) } 100% { transform: scale(1) } }
+  .op-line { animation: op-in .42s cubic-bezier(.2,.8,.2,1) both; }
+  .op-sheet { animation: op-rise .36s cubic-bezier(.2,.9,.25,1.05) both; }
+  .op-dim { animation: op-dim .3s ease both; }
+  .op-idle { animation: op-breathe 3.4s ease-in-out infinite; }
+  .op-working { animation: op-orbit 1.4s linear infinite; }
+  .op-waiting .op-disc-big { animation: op-pulse-big 1.4s ease-out infinite; }
+  .op-waiting .op-disc-small { animation: op-pulse-small 1.4s ease-out .35s infinite; }
+  .op-send:active { animation: op-chip .18s ease; }
+</style>
+</helmet>
+<div style="min-height:100vh;padding:40px 32px 56px;background:#0B0B0B;font-family:Montserrat, sans-serif;color:#E8E6E2;display:flex;flex-direction:column;gap:26px">
+
+  <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px">
+    <div style="font-size:13px;font-weight:500;letter-spacing:.02em;color:#FF5934">Operator · v3</div>
+    <div style="font-size:13px;color:rgba(232,230,226,.52)">Say it, watch it happen. Reads stay quiet, actions show their result, and the one thing that needs you stops everything.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:38px">
+
+    <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" dark="{{ true }}" hint-size="412px,892px">
+      <div class="op-squeeze" style="position:relative;height:100%;width:106.383%;scale:.94 1;transform-origin:left top;display:flex;flex-direction:column;background:#0B0B0B;color:#E8E6E2;font-family:Montserrat, sans-serif;font-size:14px;overflow:hidden">
+
+        <sc-if value="{{ isChat }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:none;padding:14px 16px 10px;display:flex;align-items:center;gap:10px">
+            <div class="{{ markClass }}" style="flex:none;width:26px;height:26px;position:relative;border-radius:50%;scale:1.06383 1">
+              <div class="op-disc-big" style="position:absolute;right:0;top:0;width:18px;height:18px;border-radius:50%;background:#FF5934"></div>
+              <div class="op-disc-small" style="position:absolute;left:0;bottom:0;width:9px;height:9px;border-radius:50%;background:#9E3924"></div>
+            </div>
+            <span style="flex:1;min-width:0;font-size:15px;font-weight:500;letter-spacing:.01em">Operator</span>
+            <span style="flex:none;font-size:11.5px;color:rgba(232,230,226,.52)">{{ status }}</span>
+            <button onClick="{{ openPerms }}" aria-label="Apps and permissions" style="flex:none;width:44px;height:44px;margin-right:-10px;display:flex;align-items:center;justify-content:center;background:none;border:0;cursor:pointer;color:rgba(232,230,226,.66)" style-hover="color:#FF5934">
+              <svg width="17" height="17" viewBox="0 0 256 256" fill="currentColor"><path d="M208 40H48a16 16 0 0 0-16 16v56c0 79 67 104.8 80.5 109a15.9 15.9 0 0 0 7.5 0C133.5 216.8 224 191 224 112V56a16 16 0 0 0-16-16Zm0 72c0 66.7-77 89.6-80 90.4-3-.8-80-23.7-80-90.4V56h160Z"></path></svg>
+            </button>
+          </div>
+
+          <div ref="{{ scrollRef }}" style="flex:1;min-height:0;overflow:auto;padding:10px 16px 6px;display:flex;flex-direction:column;gap:14px">
+            <sc-for list="{{ lines }}" as="l" hint-placeholder-count="6">
+
+              <sc-if value="{{ l.isDay }}" hint-placeholder-val="{{ false }}">
+                <div class="op-line" style="padding-top:6px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(232,230,226,.37)">{{ l.text }}</div>
+              </sc-if>
+
+              <sc-if value="{{ l.isUser }}" hint-placeholder-val="{{ false }}">
+                <div class="op-line" style="align-self:flex-end;max-width:86%;padding:9px 13px;background:rgba(232,230,226,.08);border-radius:16px 16px 5px 16px;font-size:14px;line-height:1.5;color:#E8E6E2">{{ l.text }}</div>
+              </sc-if>
+
+              <sc-if value="{{ l.isRead }}" hint-placeholder-val="{{ false }}">
+                <div class="op-line" style="display:flex;gap:9px;align-items:baseline;font-size:12.5px;line-height:1.5;color:rgba(232,230,226,.52)">
+                  <span class="op-round" style="flex:none;width:6px;height:6px;border-radius:50%;background:rgba(232,230,226,.37);position:relative;top:-1px"></span>
+                  <span style="flex:1;min-width:0"><span style="color:rgba(232,230,226,.66)">{{ l.did }}</span> · {{ l.detail }}</span>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ l.isAct }}" hint-placeholder-val="{{ false }}">
+                <div class="op-line" style="background:rgba(232,230,226,.05);border-radius:14px;padding:12px 14px 12px;display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;align-items:baseline;gap:8px">
+                    <span class="op-round" style="flex:none;width:8px;height:8px;border-radius:50%;background:#FF5934;position:relative;top:-1px"></span>
+                    <span style="flex:1;min-width:0;font-size:14px;font-weight:500;color:#E8E6E2">{{ l.did }}</span>
+                    <span style="flex:none;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(232,230,226,.52)">{{ l.app }}</span>
+                  </div>
+                  <sc-if value="{{ l.detail }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:12.5px;line-height:1.5;color:rgba(232,230,226,.66);padding-left:16px">{{ l.detail }}</div>
+                  </sc-if>
+                  <sc-if value="{{ l.hasRows }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:6px;padding-left:16px">
+                      <sc-for list="{{ l.rows }}" as="r" hint-placeholder-count="3">
+                        <div style="display:flex;align-items:baseline;gap:10px;font-size:13px;line-height:1.45">
+                          <span style="flex:1;min-width:0;color:rgba(232,230,226,.92)">{{ r.t }}<sc-if value="{{ r.sub }}" hint-placeholder-val="{{ false }}"><span style="color:rgba(232,230,226,.52)"> · {{ r.sub }}</span></sc-if></span>
+                          <sc-if value="{{ r.v }}" hint-placeholder-val="{{ false }}"><span style="flex:none;font-weight:500;color:#FF5934">{{ r.v }}</span></sc-if>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ l.quote }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-left:16px;padding:9px 12px;background:#0B0B0B;border-radius:10px;font-size:12.5px;line-height:1.55;color:rgba(232,230,226,.8)">{{ l.quote }}</div>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ l.isThink }}" hint-placeholder-val="{{ false }}">
+                <div class="op-line">
+                  <button onClick="{{ l.thinkToggle }}" style="display:flex;align-items:center;gap:8px;min-height:44px;margin:-14px 0;padding:0 2px;background:none;border:0;cursor:pointer;font-family:inherit;font-size:12.5px;color:rgba(232,230,226,.52)" style-hover="color:#FF5934">
+                    <svg width="11" height="11" viewBox="0 0 16 16" style="{{ l.caretStyle }}" aria-hidden="true"><path d="M4.5 2.6v10.8a.8.8 0 0 0 1.25.66l7.6-5.4a.8.8 0 0 0 0-1.32l-7.6-5.4a.8.8 0 0 0-1.25.66z" fill="#9E3924"/></svg>
+                    <span>{{ l.thinkLabel }}</span>
+                  </button>
+                  <sc-if value="{{ l.thinkOpen }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:10px;padding:0 0 0 19px;font-size:12.5px;line-height:1.65;color:rgba(232,230,226,.66)">{{ l.text }}</div>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ l.isAgent }}" hint-placeholder-val="{{ true }}">
+                <div class="op-line" style="font-size:14.5px;line-height:1.6;color:#E8E6E2;max-width:94%">{{ l.text }}</div>
+              </sc-if>
+
+              <sc-if value="{{ l.isPlan }}" hint-placeholder-val="{{ false }}">
+                <div class="op-line" style="padding:0 0 0 2px;display:flex;flex-direction:column;gap:6px">
+                  <sc-for list="{{ l.steps }}" as="p" hint-placeholder-count="3">
+                    <div style="display:flex;gap:10px;font-size:13px;line-height:1.5">
+                      <sc-if value="{{ p.isDone }}" hint-placeholder-val="{{ true }}">
+                        <svg width="16" height="16" viewBox="0 0 16 16" style="flex:none;margin-top:2px" aria-hidden="true">
+                          <mask id="op-check-cut"><rect width="16" height="16" fill="#fff"/><path d="M4.4 8.3l2.4 2.4 4.8-5.2" fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></mask>
+                          <circle cx="8" cy="8" r="8" fill="#FF5934" mask="url(#op-check-cut)"/>
+                        </svg>
+                      </sc-if>
+                      <sc-if value="{{ p.isOpen }}" hint-placeholder-val="{{ false }}">
+                        <svg width="16" height="16" viewBox="0 0 16 16" style="flex:none;margin-top:2px" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="rgba(232,230,226,.37)" stroke-width="1.5"/></svg>
+                      </sc-if>
+                      <span style="{{ p.textStyle }}">{{ p.text }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+            </sc-for>
+
+            <sc-if value="{{ working }}" hint-placeholder-val="{{ false }}">
+              <div class="op-line" style="display:flex;gap:9px;align-items:baseline;font-size:12.5px;color:rgba(232,230,226,.52)">
+                <span style="flex:1;min-width:0">{{ working }}</span>
+              </div>
+            </sc-if>
+            <div style="height:2px"></div>
+          </div>
+
+          <div style="flex:none;padding:6px 16px 14px">
+            <sc-if value="{{ showSeeds }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
+                <sc-for list="{{ seeds }}" as="s" hint-placeholder-count="3">
+                  <button onClick="{{ s.run }}" style="min-height:36px;padding:0 13px;border:0;border-radius:999px;background:rgba(232,230,226,.08);cursor:pointer;font-family:inherit;font-size:12px;color:rgba(232,230,226,.8)" style-hover="color:#E8E6E2">{{ s.label }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <form onSubmit="{{ submit }}" style="display:flex;align-items:center;gap:9px">
+              <input value="{{ draft }}" onChange="{{ setDraft }}" placeholder="Ask for something you want done" aria-label="Message Operator" style="flex:1;min-width:0;min-height:46px;padding:0 15px;background:rgba(232,230,226,.08);border:0;border-radius:14px;outline:none;font-family:inherit;font-size:14px;color:#E8E6E2" />
+              <sc-if value="{{ working }}" hint-placeholder-val="{{ false }}">
+                <button type="button" onClick="{{ interrupt }}" style="flex:none;min-height:46px;padding:0 13px;background:rgba(232,230,226,.08);border:0;border-radius:14px;cursor:pointer;font-family:inherit;font-size:12.5px;color:rgba(232,230,226,.8)">Stop</button>
+              </sc-if>
+              <sc-if value="{{ canSend }}" hint-placeholder-val="{{ false }}">
+                <button type="submit" class="op-send" aria-label="Send" style="flex:none;width:46px;height:46px;display:flex;align-items:center;justify-content:center;background:#FF5934;border:0;border-radius:14px;cursor:pointer;color:#0B0B0B" style-hover="background:#E8E6E2">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>
+                </button>
+              </sc-if>
+            </form>
+          </div>
+
+          <sc-if value="{{ ask }}" hint-placeholder-val="{{ false }}">
+            <div class="op-dim" style="position:absolute;inset:0;background:rgba(11,11,11,.74);display:flex;flex-direction:column;justify-content:flex-end">
+              <div class="op-sheet" style="background:linear-gradient(rgba(232,230,226,.07),rgba(232,230,226,.07)),#0B0B0B;border-radius:24px 24px 0 0;padding:22px 20px 24px;display:flex;flex-direction:column;gap:14px">
+                <div style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#FF5934">{{ ask.kicker }}</div>
+                <div style="font-size:20px;font-weight:700;line-height:1.3;color:#E8E6E2">{{ ask.question }}</div>
+                <div style="font-size:13px;line-height:1.55;color:rgba(232,230,226,.66)">{{ ask.detail }}</div>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+                  <button onClick="{{ ask.yes }}" style="min-height:50px;border:0;border-radius:14px;background:#FF5934;cursor:pointer;font-family:inherit;font-size:14.5px;font-weight:500;color:#0B0B0B" style-hover="background:#E8E6E2">{{ ask.yesLabel }}</button>
+                  <button onClick="{{ ask.no }}" style="min-height:46px;border:0;border-radius:14px;background:none;cursor:pointer;font-family:inherit;font-size:13.5px;color:rgba(232,230,226,.8)" style-hover="color:#E8E6E2">{{ ask.noLabel }}</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </sc-if>
+
+        <sc-if value="{{ isPerms }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:none;padding:12px 14px 11px;display:flex;align-items:center;gap:8px">
+            <button onClick="{{ goChat }}" aria-label="Back to conversation" style="flex:none;width:44px;height:44px;margin-left:-10px;display:flex;align-items:center;justify-content:center;background:none;border:0;cursor:pointer;color:rgba(232,230,226,.66)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19 12H6"></path><path d="M12 5l-7 7 7 7"></path></svg>
+            </button>
+            <div style="flex:1;min-width:0;font-size:15px;font-weight:500">Apps</div>
+          </div>
+
+          <div style="flex:1;min-height:0;overflow:auto;padding:14px 16px 10px">
+            <div style="font-size:13px;line-height:1.6;color:rgba(232,230,226,.66)">Each app has one setting: whether Operator may act inside it, must stop and ask first, or only opens it and hands you the phone.</div>
+
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+              <sc-for list="{{ permApps }}" as="a" hint-placeholder-count="8">
+                <div style="padding:11px 0">
+                  <div style="display:flex;align-items:baseline;gap:10px">
+                    <span style="flex:1;min-width:0;font-size:14px;color:#E8E6E2">{{ a.name }}</span>
+                    <sc-if value="{{ a.locked }}" hint-placeholder-val="{{ false }}">
+                      <span style="flex:none;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#FF5934">always asks</span>
+                    </sc-if>
+                  </div>
+                  <div style="margin-top:3px;font-size:12px;line-height:1.45;color:rgba(232,230,226,.52)">{{ a.scope }}</div>
+                  <div style="display:flex;gap:6px;margin-top:9px">
+                    <sc-for list="{{ a.choices }}" as="c" hint-placeholder-count="3">
+                      <button onClick="{{ c.pick }}" style="{{ c.style }}">{{ c.label }}</button>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{ a.note }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:7px;font-size:11.5px;line-height:1.5;color:rgba(232,230,226,.52)">{{ a.note }}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="margin-top:22px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(232,230,226,.52)">Never without asking</div>
+            <div style="margin-top:8px;background:rgba(158,57,36,.12);border-radius:12px;padding:12px 14px">
+              <sc-for list="{{ neverList }}" as="n" hint-placeholder-count="4">
+                <div style="display:flex;gap:9px;padding:3px 0;font-size:13px;line-height:1.5;color:rgba(232,230,226,.92)">
+                  <span style="flex:none;color:#FF5934">·</span>
+                  <span style="flex:1;min-width:0">{{ n.text }}</span>
+                </div>
+              </sc-for>
+              <div style="margin-top:8px;font-size:11.5px;line-height:1.5;color:rgba(232,230,226,.66)">These can't be switched off. Anything irreversible stops and asks every time, whatever the app is set to.</div>
+            </div>
+            <div style="height:6px"></div>
+          </div>
+
+          <div style="flex:none;padding:10px 16px 14px;display:flex;align-items:center;gap:10px">
+            <div style="{{ permNoteStyle }}">{{ permSummary }}</div>
+            <button onClick="{{ goChat }}" style="flex:none;min-height:44px;padding:0 16px;border:0;border-radius:12px;background:#FF5934;cursor:pointer;font-family:inherit;font-size:13.5px;color:#0B0B0B" style-hover="background:#E8E6E2">Done</button>
+          </div>
+        </sc-if>
+
+      </div>
+    </x-import>
+
+    <div style="width:400px;max-width:100%;display:flex;flex-direction:column;gap:24px;padding-top:4px">
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onClick="{{ replay }}" style="align-self:flex-start;min-height:40px;padding:0 16px;border:0;border-radius:999px;background:#FF5934;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;color:#0B0B0B" style-hover="background:#E8E6E2">▶ Replay the Goa story (with sound)</button>
+        <div style="font-size:12px;line-height:1.55;color:rgba(232,230,226,.52)">Browsers only allow sound after a click, so the first replay unlocks it. {{ soundHint }}</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:11px">
+        <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(232,230,226,.52)">What changed from v2</div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.6">
+          <div><span style="color:#FF5934">The mark is alive</span><span style="color:rgba(232,230,226,.52)"> — it breathes when idle, the small disc orbits while Operator works, and it pulses when it is waiting on you.</span></div>
+          <div><span style="color:#FF5934">Things arrive</span><span style="color:rgba(232,230,226,.52)"> — every line springs in on its own beat, with the full sound language: rising when you send, a soft per-app note for each change it makes (reads stay silent), falling when it finishes, one low held note when it needs you, and distinct sounds for yes, no, unsure, and a message arriving.</span></div>
+          <div><span style="color:#FF5934">Reads whisper, actions show</span><span style="color:rgba(232,230,226,.52)"> — a read is one dim line. An action is a filled card that says what was done, in which app, and shows the result itself: the three stays with prices, the draft's first line.</span></div>
+          <div><span style="color:#FF5934">The ask is a sheet</span><span style="color:rgba(232,230,226,.52)"> — when something is irreversible, the conversation dims and a sheet rises with the question and one vermilion button. Nothing else is tappable until you answer.</span></div>
+          <div><span style="color:#FF5934">No commands</span><span style="color:rgba(232,230,226,.52)"> — the composer just says what it is for. The grid icon is the apps list, which is also where permissions live.</span></div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(232,230,226,.52)">What to poke at</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.55;color:rgba(232,230,226,.66)">
+          <div><span style="color:#E8E6E2">Replay</span> · watch the mark change state as the story runs, and the sheet rise at the end.</div>
+          <div><span style="color:#E8E6E2">Split the bill</span> · a payment, so the sheet appears; "No" leaves nothing moved.</div>
+          <div><span style="color:#E8E6E2">Reply to Maya</span> · a send, so the sheet appears with the message in it.</div>
+          <div><span style="color:#E8E6E2">Type anything</span> · the tick, then the mark orbits while it works.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1200&quot;,&quot;height&quot;:&quot;1000&quot;},&quot;autoplay&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Story&quot;}}">
+const STEP_COLOR = { done: '#FF5934', wait: 'rgba(232,230,226,.66)', todo: 'rgba(232,230,226,.37)' };
+const STEP_TEXT_STYLE = st => 'flex:1;min-width:0;color:' + (st === 'done' ? 'rgba(232,230,226,.92)' : 'rgba(232,230,226,.66)');
+
+const SEG = (on, avail) => 'flex:1;min-height:44px;padding:0 6px;border-radius:8px;font-family:inherit;font-size:12px;background:none;cursor:' +
+  (avail ? 'pointer' : 'not-allowed') + ';border:0;' +
+  (on ? 'background:rgba(158,57,36,.22);color:#FF5934' : avail ? 'background:rgba(232,230,226,.08);color:rgba(232,230,226,.66)' : 'background:rgba(232,230,226,.04);color:rgba(232,230,226,.37)');
+
+const APP_DEFS = [
+  { name: 'Calendar', scope: 'Read, move and create events', mode: 'act' },
+  { name: 'WhatsApp', scope: 'Read a thread and send a message', mode: 'ask' },
+  { name: 'Gmail', scope: 'Read and draft. Sending always asks', mode: 'act' },
+  { name: 'UPI · HDFC ••4412', scope: 'Pay a contact or a bill', mode: 'ask', locked: true, note: 'Money always asks, whatever this is set to.' },
+  { name: 'Photos', scope: 'Read recent photos and screenshots', mode: 'act' },
+  { name: 'Maps', scope: 'Search places and build routes', mode: 'act' },
+  { name: 'Uber', scope: 'No API — Operator can only open it', mode: 'hand', note: 'Hand off is the only option here.' },
+  { name: 'Slack', scope: 'Read channels and post as you', mode: 'ask' },
+  { name: 'Drive', scope: 'Read, move and archive files', mode: 'ask' },
+];
+
+const NEVER = [
+  { text: 'Moving money, or anything that spends' },
+  { text: 'Deleting a file, message or event for good' },
+  { text: 'Sending to someone you have never messaged' },
+  { text: 'Posting anywhere other people can see it' },
+];
+
+// What is already on screen before the story starts.
+const BEFORE = [
+  { k: 'day', text: 'Today' },
+  { k: 'user', text: 'what do i need to know today' },
+  { k: 'read', did: 'Read today on Calendar', detail: 'standup 10:00 · dentist 14:00' },
+  { k: 'read', did: 'Read unread on Gmail', detail: '4 unread · 1 from Dan about the invoice' },
+  { k: 'agent', text: 'Standup at ten, dentist at two. Dan replied about the invoice and rent is due Thursday. Nothing needs you before the standup.' },
+];
+
+// The story that replays. `at` is milliseconds after the user's message.
+const STORY = [
+  { at: 0, line: { k: 'user', text: 'plan goa dec 14–18 for two, under 40k' }, working: 'Looking at your calendar and mail' },
+  { at: 900, line: { k: 'read', did: 'Read Dec 14–18 on Calendar', detail: '4 days clear · soft conflict Thu 18:00' } },
+  { at: 1500, line: { k: 'read', did: 'Searched “goa” on Gmail', detail: '2 threads · hotel quote from last year' } },
+  { at: 2300, line: { k: 'think', label: 'Thought for 6s', text: 'Forty thousand for two, four nights. Stay is the biggest lever, then flights — and flight price swings on the day, not the hotel. So price the two departure shapes first and let that decide the stay budget. Friday evening is the cheap slot; Saturday dawn is the one people want. Check the calendar before either, because a Thursday evening conflict would make Friday departure a lie.' }, working: 'Pricing the two ways to fly' },
+  { at: 3600, line: { k: 'agent', text: 'Budget is the binding constraint, so I priced the two shapes first. Flying Friday evening fits under forty; Saturday dawn is 2.4k over unless we drop a night. Doing the safe parts now.' }, working: 'Holding dates, finding stays, drafting the email' },
+  { at: 4400, line: { k: 'plan', steps: [
+      { text: 'Hold Dec 14–18 on your calendar', state: 'todo' },
+      { text: 'Find stays under ₹12k in north Goa', state: 'todo' },
+      { text: 'Draft the leave email to Priya', state: 'todo' },
+      { text: 'Book the stay — this one asks you', state: 'todo' },
+    ] } },
+  { at: 5400, line: { k: 'act', app: 'Calendar', did: 'Held Dec 14–18', detail: 'Four days blocked as “Goa (tentative)”. Thursday 18:00 left alone.' }, step: 0 },
+  { at: 6600, line: { k: 'act', app: 'Maps', did: 'Found 3 stays under ₹12k', rows: [
+      { t: 'Casa Anjuna', sub: '2 bd · 4 nights', v: '₹8.4k' },
+      { t: 'Sur La Mer, Morjim', sub: 'sea view · 4 nights', v: '₹9.9k' },
+      { t: 'The Fern Vagator', sub: 'pool · 4 nights', v: '₹11.2k' },
+    ] }, step: 1 },
+  { at: 7900, line: { k: 'act', app: 'Gmail', did: 'Drafted leave email to Priya', detail: 'Saved as a draft. Not sent.', quote: '“Hi Priya — I’d like to take 14–18 Dec off. Standup cover is sorted with Dan; I’ll close the invoice thread before I go.”' }, step: 2 },
+  { at: 9100, line: { k: 'agent', text: 'Dates held, three stays found, leave email drafted. Sur La Mer at 9.9k is the one I’d take: sea view, still 2k under the cap after flights.' }, working: '' },
+  { at: 9900, ask: 'book' },
+];
+
+const ASKS = {
+  book: {
+    kicker: 'Booking · this spends money',
+    question: 'Book Sur La Mer for ₹9,900?',
+    detail: 'Dec 14–18, two guests, free cancellation until Dec 7. Paid from HDFC ••4412. This can’t be undone from here.',
+    yesLabel: 'Book it, ₹9,900', noLabel: 'Not now',
+    yes: { k: 'act', app: 'UPI', did: 'Paid ₹9,900 to Sur La Mer', detail: 'Booked · ref 7731 0942 · confirmation in Gmail' },
+    after: 'Booked. Confirmation is in your mail and the hold on your calendar is now the real thing.',
+    no: 'Left it. Nothing paid, the three stays are still above if you change your mind.',
+    step: 3,
+  },
+  send: {
+    kicker: 'WhatsApp · sending a message',
+    question: 'Send this to Maya?',
+    detail: '“yes — 7pm at the usual place?” One message, this thread only.',
+    yesLabel: 'Send', noLabel: 'Change it',
+    yes: { k: 'act', app: 'WhatsApp', did: 'Sent to Maya', detail: 'Delivered 09:41' },
+    after: 'Sent. I’ll bring her reply here when it lands.',
+    no: 'Left it unsent — tell me what to say instead.',
+  },
+  pay: {
+    kicker: 'UPI · this spends money',
+    question: 'Send ₹1,240 to Rahul?',
+    detail: 'Your share of last night’s ₹3,720 dinner, from HDFC ••4412. Can’t be undone.',
+    yesLabel: 'Pay ₹1,240', noLabel: 'Don’t pay',
+    yes: { k: 'act', app: 'UPI', did: 'Paid ₹1,240 to Rahul', detail: 'Sent · ref 4471 2288' },
+    after: 'Sent. Reference 4471 2288 is in the thread if he asks.',
+    no: 'Left it. Nothing moved.',
+  },
+};
+
+// The eight sounds from "Operator sound language.md". Key of A, all sine. Nothing loops.
+// gain = ladder / 1000 (Needs-you 100 ... Did 45).
+const APP_NOTE = { Calendar: 880, Gmail: 1108.73, Maps: 1318.51, Drive: 1479.98 };
+const Sound = {
+  ctx: null,
+  unlock() {
+    if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; } }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    return !!this.ctx;
+  },
+  tone(freq, start, dur, gain, type) {
+    const c = this.ctx; if (!c) return;
+    const o = c.createOscillator(); const g = c.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, c.currentTime + start);
+    g.gain.setValueAtTime(0, c.currentTime + start);
+    g.gain.linearRampToValueAtTime(gain, c.currentTime + start + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + start + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(c.currentTime + start); o.stop(c.currentTime + start + dur + 0.02);
+  },
+  send() { this.tone(880, 0, 0.07, 0.06); this.tone(1318.51, 0.05, 0.10, 0.05); },
+  did(app, at) { const f = APP_NOTE[app] || 880, t = at || 0; this.tone(f, t, 0.5, 0.027); this.tone(f / 2, t, 0.5, 0.027); },
+  done(at) { const t = at || 0; this.tone(1318.51, t, 0.14, 0.06); this.tone(880, t + 0.11, 0.22, 0.07); },
+  ask() { this.tone(220, 0, 0.5, 0.1); this.tone(329.63, 0.02, 0.48, 0.045); },
+  committed(app) { this.did(app, 0); this.done(0.26); },
+  leftIt() { this.tone(220, 0, 0.25, 0.06); this.tone(440, 0, 0.25, 0.025); this.tone(164.81, 0.2, 0.42, 0.06); this.tone(329.63, 0.2, 0.42, 0.025); },
+  unsure() { this.tone(587.33, 0, 0.18, 0.05); this.tone(593.33, 0.22, 0.20, 0.05); },
+  incoming() { this.tone(659.25, 0, 0.08, 0.05); this.tone(440, 0.07, 0.14, 0.05); },
+};
+
+class Component extends DCLogic {
+  state = {
+    screen: 'chat', draft: '', permNote: '', working: '', status: '',
+    pending: null, openThink: {}, soundOn: false,
+    appModes: APP_DEFS.reduce((a, d) => { a[d.name] = d.mode; return a; }, {}),
+    lines: BEFORE, touches: 0,
+  };
+
+  scrollEl = React.createRef();
+  timers = [];
+
+  pin() {
+    const el = this.scrollEl.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }
+
+  componentDidMount() {
+    this.pin();
+    if (this.props.autoplay !== false) this.replay(false);
+  }
+  componentDidUpdate() { this.pin(); }
+  componentWillUnmount() { this.clearTimers(); }
+
+  clearTimers() { this.timers.forEach(clearTimeout); this.timers = []; }
+  later(ms, fn) { this.timers.push(setTimeout(fn, ms)); }
+
+  push(line, extra, quiet) {
+    this.setState(s => Object.assign({ lines: s.lines.concat([line]) }, extra || {}));
+    if (line.k === 'read' || line.k === 'act') this.setState({ touches: this.state.touches + 1 });
+    if (line.k === 'act' && !quiet && this.state.soundOn) Sound.did(line.app);
+  }
+
+  markStep(i) {
+    this.setState(s => ({
+      lines: s.lines.map(l => l.k === 'plan'
+        ? Object.assign({}, l, { steps: l.steps.map((p, j) => j === i ? Object.assign({}, p, { state: 'done' }) : p) })
+        : l),
+    }));
+  }
+
+  open(kind) {
+    this.setState({ pending: kind, working: '' });
+    if (this.state.soundOn) Sound.ask();
+  }
+
+  replay(withSound) {
+    this.clearTimers();
+    const soundOn = withSound ? Sound.unlock() : this.state.soundOn;
+    this.setState({ lines: BEFORE, pending: null, working: '', soundOn, status: '' });
+    STORY.forEach(ev => this.later(300 + ev.at, () => {
+      if (ev.ask) return this.open(ev.ask);
+      if (ev.line.k === 'user' && this.state.soundOn) Sound.send();
+      this.push(ev.line, ev.working !== undefined ? { working: ev.working } : {});
+      if (ev.step !== undefined) this.markStep(ev.step);
+      if (ev.line.k === 'agent' && ev.working === '' && this.state.soundOn) Sound.done();
+    }));
+  }
+
+  renderVals() {
+    const st = this.state;
+    const a = st.pending ? ASKS[st.pending] : null;
+    const markClass = st.pending ? 'op-waiting' : st.working ? 'op-working' : 'op-idle';
+
+    return {
+      scrollRef: this.scrollEl,
+      isChat: st.screen === 'chat', isPerms: st.screen === 'perms',
+      draft: st.draft, canSend: st.draft.trim().length > 0,
+      working: st.working, markClass,
+      status: st.pending ? 'waiting on you' : st.working ? 'working' : '',
+      soundHint: st.soundOn ? 'Sound is on.' : 'Sound is off until you press Replay.',
+      showSeeds: !st.pending && !st.working,
+      openPerms: () => this.setState({ screen: 'perms', permNote: '' }),
+      goChat: () => this.setState({ screen: 'chat' }),
+      setDraft: e => this.setState({ draft: e.target.value }),
+      submit: e => { e.preventDefault(); this.send(); },
+      interrupt: () => { this.clearTimers(); this.setState({ working: '' }); if (this.state.soundOn) Sound.leftIt(); },
+      replay: () => this.replay(true),
+
+      lines: st.lines.map((l, i) => ({
+        isThink: l.k === 'think',
+        thinkOpen: !!st.openThink[i],
+        thinkLabel: st.openThink[i] ? 'Thinking' : (l.label || 'Thinking'),
+        caretStyle: 'flex:none;transition:transform .18s ease;transform:rotate(' + (st.openThink[i] ? 90 : 0) + 'deg)',
+        thinkToggle: () => this.setState(s2 => ({ openThink: Object.assign({}, s2.openThink, { [i]: !s2.openThink[i] }) })),
+        isDay: l.k === 'day', isUser: l.k === 'user', isRead: l.k === 'read', isAct: l.k === 'act',
+        isAgent: l.k === 'agent', isPlan: l.k === 'plan',
+        text: l.text || '', app: l.app || '', did: l.did || '', detail: l.detail || '', quote: l.quote || '',
+        hasRows: !!(l.rows && l.rows.length),
+        rows: (l.rows || []).map(r => ({ t: r.t, sub: r.sub || '', v: r.v || '' })),
+        steps: (l.steps || []).map(p => ({
+          text: p.text, isDone: p.state === 'done', isOpen: p.state !== 'done',
+          textStyle: STEP_TEXT_STYLE(p.state || 'todo'),
+        })),
+      })),
+
+      ask: a ? {
+        kicker: a.kicker, question: a.question, detail: a.detail,
+        yesLabel: a.yesLabel, noLabel: a.noLabel,
+        yes: () => this.resolve(true), no: () => this.resolve(false),
+      } : null,
+
+      seeds: [
+        { label: 'Reply to Maya', run: () => this.seedSend() },
+        { label: 'Split the bill', run: () => this.seedPay() },
+        { label: 'Clean up Drive', run: () => this.seedDrive() },
+      ],
+
+      permApps: APP_DEFS.map(d => ({
+        name: d.name, scope: d.scope, locked: !!d.locked, note: d.note || '',
+        choices: [['act', 'Act'], ['ask', 'Ask first'], ['hand', 'Hand off']].map(c => {
+          const avail = !(d.locked && c[0] !== 'ask') && !(d.mode === 'hand' && c[0] !== 'hand');
+          return { label: c[1], style: SEG(st.appModes[d.name] === c[0], avail), pick: () => this.setAppMode(d, c[0]) };
+        }),
+      })),
+
+      neverList: NEVER,
+      permSummary: st.permNote || this.permSummary(),
+      permNoteStyle: 'flex:1;min-width:0;font-size:11.5px;line-height:1.45;color:' + (st.permNote ? '#FF5934' : 'rgba(232,230,226,.66)'),
+    };
+  }
+
+  permSummary() {
+    const m = this.state.appModes;
+    const n = k => Object.keys(m).filter(a => m[a] === k).length;
+    return n('act') + ' act on their own · ' + n('ask') + ' ask first · ' + n('hand') + ' hand off';
+  }
+
+  setAppMode(def, next) {
+    if (def.locked && next !== 'ask') return this.setState({ permNote: 'Payments always ask — that can’t be changed here.' });
+    if (def.mode === 'hand' && next !== 'hand') return this.setState({ permNote: def.name + ' has no way in, so hand off is the only option.' });
+    this.setState(s => ({ permNote: '', appModes: Object.assign({}, s.appModes, { [def.name]: next }) }));
+  }
+
+  send() {
+    const text = this.state.draft.trim();
+    if (!text) return;
+    if (this.state.soundOn) Sound.send();
+    this.push({ k: 'user', text }, { draft: '', working: 'On it' });
+    this.later(1400, () => {
+      this.push({ k: 'agent', text: 'On it. I’ll post back here as the steps land.' }, { working: '' });
+      if (this.state.soundOn) Sound.done();
+    });
+  }
+
+  seedSend() {
+    if (this.state.soundOn) Sound.incoming();
+    this.push({ k: 'read', did: 'Read Maya’s thread on WhatsApp', detail: '09:38 — “are we still on for friday?”' }, { working: 'Checking Friday' });
+    this.later(600, () => this.push({ k: 'read', did: 'Read Friday on Calendar', detail: 'free after 18:00' }));
+    this.later(1300, () => this.push({ k: 'agent', text: 'You’re open after six on Friday. Here’s the short version — say yes or tell me what to change.' }, { working: '' }));
+    this.later(2000, () => this.open('send'));
+  }
+
+  seedPay() {
+    if (this.state.soundOn) Sound.send();
+    this.push({ k: 'user', text: 'pay rahul my share of dinner' }, { working: 'Finding the bill' });
+    this.later(700, () => this.push({ k: 'read', did: 'Read recent Photos', detail: 'receipt 09:21 · ₹3,720 · 3 covers' }));
+    this.later(1500, () => this.push({ k: 'agent', text: 'Your share is ₹1,240. Money moves on your tap, not mine.' }, { working: '' }));
+    this.later(2100, () => this.open('pay'));
+  }
+
+  seedDrive() {
+    if (this.state.soundOn) Sound.send();
+    this.push({ k: 'user', text: 'archive anything in drive older than two years' }, { working: 'Archiving · batch 1 of 5' });
+    this.later(900, () => this.push({ k: 'act', app: 'Drive', did: 'Archived batch 1', detail: '140 files moved to Archive' }));
+    this.later(2000, () => this.push({ k: 'act', app: 'Drive', did: 'Batch 2 — outcome unknown', detail: 'Connection dropped mid-move. Not claiming it landed.' }, null, true));
+    this.later(2700, () => {
+      this.push({ k: 'agent', text: 'Batch one is definitely archived. Batch two was in flight when the phone dropped off, so I don’t know whether it landed. Open Drive’s Archive and check for files dated 2023 before I run the rest.' }, { working: '' });
+      if (this.state.soundOn) Sound.unsure();
+    });
+  }
+
+  resolve(ok) {
+    const a = ASKS[this.state.pending];
+    if (!a) return;
+    if (!ok) {
+      if (this.state.soundOn) Sound.leftIt();
+      return this.push({ k: 'agent', text: a.no }, { pending: null });
+    }
+    this.push(a.yes, { pending: null, working: 'Confirming' }, true);
+    if (this.state.soundOn) Sound.committed(a.yes.app);
+    if (a.step !== undefined) this.markStep(a.step);
+    this.later(900, () => this.push({ k: 'agent', text: a.after }, { working: '' }));
+  }
+}
+</script>
+</body>
+</html>

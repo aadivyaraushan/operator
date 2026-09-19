@@ -1,0 +1,12 @@
+diff --git a/Package.swift b/Package.swift
+--- a/Package.swift
++++ b/Package.swift
+@@ -27,6 +27,7 @@ let package = Package(
+                         .headerSearchPath("External/include/glib-2.0")]),
+         .testTarget(
+             name: "QEMUKitTests",
+-            dependencies: ["QEMUKit"]),
++            dependencies: ["QEMUKit", "QEMUKitInternal"],
++            linkerSettings: [.linkedLibrary("glib-2.0", .when(platforms: [.macOS]))]),
+     ]
+ )

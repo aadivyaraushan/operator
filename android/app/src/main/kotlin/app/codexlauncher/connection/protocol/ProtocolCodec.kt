@@ -190,10 +190,14 @@ object ProtocolCodec {
                 !optionalString(body, "text").isBounded(4096) || optionalString(body, "text").isBlank()
             ) fail(ProtocolError.INVALID_ENVELOPE)
             // Only the phone can report how a reply actually landed; it is
-            // the one machine that watched the send happen.
+            // the one machine that watched the send happen. A data-fetch
+            // capability like get_location has no sentence for the Mac to
+            // assemble on its own, so the phone's answer rides along as an
+            // opaque JSON string in the optional "payload".
             MessageType.DEVICE_ACTION_RESULT -> if (
-                sender != Sender.PHONE || body.keys != setOf("requestId", "outcome") ||
-                !optionalString(body, "requestId").isValidId() || optionalString(body, "outcome") !in deviceActionOutcomes
+                sender != Sender.PHONE || body.keys.any { it !in setOf("requestId", "outcome", "payload") } ||
+                !optionalString(body, "requestId").isValidId() || optionalString(body, "outcome") !in deviceActionOutcomes ||
+                (body["payload"] != null && !optionalString(body, "payload").isBounded(4096))
             ) fail(ProtocolError.INVALID_ENVELOPE)
             MessageType.ACTION_RESULT -> {
                 val state = optionalString(body, "state")
@@ -595,7 +599,7 @@ object ProtocolCodec {
     // Closed set of things this phone knows how to be asked to do. A wire
     // format that let this grow silently would let the Mac ask for an act
     // the phone was never built to carry out.
-    private val deviceActionKinds = setOf("notification_reply", "youtube_play", "open_page")
+    private val deviceActionKinds = setOf("notification_reply", "youtube_play", "open_page", "get_location")
     // Four endings, not a boolean. "notification_gone" is neither a success
     // nor a failure worth retrying: the conversation moved on before the
     // phone could act, and lumping it in with "failed" would make the Mac

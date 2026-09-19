@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const [file, run] = process.argv.slice(2);
+assert(file && run);
+assert(fs.existsSync(file), 'OpenClaw has not produced a result in the iOS host');
+const result = JSON.parse(fs.readFileSync(file, 'utf8'));
+assert.equal(result.run, run);
+assert.equal(result.platform, 'ios');
+assert.equal(result.status, 'pass', JSON.stringify(result));
+assert.equal(result.gatewayImported, true);
+assert.equal(result.gatewayStarted, true);
+console.log(JSON.stringify(result));

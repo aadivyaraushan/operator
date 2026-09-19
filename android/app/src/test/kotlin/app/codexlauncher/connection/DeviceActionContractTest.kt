@@ -66,6 +66,29 @@ class DeviceActionContractTest {
     }
 
     @Test
+    fun `the phone accepts a request to read its current location`() {
+        val message =
+            ProtocolCodec.decodeText(
+                wellFormedAction(
+                    kind = "get_location",
+                    handle = "current_location",
+                    text = "Read the device's current location",
+                ),
+            )
+
+        assertEquals(MessageType.DEVICE_ACTION, message.type)
+        assertEquals(Sender.COMPANION, message.sender)
+    }
+
+    @Test
+    fun `the phone can answer a location read with a payload`() {
+        val payload = """{"latitude":37.7749,"longitude":-122.4194,"accuracyMeters":12.5,"timestampMillis":1750000000000,"provider":"fused"}"""
+        val escaped = payload.replace("\"", "\\\"")
+        val message = ProtocolCodec.decodeText(deviceActionResult("""{"requestId":"cap-action-1","outcome":"handed_to_the_app","payload":"$escaped"}"""))
+        assertEquals(MessageType.DEVICE_ACTION_RESULT, message.type)
+    }
+
+    @Test
     fun `the phone can report every way a reply can end`() {
         // Four answers, because the phone can tell these four apart and the Mac
         // needs all four. "notification_gone" is not a failure anybody caused
@@ -150,6 +173,15 @@ class DeviceActionContractTest {
             MessageType.DEVICE_ACTION,
             ProtocolCodec.decodeText(wellFormedAction(text = "a".repeat(4096))).type,
         )
+    }
+
+    @Test
+    fun `a location payload past the bound is refused`() {
+        assertThrows(Exception::class.java) {
+            ProtocolCodec.decodeText(
+                deviceActionResult("""{"requestId":"cap-action-1","outcome":"handed_to_the_app","payload":"${"a".repeat(4097)}"}"""),
+            )
+        }
     }
 
     @Test

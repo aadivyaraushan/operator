@@ -1,6 +1,8 @@
 # Local agent and scratch state
 .gstack/
 work/
+.claude/
+companion/operator-phone-runtime
 
 # Android and Gradle output
 .gradle/
@@ -10,6 +12,12 @@ local.properties
 .idea/
 *.iml
 .kotlin/
+
+# Apple and Swift output
+**/.build/
+DerivedData/
+**/xcuserdata/
+*.xcuserstate
 
 # Go output and test artifacts
 bin/
@@ -44,3 +52,12 @@ coverage.out
 .DS_Store
 Thumbs.db
 .vercel
+
+# Screen recordings (keep the still-frame montage instead)
+*.mp4
+
+# Browser tool scratch output
+.playwright-mcp/
+
+# Per-developer signing settings (team ID, bundle-ID prefix)
+ios/Local.xcconfig

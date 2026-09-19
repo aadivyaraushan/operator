@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const [file, expectedRun] = process.argv.slice(2);
+assert(file && expectedRun, 'provide result file and fresh run identifier');
+assert(fs.existsSync(file), 'iOS runtime has not produced capability results');
+const result = JSON.parse(fs.readFileSync(file, 'utf8'));
+assert.equal(result.run, expectedRun);
+assert.equal(result.platform, 'ios');
+assert.equal(result.node, '24.18.0');
+assert.equal(result.status, 'pass', JSON.stringify(result));
+assert.deepEqual(result.checks, ['esm', 'sqlite', 'filesystem', 'http-fetch']);
+assert.match(result.sqlite, /^3\./);
+assert(Number.isFinite(result.elapsedMs) && result.elapsedMs >= 0);
+console.log(JSON.stringify({verified: true, ...result}));

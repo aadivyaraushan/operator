@@ -1,0 +1,208 @@
+name: Operator
+options:
+  deploymentTarget:
+    iOS: "18.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    TARGETED_DEVICE_FAMILY: "1"
+packages:
+  OperatorCore:
+    path: OperatorCore
+  SwiftMath:
+    url: https://github.com/mgriebling/SwiftMath
+    exactVersion: 1.7.3
+schemes:
+  OperatorApp:
+    build:
+      targets:
+        OperatorApp: all
+        OperatorAppTests: [test]
+    test:
+      targets:
+        - OperatorAppTests
+  # Live-account proofs only. Sets OPERATOR_LIVE=1 so LiveConnectorReadTests /
+  # LiveConnectorWriteTests run instead of skipping. The default OperatorApp
+  # scheme never sets it, so the normal test run stays green and never touches a
+  # real account. Never run the whole suite under this scheme; select the live
+  # class explicitly with -only-testing.
+  OperatorAppLive:
+    build:
+      targets:
+        OperatorApp: all
+        OperatorAppTests: [test]
+    test:
+      targets:
+        - OperatorAppTests
+      environmentVariables:
+        OPERATOR_LIVE: "1"
+  # Paid end-to-end proof only. Drives the REAL chat UI so the on-device LLM
+  # runs and bills the owner's ChatGPT account. Sets OPERATOR_E2E=1 so the
+  # gated paid test runs; the free launch smoke-test in the same target runs
+  # regardless. Never in the default OperatorApp scheme. Run explicitly with
+  # -only-testing.
+  OperatorAppE2E:
+    build:
+      targets:
+        OperatorApp: all
+        OperatorAppUITests: [test]
+    test:
+      targets:
+        - OperatorAppUITests
+      environmentVariables:
+        OPERATOR_E2E: "1"
+  # Connector QA driver only. Sets OPERATOR_QA=1 so ScenarioDriverUITests runs
+  # the batch named by OPERATOR_QA_BATCH (passed as TEST_RUNNER_OPERATOR_QA_BATCH).
+  # Every step is a real model turn on the owner's ChatGPT account. Run only
+  # through ios/qa/connector-qa/run.mjs.
+  OperatorAppQA:
+    build:
+      targets:
+        OperatorApp: all
+        OperatorAppUITests: [test]
+    test:
+      targets:
+        - OperatorAppUITests
+      environmentVariables:
+        OPERATOR_QA: "1"
+targets:
+  OperatorApp:
+    type: application
+    platform: iOS
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    # Resources are declared here under `sources` (XcodeGen auto-classifies the
+    # asset catalog, JSON, and the runtime folder into the Copy Bundle Resources
+    # phase). A separate top-level `resources:` block is silently dropped by
+    # XcodeGen 2.46 for this target — its Copy Bundle Resources phase goes
+    # missing, so Assets and the embedded Node runtime never make it into the app
+    # and chat cannot start. Keeping them in `sources` uses a code path that
+    # actually emits the phase. See saved-results/ios-connectors-evidence.md.
+    sources:
+      - path: OperatorApp/Sources
+      - path: OperatorApp/Assets.xcassets
+      - path: OperatorApp/Resources/connections/handoff/android-handoff-catalog.json
+      - path: OperatorApp/Resources/connections/handoff/app-links.json
+      - path: OperatorApp/Resources/sounds
+      - path: OperatorApp/Resources/fonts
+        excludes: ["OFL.txt"]
+      - path: build/native-node/runtime
+        type: folder
+        buildPhase: resources
+    preBuildScripts:
+      # The staged runtime is ignored by git; a stale copy ships an app that
+      # crashes on its first segmented reply. Fail the build instead.
+      - name: Check staged runtime matches the source
+        script: sh "$SRCROOT/Runtime/native-node/package/check-staged-runtime.sh"
+        basedOnDependencyAnalysis: false
+    dependencies:
+      # The wacli WhatsApp archive is deliberately NOT listed here. It is built
+      # per SDK into build/native-whatsapp (simulator) and
+      # build/native-whatsapp-device (device) by Runtime/native-whatsapp/archive/
+      # build.sh, and linked through the per-SDK OTHER_LDFLAGS below. A tree
+      # without the device slice can still build for a device by removing the
+      # iphoneos exclusion of capabilities/whatsapp/native/WacliBridgeUnavailable.c,
+      # which supplies the same symbols and fails every WhatsApp call cleanly.
+      - framework: build/native-node/NodeMobile.xcframework
+        embed: true
+      - package: OperatorCore
+      - package: SwiftMath
+      - target: OperatorWidget
+        embed: true
+      - sdk: AVFAudio.framework
+      - sdk: CoreLocation.framework
+      - sdk: EventKit.framework
+      - sdk: MessageUI.framework
+      - sdk: MapKit.framework
+      - sdk: CoreFoundation.framework
+      - sdk: Security.framework
+      - sdk: libresolv.tbd
+      - sdk: Speech.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(OPERATOR_BUNDLE_ID_PREFIX).ios
+        SWIFT_OBJC_BRIDGING_HEADER: OperatorApp/Sources/runtime/embedded/EmbeddedNodeBridge.h
+        "LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]": ['$(inherited)', '$(SRCROOT)/build/native-whatsapp']
+        "LIBRARY_SEARCH_PATHS[sdk=iphoneos*]": ['$(inherited)', '$(SRCROOT)/build/native-whatsapp-device']
+        # Each SDK links its own slice of the real Go bridge, and the C stub is
+        # excluded so exactly one implementation supplies the Wacli* symbols.
+        "OTHER_LDFLAGS[sdk=iphonesimulator*]": ['$(inherited)', '-lWacliBridge']
+        "OTHER_LDFLAGS[sdk=iphoneos*]": ['$(inherited)', '-lWacliBridge']
+        "EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]": WacliBridgeUnavailable.c
+        "EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*]": WacliBridgeUnavailable.c
+        # Ad-hoc signing on the simulator needs an explicit application
+        # identifier for Keychain APIs to work. On device, real provisioning
+        # supplies it, and no code uses a keychain access group, so no device
+        # entitlements file is required.
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": OperatorApp/Sources/runtime/embedded/signing/Simulator.entitlements
+        "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
+        CLANG_CXX_LANGUAGE_STANDARD: c++17
+        PRODUCT_MODULE_NAME: OperatorApp
+        PRODUCT_NAME: Operator
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: OperatorApp/Info.plist
+        SUPPORTS_MACCATALYST: NO
+  OperatorWidget:
+    type: app-extension
+    platform: iOS
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    sources:
+      - path: OperatorWidget/Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(OPERATOR_BUNDLE_ID_PREFIX).ios.widget
+        PRODUCT_MODULE_NAME: OperatorWidget
+        PRODUCT_NAME: OperatorWidget
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: OperatorWidget/Info.plist
+  OperatorAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: OperatorApp/Tests
+        # The per-area cheap-loop harnesses (run.sh + Package.template scratch
+        # packages, node .mjs checks) live beside the XCTest sources. They are
+        # not part of the app test bundle, and their many same-named copies
+        # collide as bundle resources ("Multiple commands produce run.sh").
+        excludes:
+          - "**/*.sh"
+          - "**/*.template"
+          - "**/*.mjs"
+          # A standalone @main check executable (run only inside its own scratch
+          # package), not an XCTest — it has no `@testable import OperatorApp`
+          # and its @main would collide in the test bundle.
+          - "runtime/embedded/endpoint/LoopbackPortChecks.swift"
+    dependencies:
+      - target: OperatorApp
+      - package: OperatorCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        # The host app's PRODUCT_NAME is "Operator", so it builds as
+        # Operator.app/Operator. XcodeGen 2.46 derives TEST_HOST from the target
+        # name (OperatorApp) instead, which points at a product that never
+        # exists and fails the build with "Could not find test host". Pin the
+        # real host path so every regeneration stays runnable.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Operator.app/Operator"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+  OperatorAppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: OperatorApp/UITests
+    dependencies:
+      - target: OperatorApp
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.operator.ios.uitests
+        # Names the app this UI-test target launches/automates via XCUIApplication().
+        TEST_TARGET_NAME: OperatorApp
+        "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"

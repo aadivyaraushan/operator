@@ -1,0 +1,5 @@
+@MainActor
+final class AppleOnDeviceDictationService: OfflineDictationService {
+    func start(eventHandler: @escaping @MainActor (OfflineDictationEvent) -> Void) async throws {}
+    func stop() {}
+}

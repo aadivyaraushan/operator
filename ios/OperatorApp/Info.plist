@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>app.operator.ios.reply.*</string>
+    </array>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleDisplayName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(MARKETING_VERSION)</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.914186874774-h53ibiefs116cgg1hnrllfhn7f9cscc9</string>
+                <string>app.operator.ios</string>
+                <string>msauth.app.operator.ios</string>
+            </array>
+        </dict>
+    </array>
+    <key>CFBundleVersion</key>
+    <string>$(CURRENT_PROJECT_VERSION)</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
+    <key>NSAppleMusicUsageDescription</key>
+    <string>Operator reads your music library only when you ask the agent what is playing or what you own.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Operator looks through your photos only when you ask the agent to find one. It never sends the image itself.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>Operator looks up a contact only when you ask the agent to reach someone by name.</string>
+    <key>NSRemindersFullAccessUsageDescription</key>
+    <string>Operator reads your reminders only when you ask the agent what is on your list.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Operator reads your calendar only when you ask the agent for upcoming events.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Operator uses your location only when you ask the agent for something that needs it.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Operator uses the microphone for on-device dictation in your message draft.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Operator uses on-device speech recognition to add words to your message draft.</string>
+    <key>OPERATOR_OAUTH_GOOGLE_CLIENT_ID</key>
+    <string>914186874774-h53ibiefs116cgg1hnrllfhn7f9cscc9.apps.googleusercontent.com</string>
+    <key>OPERATOR_OAUTH_GOOGLE_REDIRECT_URI</key>
+    <string>com.googleusercontent.apps.914186874774-h53ibiefs116cgg1hnrllfhn7f9cscc9:/oauth2redirect</string>
+    <key>OPERATOR_OAUTH_SLACK_CLIENT_ID</key>
+    <string>11647883346533.12020890598643</string>
+    <key>OPERATOR_OAUTH_SLACK_REDIRECT_URI</key>
+    <string>app.operator.ios://oauth/slack</string>
+    <key>OPERATOR_OAUTH_MICROSOFT_OUTLOOK_CLIENT_ID</key>
+    <string>ed4e4e74-ad37-4ddf-a4ca-59d3731be5e6</string>
+    <key>OPERATOR_OAUTH_MICROSOFT_OUTLOOK_REDIRECT_URI</key>
+    <string>msauth.app.operator.ios://auth</string>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <true/>
+        <key>UISceneConfigurations</key>
+        <dict/>
+    </dict>
+    <key>OPERATOR_OAUTH_SPOTIFY_CLIENT_ID</key>
+    <string>2c348c954be24bf68d3680f206625ccd</string>
+    <key>OPERATOR_OAUTH_SPOTIFY_REDIRECT_URI</key>
+    <string>http://127.0.0.1:43827/spotify/callback</string>
+    <key>UILaunchScreen</key>
+    <dict>
+        <key>UILaunchScreen</key>
+        <dict/>
+    </dict>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Montserrat-Regular.ttf</string>
+		<string>Montserrat-Medium.ttf</string>
+		<string>Montserrat-Bold.ttf</string>
+	</array>
+</dict>
+</plist>

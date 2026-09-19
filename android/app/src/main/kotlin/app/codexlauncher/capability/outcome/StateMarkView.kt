@@ -1,5 +1,10 @@
 package app.codexlauncher.capability.outcome
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -84,7 +89,25 @@ fun StateMark(
     // mirrors what QuietInstrumentTheme itself does for AppearanceMode
     // .FOLLOW_SYSTEM, which is the common case.
     val palette = if (isSystemInDarkTheme()) QuietInstrumentTokens.deepCharcoal else QuietInstrumentTokens.warmPaper
-    val toneColor = Color(mark.tone.resolve(palette))
+    // The Working mark breathes so a long pre-first-token wait reads as alive
+    // rather than frozen; every other mark is a settled state and stays static.
+    val glyphAlpha =
+        if (mark == StateMark.WORKING) {
+            val pulse = rememberInfiniteTransition(label = "working-mark")
+            pulse.animateFloat(
+                initialValue = 0.4f,
+                targetValue = 1f,
+                animationSpec =
+                    infiniteRepeatable(
+                        animation = tween(durationMillis = 900),
+                        repeatMode = RepeatMode.Reverse,
+                    ),
+                label = "working-mark-alpha",
+            ).value
+        } else {
+            1f
+        }
+    val toneColor = Color(mark.tone.resolve(palette)).copy(alpha = glyphAlpha)
 
     val touchTarget =
         if (tappableRow) {

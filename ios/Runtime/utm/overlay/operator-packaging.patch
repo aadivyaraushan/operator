@@ -1,0 +1,126 @@
+diff --git a/UTM.xcodeproj/project.pbxproj b/UTM.xcodeproj/project.pbxproj
+index 41b4c746..00000000 100644
+--- a/UTM.xcodeproj/project.pbxproj
++++ b/UTM.xcodeproj/project.pbxproj
+@@ -3268,8 +3268,7 @@
+		CEA45E1F263519B5002FA97D /* iOS-SE */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CEA45FB6263519B5002FA97D /* Build configuration list for PBXNativeTarget "iOS-SE" */;
+			buildPhases = (
+-				CE11C03B2BD46F7600E103A0 /* Generate Info.plist */,
+				CEA45E24263519B5002FA97D /* Sources */,
+				CEA45F23263519B5002FA97D /* Frameworks */,
+				CEA45F63263519B5002FA97D /* Resources */,
+@@ -4065,7 +4064,6 @@
+				84CE3DAF2904C17C00FF068B /* IASKAppSettings.swift in Sources */,
+				84C4D9032880CA8A00EC3B2B /* VMSettingsAddDeviceMenuView.swift in Sources */,
+				CEA45E5A263519B5002FA97D /* VMConfigSystemView.swift in Sources */,
+-				CE88A1512E2344A900EAA28E /* UTMVirtualMachineEntityQuery.swift in Sources */,
+				CEA45E5B263519B5002FA97D /* VMShareFileModifier.swift in Sources */,
+				8471770727CC974F00D3A50B /* DefaultTextField.swift in Sources */,
+				CE9B15482B12A87E003A32DD /* GenerateKey.c in Sources */,
+@@ -4105,6 +4103,5 @@
+				85EC516527CC8D0F004A51DE /* VMConfigAdvancedNetworkView.swift in Sources */,
+				CE68E54A2E3912E0006B3645 /* VMWizardOSClassicMacView.swift in Sources */,
+-				CE88A1612E24B2B400EAA28E /* UTMInputIntent.swift in Sources */,
+				03FA9C732B9BBDB000C53A5A /* UTMConfigurationHostNetwork.swift in Sources */,
+				CEA45E91263519B5002FA97D /* VMDisplayMetalViewController+Pencil.m in Sources */,
+				CEA45E94263519B5002FA97D /* UTMLegacyQemuConfiguration+Drives.m in Sources */,
+@@ -4125,6 +4122,5 @@
+				CEA45EB7263519B5002FA97D /* VMToolbarModifier.swift in Sources */,
+				CEA45EB9263519B5002FA97D /* VMCursor.m in Sources */,
+-				CE88A1582E247D0100EAA28E /* UTMActionIntent.swift in Sources */,
+				CEA45EBA263519B5002FA97D /* VMConfigDriveDetailsView.swift in Sources */,
+				84B36D2627B704C200C22685 /* UTMDownloadVMTask.swift in Sources */,
+				CEF0305226A2AFBF00667B63 /* Spinner.swift in Sources */,
+@@ -4149,10 +4145,9 @@
+				CEA45ED3263519B5002FA97D /* VMSettingsView.swift in Sources */,
+				CE19392726DCB094005CEC17 /* RAMSlider.swift in Sources */,
+				84E6F6FE289319AE00080EEF /* VMToolbarDisplayMenuView.swift in Sources */,
+-				CE88A1542E247CCE00EAA28E /* UTMIntent.swift in Sources */,
+				841E58CC28937EE200137A20 /* UTMExternalSceneDelegate.swift in Sources */,
+				CEF01DB82B674BF000725A0F /* UTMPipeInterface.swift in Sources */,
+				CEF0307226A2B04400667B63 /* VMWizardView.swift in Sources */,
+				83034C0826AB630F006B4BAF /* UTMPendingVMView.swift in Sources */,
+				CEA45ED8263519B5002FA97D /* VMKeyboardButton.m in Sources */,
+				CEF0307526A2B40B00667B63 /* VMWizardHardwareView.swift in Sources */,
+@@ -4160,7 +4154,6 @@
+				CE611BEC29F50D3E001817BC /* VMReleaseNotesView.swift in Sources */,
+				CE611BE829F50CAD001817BC /* UTMReleaseHelper.swift in Sources */,
+				CEA45EE8263519B5002FA97D /* VMDisplayMetalViewController+Keyboard.m in Sources */,
+-				CE88A0A42E2321D200EAA28E /* UTMVirtualMachineEntity.swift in Sources */,
+				CEA45EEA263519B5002FA97D /* UTMExtensions.swift in Sources */,
+				843BF82928441FAF0029D60D /* QEMUConstantGenerated.swift in Sources */,
+				CEA45EEC263519B5002FA97D /* UTMData.swift in Sources */,
+@@ -5049,7 +5043,8 @@
+ 		CEA45FB7263519B5002FA97D /* Debug */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
++				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+ 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+ 				CLANG_ENABLE_MODULES = YES;
+ 				CODE_SIGN_ENTITLEMENTS = "$(IOS_CODE_SIGN_ENTITLEMENTS)";
+@@ -5063,14 +5056,14 @@
+					"$(inherited)",
+				);
+-				INFOPLIST_FILE = "$(DERIVED_FILE_DIR)/Info.plist";
++				INFOPLIST_FILE = Platform/iOS/Operator-Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PLATFORM_SUFFIX = "-TCI";
+-				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_PREFIX:default=com.utmapp).UTM-SE";
++				PRODUCT_BUNDLE_IDENTIFIER = app.operator.ios;
+				PRODUCT_MODULE_NAME = UTM;
+-				PRODUCT_NAME = "UTM SE";
++				PRODUCT_NAME = Operator;
+				PROVISIONING_PROFILE_SPECIFIER = "$(PROVISIONING_PROFILE_SPECIFIER_SE:default=)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+@@ -5081,7 +5074,7 @@
+ 				SWIFT_OBJC_BRIDGING_HEADER = "Services/Swift-Bridging-Header.h";
+ 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+ 				SWIFT_VERSION = 5.0;
+-				TARGETED_DEVICE_FAMILY = "1,2,7";
++				TARGETED_DEVICE_FAMILY = 1;
+ 			};
+ 			name = Debug;
+ 		};
+@@ -5088,7 +5082,8 @@
+ 		CEA45FB8263519B5002FA97D /* Release */ = {
+ 			isa = XCBuildConfiguration;
+ 			buildSettings = {
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
++				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+ 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+ 				CLANG_ENABLE_MODULES = YES;
+ 				CODE_SIGN_ENTITLEMENTS = "$(IOS_CODE_SIGN_ENTITLEMENTS)";
+@@ -5102,14 +5095,14 @@
+					"$(inherited)",
+				);
+-				INFOPLIST_FILE = "$(DERIVED_FILE_DIR)/Info.plist";
++				INFOPLIST_FILE = Platform/iOS/Operator-Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PLATFORM_SUFFIX = "-TCI";
+-				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_PREFIX:default=com.utmapp).UTM-SE";
++				PRODUCT_BUNDLE_IDENTIFIER = app.operator.ios;
+				PRODUCT_MODULE_NAME = UTM;
+-				PRODUCT_NAME = "UTM SE";
++				PRODUCT_NAME = Operator;
+				PROVISIONING_PROFILE_SPECIFIER = "$(PROVISIONING_PROFILE_SPECIFIER_SE:default=)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+@@ -5119,7 +5112,7 @@
+ 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "WITH_QEMU_TCI WITH_SOLO_VM $(inherited)";
+ 				SWIFT_OBJC_BRIDGING_HEADER = "Services/Swift-Bridging-Header.h";
+ 				SWIFT_VERSION = 5.0;
+-				TARGETED_DEVICE_FAMILY = "1,2,7";
++				TARGETED_DEVICE_FAMILY = 1;
+ 			};
+ 			name = Release;
+ 		};

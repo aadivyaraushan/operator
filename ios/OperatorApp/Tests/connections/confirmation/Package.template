@@ -1,0 +1,6 @@
+// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(name: "AccountWriteConfirmationProof", platforms: [.macOS(.v15)], products: [.library(name: "OperatorApp", targets: ["OperatorApp"])], dependencies: [.package(path: "CORE_PACKAGE_PATH")], targets: [
+    .target(name: "OperatorApp", dependencies: [.product(name: "OperatorCore", package: "operatorcore")]),
+    .testTarget(name: "AccountWriteConfirmationProofTests", dependencies: ["OperatorApp"]),
+])

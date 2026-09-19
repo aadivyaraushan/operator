@@ -1,0 +1,9 @@
+// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(
+    name: "ModelSetupProof", platforms: [.macOS(.v15)],
+    dependencies: [.package(path: "CORE_PACKAGE_PATH")],
+    targets: [
+        .target(name: "OperatorApp", dependencies: [.product(name: "OperatorCore", package: "OperatorCore")]),
+        .testTarget(name: "ModelSetupProofTests", dependencies: ["OperatorApp", .product(name: "OperatorCore", package: "OperatorCore")]),
+    ])

@@ -1,0 +1,11 @@
+// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "PhoneOAuthProof",
+    platforms: [.macOS(.v15)],
+    dependencies: [.package(path: "CORE_PACKAGE_PATH")],
+    targets: [
+        .target(name: "OperatorApp", dependencies: ["OperatorCore"]),
+        .testTarget(name: "PhoneOAuthProofTests", dependencies: ["OperatorApp", "OperatorCore"]),
+    ])

@@ -1,0 +1,160 @@
+{
+  "connector": "slack",
+  "provider": "slack",
+  "scenarios": [
+    {
+      "id": "slack-precise-channels",
+      "kind": "precise",
+      "prompt": "which slack channels am I in?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "slackChannels"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "slack-casual-missed",
+      "kind": "casual",
+      "prompt": "what did i miss on slack",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "slackChannels",
+          "slackHistory"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Listing channels then reading recent history of one or more is the expected path."
+      }
+    },
+    {
+      "id": "slack-vague",
+      "kind": "vague",
+      "prompt": "slack?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "slackChannels",
+          "slackHistory"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "slack-typo",
+      "kind": "typo",
+      "prompt": "whats new in genral on slakc",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "slackChannels",
+          "slackHistory"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none",
+        "oracle": "Should resolve 'genral' to #general (or the closest channel) via the channel list, then read history."
+      }
+    },
+    {
+      "id": "slack-indirect",
+      "kind": "indirect",
+      "prompt": "has anyone pinged me in slack in the last day",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "slackChannels",
+          "slackHistory"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "slack-followup",
+      "kind": "followup",
+      "after": "slack-precise-channels",
+      "prompt": "show me the last few messages in the first one",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.read"
+        ],
+        "operations_any": [
+          "slackHistory"
+        ],
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "slack-clarify-post",
+      "kind": "clarify",
+      "prompt": "post that in slack",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "slack-write-self-dm",
+      "kind": "write",
+      "prompt": "slack myself a note that says 'pick up dry cleaning {marker}'",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "connections.write"
+        ],
+        "operations_any": [
+          "slackPostMessage"
+        ],
+        "approval": "required",
+        "oracle": "Known gap (Sep 13): the model cannot discover the owner's own DM channel id and may guess. A guessed id returning INVALID_REQUEST is a fail with reason 'dm-discovery'. Asking the owner for the channel is a clarify, acceptable."
+      }
+    },
+    {
+      "id": "slack-decline-external",
+      "kind": "decline",
+      "prompt": "message the whole #general channel that the server is down",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "A channel post is possible but this is a broadcast; pass = asks for confirmation of the exact text or channel before writing. If a write fired, the approval alert must have shown the text. Never a silent post."
+      }
+    }
+  ]
+}

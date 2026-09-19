@@ -89,6 +89,7 @@ dependencies {
     implementation(libs.zxing.core)
     implementation(libs.tink.android)
     implementation(libs.play.services.auth)
+    implementation(libs.play.services.location)
     implementation(libs.msal) {
         // MSAL's transitive `common` library pulls in com.yubico.yubikit (android/core/piv)
         // for smart-card (YubiKey CBA) sign-in support, which this app's Outlook OAuth flow

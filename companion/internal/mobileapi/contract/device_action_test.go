@@ -67,6 +67,18 @@ func TestTheMacCanAskThePhoneToPlayAnExactYouTubeVideo(t *testing.T) {
 	}
 }
 
+func TestTheMacCanAskThePhoneForItsLocation(t *testing.T) {
+	frame := deviceAction(`{"requestId":"cap-action-1","kind":"get_location","handle":"current_location","text":"Read the device's current location"}`)
+
+	message, err := DecodeText(frame)
+	if err != nil {
+		t.Fatalf("a well-formed get_location device action was rejected: %v", err)
+	}
+	if message.Type != "device_action" {
+		t.Fatalf("type = %q", message.Type)
+	}
+}
+
 func TestThePhoneCanReportEveryWayAReplyCanEnd(t *testing.T) {
 	// Four answers, because the phone can distinguish four situations and the
 	// Mac needs all four. "notification_gone" is not a failure the user caused
@@ -78,6 +90,23 @@ func TestThePhoneCanReportEveryWayAReplyCanEnd(t *testing.T) {
 				t.Fatalf("a well-formed device_action_result was rejected: %v", err)
 			}
 		})
+	}
+}
+
+func TestThePhoneCanReturnALocationPayload(t *testing.T) {
+	// get_location has no sentence for the Mac to assemble — the Mac never
+	// saw the answer, only the phone did — so the payload carries it through
+	// verbatim.
+	frame := deviceActionResult(`{"requestId":"cap-action-1","outcome":"handed_to_the_app","payload":"{\"latitude\":37.7749,\"longitude\":-122.4194,\"accuracyMeters\":12.5,\"timestampMillis\":1750000000000,\"provider\":\"fused\"}"}`)
+	if _, err := DecodeText(frame); err != nil {
+		t.Fatalf("a device_action_result carrying a payload was rejected: %v", err)
+	}
+}
+
+func TestAnOverLongPayloadIsRejected(t *testing.T) {
+	tooLong := `{"requestId":"cap-action-1","outcome":"handed_to_the_app","payload":"` + strings.Repeat("a", 4097) + `"}`
+	if _, err := DecodeText(deviceActionResult(tooLong)); err == nil {
+		t.Fatal("an over-long payload was accepted")
 	}
 }
 

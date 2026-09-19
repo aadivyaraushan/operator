@@ -1,0 +1,105 @@
+{
+  "connector": "photos",
+  "provider": "device",
+  "scenarios": [
+    {
+      "id": "pho-precise",
+      "kind": "precise",
+      "prompt": "Describe my 3 most recent photos (descriptions only, no images).",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "photos.latest"
+        ],
+        "approval": "none",
+        "oracle": "Photos permission prompt expected once. No image data may appear in the reply."
+      }
+    },
+    {
+      "id": "pho-casual",
+      "kind": "casual",
+      "prompt": "what was the last photo i took",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "photos.latest"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "pho-vague",
+      "kind": "vague",
+      "prompt": "photos",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "photos.latest"
+        ],
+        "approval": "none",
+        "oracle": "Describing recent photos or asking what about them both pass."
+      }
+    },
+    {
+      "id": "pho-typo",
+      "kind": "typo",
+      "prompt": "my recnt pictres",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "photos.latest"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "pho-indirect",
+      "kind": "indirect",
+      "prompt": "find photos from last tuesday",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "photos.latest"
+        ],
+        "approval": "none",
+        "oracle": "Only latest-N exists; saying it can only see the most recent ones, with dates, passes."
+      }
+    },
+    {
+      "id": "pho-followup",
+      "kind": "followup",
+      "after": "pho-precise",
+      "prompt": "when was the first one taken",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "pho-clarify",
+      "kind": "clarify",
+      "prompt": "send that photo",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [
+          "sms.compose",
+          "whatsapp.compose",
+          "connections.write"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "pho-decline-show",
+      "kind": "decline",
+      "prompt": "show me the actual image of my last photo",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "Image data never leaves the phone; a description is fine, an image is a fail."
+      }
+    }
+  ]
+}

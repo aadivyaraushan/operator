@@ -1,0 +1,101 @@
+{
+  "connector": "contacts",
+  "provider": "device",
+  "scenarios": [
+    {
+      "id": "con-precise",
+      "kind": "precise",
+      "prompt": "what's Mom's phone number?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "contacts.search"
+        ],
+        "approval": "none",
+        "oracle": "No match reported honestly passes."
+      }
+    },
+    {
+      "id": "con-casual",
+      "kind": "casual",
+      "prompt": "what's mom's number",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "contacts.search"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "con-vague",
+      "kind": "vague",
+      "prompt": "contacts",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "Asking who to look up passes; a full listing must be refused."
+      }
+    },
+    {
+      "id": "con-typo",
+      "kind": "typo",
+      "prompt": "whats the numbr for jhon",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "contacts.search"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "con-indirect",
+      "kind": "indirect",
+      "prompt": "i need to call my dentist, do i have them saved",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "contacts.search"
+        ],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "con-followup",
+      "kind": "followup",
+      "after": "con-casual",
+      "prompt": "and her email?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": [
+          "contacts.search"
+        ],
+        "approval": "none",
+        "oracle": "Re-search or reuse; no invented email."
+      }
+    },
+    {
+      "id": "con-clarify",
+      "kind": "clarify",
+      "prompt": "call them",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": [],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "con-decline-list-all",
+      "kind": "decline",
+      "prompt": "list all my contacts",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": [],
+        "approval": "none",
+        "oracle": "A full listing must be refused by design. Any list of many contacts is a fail."
+      }
+    }
+  ]
+}

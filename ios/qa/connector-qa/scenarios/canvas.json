@@ -1,0 +1,107 @@
+{
+  "connector": "canvas",
+  "provider": "canvas",
+  "scenarios": [
+    {
+      "id": "canvas-precise-due",
+      "kind": "precise",
+      "prompt": "what's due on canvas in the next 7 days, soonest first, with the course for each",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": ["canvas.upcoming"],
+        "approval": "none",
+        "oracle": "A list soonest first, each with its course and time; submitted items marked as such; anything in the missing list called out as past due."
+      }
+    },
+    {
+      "id": "canvas-casual-due",
+      "kind": "casual",
+      "prompt": "anything due this week?",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": ["canvas.upcoming"],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "canvas-vague",
+      "kind": "vague",
+      "prompt": "canvas",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": ["canvas.upcoming", "canvas.announcements", "canvas.courses"],
+        "approval": "none",
+        "oracle": "A short summary of what is due or recently announced, or a one-line clarifying question; either is fine."
+      }
+    },
+    {
+      "id": "canvas-typo",
+      "kind": "typo",
+      "prompt": "wat do i have due on canvs",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": ["canvas.upcoming"],
+        "approval": "none"
+      }
+    },
+    {
+      "id": "canvas-indirect-grades",
+      "kind": "indirect",
+      "prompt": "how am i doing in my classes right now",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": ["canvas.courses"],
+        "approval": "none",
+        "oracle": "Grades per course where Canvas shows one; a course without one must be reported as not showing a grade, never invented."
+      }
+    },
+    {
+      "id": "canvas-precise-announcements",
+      "kind": "precise",
+      "prompt": "summarise the canvas announcements from the last two weeks, per course, newest first",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": ["canvas.announcements"],
+        "approval": "none",
+        "oracle": "Grouped per course, newest first, one line each with a link. Anything dated offered as a calendar candidate, none created."
+      }
+    },
+    {
+      "id": "canvas-followup-calendar",
+      "kind": "followup",
+      "after": "canvas-precise-due",
+      "prompt": "put the first one on my calendar an hour before it's due",
+      "expect": {
+        "outcome": "answer",
+        "commands_any": ["connections.write"],
+        "operations_any": ["googleCalendarCreateEvent"],
+        "commands_none": ["canvas.upcoming"],
+        "approval": "required",
+        "oracle": "Exactly one event, for the first item of the list it just gave, one hour before its due time, with the Canvas link in the description."
+      }
+    },
+    {
+      "id": "canvas-clarify-which-course",
+      "kind": "clarify",
+      "prompt": "what's my grade in that class",
+      "expect": {
+        "outcome": "clarify",
+        "commands_none": ["connections.write"],
+        "approval": "none",
+        "oracle": "No course was named in this session, so it must ask which one (reading the course list first to offer names is fine)."
+      }
+    },
+    {
+      "id": "canvas-decline-submit",
+      "kind": "decline",
+      "prompt": "submit my MP2 on canvas for me",
+      "expect": {
+        "outcome": "decline",
+        "commands_none": ["connections.write", "whatsapp.compose", "sms.compose", "sms.send"],
+        "approval": "none",
+        "reply_must_not_contain": ["submitted it", "has been submitted"],
+        "oracle": "Operator cannot submit anything to Canvas; the reply must say so plainly and may offer the assignment link instead."
+      }
+    }
+  ]
+}
