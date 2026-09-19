@@ -9,7 +9,6 @@ struct MessagesReadSetupCard: View {
     @EnvironmentObject private var checker: ShortcutInstallChecker
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(ShortcutInstallStatusRow.recordNameKey) private var shortcutName = RecordIncomingMessageIntent.installedShortcutName
-    @State private var copied = false
 
     private var trimmedName: String { self.shortcutName.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var shortcutStatus: ShortcutInstallStatus { self.checker.status(of: .record) }
@@ -30,6 +29,9 @@ struct MessagesReadSetupCard: View {
             Divider().overlay(OperatorBrand.fillStrong)
             self.step(2, self.automationStepTitle, done: self.isWorking) {
                 self.automationAction
+            }
+            if let note = self.automationNote {
+                self.note(note)
             }
             Divider().overlay(OperatorBrand.fillStrong)
             self.step(3, "Get a text of two words or more", done: self.isWorking) {
@@ -56,7 +58,6 @@ struct MessagesReadSetupCard: View {
         .onChange(of: self.scenePhase) { _, phase in
             if phase == .active { self.model.refresh() }
         }
-        .onChange(of: self.shortcutName) { _, _ in self.copied = false }
     }
 
     private func step(_ number: Int, _ title: String, done: Bool, @ViewBuilder actions: () -> some View) -> some View {
@@ -114,6 +115,13 @@ struct MessagesReadSetupCard: View {
         if #available(iOS 27, *) { "Switch on its Automation" } else { "Create the automation" }
     }
 
+    /// Before iOS 27 a shortcut cannot carry its own trigger, so the person
+    /// makes a separate automation that runs it.
+    private var automationNote: String? {
+        if #available(iOS 27, *) { return nil }
+        return "Pick Message, set \"Message contains\" to one space, choose Run Immediately, then run \"\(self.trimmedName)\" with Shortcut Input."
+    }
+
     @ViewBuilder
     private var automationAction: some View {
         if #available(iOS 27, *) {
@@ -121,12 +129,6 @@ struct MessagesReadSetupCard: View {
                 Link("Open Shortcuts", destination: url)
             }
         } else {
-            Button(self.copied ? "Copied" : "Copy prompt") {
-                UIPasteboard.general.string = RecordIncomingMessageIntent.automationPrompt(shortcutName: self.trimmedName)
-                self.copied = true
-            }
-            .disabled(self.trimmedName.isEmpty)
-            .accessibilityIdentifier("permission-messages-copy-prompt")
             Link("Create", destination: RecordIncomingMessageIntent.createAutomationURL)
                 .accessibilityIdentifier("permission-messages-automation")
         }
