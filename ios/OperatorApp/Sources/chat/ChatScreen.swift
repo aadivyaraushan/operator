@@ -198,7 +198,7 @@ struct ChatScreen: View {
                         if let lastError = self.model.lastError {
                             Text(lastError)
                                 .font(.footnote)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(OperatorBrand.muted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 4)
                         }
@@ -262,7 +262,10 @@ struct ChatScreen: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
         }
-        .background(Color(uiColor: .systemBackground))
+        .background(OperatorBrand.nearBlack)
+        .foregroundStyle(OperatorBrand.light)
+        .tint(OperatorBrand.vermilion)
+        .preferredColorScheme(.dark)
         .task {
             self.model.restore()
             await self.setup.check()
@@ -302,7 +305,7 @@ private struct Header: View {
             Label(self.state.title, systemImage: self.state.symbol)
                 .labelStyle(.titleAndIcon)
                 .font(.caption.weight(.medium))
-                .foregroundStyle(self.state == .offline ? .secondary : .primary)
+                .foregroundStyle(self.state == .offline ? OperatorBrand.dim : OperatorBrand.muted)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Operator, \(self.state.title)")
@@ -322,12 +325,12 @@ private struct Welcome: View {
                 .font(.title2.weight(.semibold))
             Text("One conversation. Ask for anything.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(OperatorBrand.muted)
             if self.setup.state == .needsSignIn {
                 Button("Connect ChatGPT") {
                     Task { await self.setup.beginChatGPTSignIn() }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OperatorPrimaryButtonStyle())
                 .padding(.top, 8)
             }
         }
@@ -345,18 +348,18 @@ private struct SetupStatus: View {
                 ProgressView("Checking ChatGPT connection…")
             case .unavailable:
                 Text("ChatGPT connection could not be checked.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(OperatorBrand.muted)
                 Button("Retry account check") {
                     Task { await self.setup.retryAccountCheck() }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(OperatorQuietButtonStyle())
             case let .failed(message):
                 Text(message)
                     .multilineTextAlignment(.center)
                 Button("Retry account check") {
                     Task { await self.setup.retryAccountCheck() }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(OperatorQuietButtonStyle())
             default:
                 EmptyView()
             }
@@ -382,7 +385,7 @@ private struct SetupBanner: View {
         }
         .padding(10)
         .background(
-            Color.accentColor.opacity(0.1),
+            OperatorBrand.fill,
             in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
@@ -400,7 +403,7 @@ private struct MessageBubble: View {
             if !self.steps.isEmpty {
                 Text(self.steps.map(\.title).joined(separator: " · "))
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(OperatorBrand.muted)
                     .padding(.horizontal, 4)
                     .accessibilityLabel("Operator " + self.steps.map(\.title).joined(separator: ", "))
             }
@@ -411,12 +414,12 @@ private struct MessageBubble: View {
                     .textSelection(.enabled)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(self.message.role == .user ? Color.accentColor.opacity(0.16) : Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .background(self.message.role == .user ? OperatorBrand.fillStrong : OperatorBrand.fill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
             if let state = ChatMessageText.deliveryLabel(for: self.message, inFlight: self.inFlight) {
                 Text(state)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(OperatorBrand.muted)
             }
         }
         .frame(
@@ -435,12 +438,12 @@ private struct WeatherResultCard: View {
             Text("Weather").font(.headline)
             Text(self.card.condition).font(.subheadline)
             Text("\(self.card.temperatureCelsius, format: .number.precision(.fractionLength(0)))°C").font(.title2.weight(.semibold))
-            if let apparent = self.card.apparentCelsius { Text("Feels like \(apparent, format: .number.precision(.fractionLength(0)))°C").font(.footnote).foregroundStyle(.secondary) }
-            if let high = self.card.highCelsius, let low = self.card.lowCelsius { Text("High \(high, format: .number.precision(.fractionLength(0)))° · Low \(low, format: .number.precision(.fractionLength(0)))°").font(.footnote).foregroundStyle(.secondary) }
+            if let apparent = self.card.apparentCelsius { Text("Feels like \(apparent, format: .number.precision(.fractionLength(0)))°C").font(.footnote).foregroundStyle(OperatorBrand.muted) }
+            if let high = self.card.highCelsius, let low = self.card.lowCelsius { Text("High \(high, format: .number.precision(.fractionLength(0)))° · Low \(low, format: .number.precision(.fractionLength(0)))°").font(.footnote).foregroundStyle(OperatorBrand.muted) }
             HStack { AsyncImage(url: self.colorScheme == .dark ? self.card.attribution.combinedMarkDarkURL : self.card.attribution.combinedMarkLightURL) { $0.resizable().scaledToFit() } placeholder: { ProgressView() }.frame(height: 20).accessibilityLabel("Apple Weather"); Spacer(); Link("Legal", destination: self.card.attribution.legalPageURL).font(.footnote) }
         }
         .padding(14)
-        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(OperatorBrand.fill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 
@@ -466,7 +469,7 @@ private struct ActivityBubble: View {
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
                         .background(
-                            Color(uiColor: .secondarySystemBackground),
+                            OperatorBrand.fill,
                             in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     ProgressView()
                         .controlSize(.small)
@@ -477,7 +480,7 @@ private struct ActivityBubble: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
                     .background(
-                        Color(uiColor: .secondarySystemBackground),
+                        OperatorBrand.fill,
                         in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .accessibilityLabel(self.activity.steps.contains { $0.state == .running } ? "Operator is running a tool" : "Operator is thinking")
             }
@@ -499,15 +502,15 @@ private struct ActivityStepRow: View {
                 case .running:
                     ProgressView().controlSize(.mini)
                 case .done:
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(OperatorBrand.vermilion)
                 case .failed:
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(OperatorBrand.rust)
                 }
             }
             .frame(width: 14, height: 14)
             Text(self.step.title)
                 .font(.footnote)
-                .foregroundStyle(self.step.state == .running ? .primary : .secondary)
+                .foregroundStyle(self.step.state == .running ? OperatorBrand.light : OperatorBrand.muted)
                 .lineLimit(2)
         }
         .padding(.horizontal, 4)
@@ -534,13 +537,13 @@ private struct ThinkingBox: View {
             ForEach(Array(self.commentary.enumerated()), id: \.offset) { _, line in
                 Text(line)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(OperatorBrand.muted)
             }
             if !self.reasoning.isEmpty {
                 Text(self.reasoningTail)
                     .font(.footnote)
                     .italic()
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(OperatorBrand.dim)
                     .lineLimit(6)
                     .transaction { $0.animation = nil }
             }
@@ -559,7 +562,7 @@ private struct TypingDots: View {
         HStack(spacing: 5) {
             ForEach(0 ..< 3, id: \.self) { index in
                 Circle()
-                    .fill(Color.secondary)
+                    .fill(OperatorBrand.muted)
                     .frame(width: 8, height: 8)
                     .opacity(self.isAnimating ? 1 : 0.3)
                     .animation(
@@ -580,7 +583,7 @@ private struct ApprovalCard: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Action needs your approval", systemImage: "exclamationmark.shield")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
+                .foregroundStyle(OperatorBrand.vermilion)
             Text(self.approval.presentation.title)
                 .font(.subheadline.weight(.semibold))
             Text(self.approval.presentation.detail)
@@ -589,7 +592,7 @@ private struct ApprovalCard: View {
             if let warning = self.approval.presentation.warning {
                 Text(warning)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(OperatorBrand.muted)
             }
             HStack(spacing: 8) {
                 ForEach(self.approval.presentation.allowedDecisions, id: \.self) { decision in
@@ -597,22 +600,20 @@ private struct ApprovalCard: View {
                         Button(self.label(for: decision)) {
                             self.model.resolveApproval(id: self.approval.id, decision: decision)
                         }
-                        .buttonStyle(.bordered)
-                        .tint(.secondary)
+                        .buttonStyle(OperatorQuietButtonStyle())
                         .disabled(!self.approval.isActionable())
                     } else {
                         Button(self.label(for: decision)) {
                             self.model.resolveApproval(id: self.approval.id, decision: decision)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.accentColor)
+                        .buttonStyle(OperatorPrimaryButtonStyle())
                         .disabled(!self.approval.isActionable())
                     }
                 }
             }
         }
         .padding(14)
-        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(OperatorBrand.fill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Action needs your approval: \(self.approval.presentation.title)")
@@ -646,13 +647,13 @@ private struct QuestionCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Needs your answer", systemImage: "questionmark.diamond")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
+                .foregroundStyle(OperatorBrand.vermilion)
             ForEach(self.record.questions) { question in
                 VStack(alignment: .leading, spacing: 8) {
                     if !question.header.isEmpty {
                         Text(question.header.uppercased())
                             .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(OperatorBrand.muted)
                     }
                     Text(question.question)
                         .font(.subheadline.weight(.semibold))
@@ -670,7 +671,7 @@ private struct QuestionCard: View {
                             .lineLimit(1 ... 4)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                            .background(Color(uiColor: .tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .background(OperatorBrand.fillStrong, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                             .accessibilityLabel("Answer: \(question.question)")
                     }
                 }
@@ -678,18 +679,16 @@ private struct QuestionCard: View {
             HStack(spacing: 8) {
                 if self.needsSendButton {
                     Button("Send answer") { self.send() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.accentColor)
+                        .buttonStyle(OperatorPrimaryButtonStyle())
                         .disabled(!self.record.isActionable() || self.answers() == nil)
                 }
                 Button("Skip") { self.model.skipQuestion(id: self.record.id) }
-                    .buttonStyle(.bordered)
-                    .tint(.secondary)
+                    .buttonStyle(OperatorQuietButtonStyle())
                     .disabled(!self.record.isActionable())
             }
         }
         .padding(14)
-        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(OperatorBrand.fill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Needs your answer: \(self.record.questions.map(\.question).joined(separator: " "))")
@@ -708,10 +707,10 @@ private struct QuestionCard: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 if question.multiSelect {
                     Image(systemName: isChosen ? "checkmark.square.fill" : "square")
-                        .foregroundStyle(isChosen ? Color.accentColor : Color.secondary)
+                        .foregroundStyle(isChosen ? Color.accentColor : OperatorBrand.muted)
                 } else if self.needsSendButton {
                     Image(systemName: isChosen ? "largecircle.fill.circle" : "circle")
-                        .foregroundStyle(isChosen ? Color.accentColor : Color.secondary)
+                        .foregroundStyle(isChosen ? Color.accentColor : OperatorBrand.muted)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(option.label)
@@ -719,7 +718,7 @@ private struct QuestionCard: View {
                     if let description = option.description, !description.isEmpty {
                         Text(description)
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(OperatorBrand.muted)
                     }
                 }
                 Spacer(minLength: 0)
@@ -728,7 +727,7 @@ private struct QuestionCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.bordered)
-        .tint(isChosen ? .accentColor : .primary)
+        .tint(isChosen ? OperatorBrand.vermilion : OperatorBrand.light)
         .disabled(!self.record.isActionable())
         .accessibilityLabel(option.label)
         .accessibilityHint(option.description ?? "")
@@ -772,7 +771,7 @@ private struct AnsweredQuestionLine: View {
             ForEach(Array(self.answered.prompts.enumerated()), id: \.offset) { _, prompt in
                 Text(prompt)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(OperatorBrand.muted)
             }
             Text("You answered: \(self.answered.chosen.joined(separator: ", "))")
                 .font(.footnote.weight(.semibold))
@@ -802,7 +801,7 @@ private struct Composer: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .background(
-                        Color(uiColor: .secondarySystemBackground),
+                        OperatorBrand.fill,
                         in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .accessibilityLabel("Message Operator")
                     .accessibilityIdentifier("chat-composer")
@@ -812,7 +811,7 @@ private struct Composer: View {
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.bordered)
-                .tint(self.dictation.state == .recording ? .red : .accentColor)
+                .tint(self.dictation.state == .recording ? OperatorBrand.rust : OperatorBrand.vermilion)
                 .frame(minWidth: 44, minHeight: 44)
                 .accessibilityLabel(self.dictation.state == .recording ? "Stop dictation" : "Start offline dictation")
                 .accessibilityHint("Adds on-device speech to the editable message draft")
@@ -825,6 +824,7 @@ private struct Composer: View {
                     Button(action: self.model.stop) {
                         Image(systemName: "stop.fill")
                             .frame(width: 28, height: 28)
+                            .foregroundStyle(OperatorBrand.nearBlack)
                     }
                     .buttonStyle(.borderedProminent)
                     .accessibilityLabel("Stop Operator")
@@ -833,6 +833,7 @@ private struct Composer: View {
                         Image(systemName: "arrow.up")
                             .font(.headline)
                             .frame(width: 28, height: 28)
+                            .foregroundStyle(OperatorBrand.nearBlack)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(self.model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -842,7 +843,7 @@ private struct Composer: View {
             if case let .unavailable(message) = self.dictation.state {
                 Text(message)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(OperatorBrand.muted)
                     .accessibilityLabel("Dictation unavailable: \(message)")
             }
         }

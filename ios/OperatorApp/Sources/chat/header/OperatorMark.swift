@@ -22,8 +22,8 @@ struct OperatorMark: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    static let vermilion = Color(red: 1.0, green: 0.349, blue: 0.204)
-    static let rust = Color(red: 0.62, green: 0.224, blue: 0.141)
+    static let vermilion = OperatorBrand.vermilion
+    static let rust = OperatorBrand.rust
 
     private static let waitingPeriod = 1.4
     private static let smallDiscDelay = 0.35
