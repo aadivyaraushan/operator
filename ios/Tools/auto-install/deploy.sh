@@ -23,6 +23,11 @@ STATE="$STATE_DIR/state"
 LOG="${OPERATOR_AUTO_INSTALL_LOG:-$STATE_DIR/deploy.log}"
 DERIVED="${OPERATOR_AUTO_INSTALL_DERIVED:-$STATE_DIR/DerivedData}"
 BRANCH="${OPERATOR_AUTO_INSTALL_BRANCH:-main}"
+# macOS does not let a background job read ~/Documents, Desktop or Downloads,
+# so the launchd job runs a copy of this script from $STATE_DIR and is handed
+# the two things it would otherwise read from the repo (see install.sh).
+ORIGIN_URL="${OPERATOR_ORIGIN_URL:-}"
+STAGED_BUILD="${OPERATOR_STAGED_BUILD:-$IOS_DIR/build}"
 DEVICE="${OPERATOR_DEVICE_ID:-}"
 # "app.operator.ios" belongs to another Apple team, so a personal team
 # cannot register it. The phone build uses a prefix made from the team id
@@ -87,8 +92,16 @@ run_tick() {
   read_state
   log "tick branch=$BRANCH installed=${installed_sha:-none} force=$force"
 
-  git -C "$REPO" fetch -q origin "$BRANCH" || fail "git fetch origin $BRANCH"
-  local remote_sha; remote_sha=$(git -C "$REPO" rev-parse "origin/$BRANCH") || fail "rev-parse origin/$BRANCH"
+  # All git work happens in a clean checkout under $STATE_DIR, never in the
+  # working tree, so what lands on the phone is what is on GitHub.
+  local src="$STATE_DIR/checkout"
+  if [[ ! -d "$src/.git" ]]; then
+    local url="$ORIGIN_URL"
+    [[ -n "$url" ]] || url=$(git -C "$REPO" remote get-url origin) || fail "no origin url for $REPO"
+    git clone -q --no-checkout "$url" "$src" || fail "clone $url"
+  fi
+  git -C "$src" fetch -q origin "$BRANCH" || fail "git fetch origin $BRANCH"
+  local remote_sha; remote_sha=$(git -C "$src" rev-parse "origin/$BRANCH") || fail "rev-parse origin/$BRANCH"
 
   local action; action=$(decide "$remote_sha" "$installed_sha" "$installed_at" "$(date +%s)")
   [[ "$force" == 1 ]] && action=forced
@@ -100,21 +113,14 @@ run_tick() {
   local dev; dev=$(device_udid)
   [[ -n "$dev" ]] || fail "no paired iPhone: plug it in once and tap Trust"
 
-  # Build from a clean checkout of the exact commit, never from the working
-  # tree, so what lands on the phone is what is on GitHub.
-  local src="$STATE_DIR/checkout"
-  if [[ -d "$src/.git" ]]; then
-    git -C "$src" fetch -q origin "$BRANCH" && git -C "$src" checkout -q --detach "$remote_sha" || fail "checkout $remote_sha"
-  else
-    git clone -q --no-checkout "$(git -C "$REPO" remote get-url origin)" "$src" && git -C "$src" checkout -q --detach "$remote_sha" || fail "clone for $remote_sha"
-  fi
+  git -C "$src" checkout -q --detach "$remote_sha" || fail "checkout $remote_sha"
 
   # The Node runtime is staged per machine and ignored by git; the clean
-  # checkout borrows this repo's staged copy. The build's own check fails
-  # if that copy is older than the commit being built.
-  if [[ ! -e "$src/ios/build" ]]; then
-    [[ -d "$IOS_DIR/build/native-node" ]] || fail "no staged runtime at $IOS_DIR/build (run ios/Runtime/bootstrap.sh once)"
-    ln -s "$IOS_DIR/build" "$src/ios/build" || fail "link staged runtime"
+  # checkout borrows a staged copy. The build's own check fails if that copy
+  # is older than the commit being built.
+  [[ -d "$STAGED_BUILD/native-node" ]] || fail "no staged runtime at $STAGED_BUILD (run ios/Runtime/bootstrap.sh, then install.sh)"
+  if [[ -L "$src/ios/build" || ! -e "$src/ios/build" ]]; then
+    ln -sfn "$STAGED_BUILD" "$src/ios/build" || fail "link staged runtime"
   fi
 
   local destination="platform=iOS,id=$dev"

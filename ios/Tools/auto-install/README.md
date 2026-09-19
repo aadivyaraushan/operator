@@ -51,6 +51,16 @@ Merge to `main`, wait a few minutes, open Operator.
 - Only phones paired to this Mac. Your logins and chats survive updates;
   only deleting the app wipes them.
 
+## Why the job runs from a copy
+
+macOS does not let a background job read `~/Documents`, Desktop or
+Downloads. `install.sh` therefore copies `deploy.sh` and the staged runtime
+(`ios/build`, as a no-extra-space APFS clone) into
+`~/Library/Application Support/Operator/auto-install`, and the job does its
+git work in its own checkout there. Run `install.sh` again after editing
+`deploy.sh` or re-staging the runtime; a build that fails with "staged
+runtime is out of date" means the copy needs that refresh.
+
 ## Tests
 
 `test.sh` runs `deploy.sh` against stubbed `git`, `xcodebuild`, `xcrun`,

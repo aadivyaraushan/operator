@@ -43,34 +43,44 @@ check "same but stale"  '[[ $("$DEPLOY" decide aaa aaa 1000 $((1000 + 6*86400)))
 
 # First tick with nothing installed builds and installs the remote commit.
 reset; REMOTE_SHA=c0ffee "$DEPLOY" tick >/dev/null 2>&1
-check "first tick builds"   'rtk proxy grep -q "^xcodebuild" "$CALLS"'
-check "first tick installs" 'rtk proxy grep -q "devicectl device install app --device DEVICE-1" "$CALLS"'
-check "records sha"         'rtk proxy grep -q "installed_sha=c0ffee" "$OPERATOR_AUTO_INSTALL_STATE/state"'
-check "notifies installed"  'rtk proxy grep -q "osascript.*Installed" "$CALLS"'
+check "first tick builds"   'grep -q "^xcodebuild" "$CALLS"'
+check "first tick installs" 'grep -q "devicectl device install app --device DEVICE-1" "$CALLS"'
+check "records sha"         'grep -q "installed_sha=c0ffee" "$OPERATOR_AUTO_INSTALL_STATE/state"'
+check "notifies installed"  'grep -q "osascript.*Installed" "$CALLS"'
 
 # Same commit again, same day: nothing runs.
 : > "$CALLS"; REMOTE_SHA=c0ffee "$DEPLOY" tick >/dev/null 2>&1
-check "unchanged does nothing" '! rtk proxy grep -q "^xcodebuild" "$CALLS"'
+check "unchanged does nothing" '! grep -q "^xcodebuild" "$CALLS"'
 
 # `now` forces a build even when nothing changed.
 : > "$CALLS"; REMOTE_SHA=c0ffee "$DEPLOY" now >/dev/null 2>&1
-check "now forces build" 'rtk proxy grep -q "^xcodebuild" "$CALLS"'
+check "now forces build" 'grep -q "^xcodebuild" "$CALLS"'
 
 # Six days on, the same commit is reinstalled before the profile expires.
 printf 'installed_sha=c0ffee\ninstalled_at=%s\n' "$(( $(date +%s) - 6*86400 - 60 ))" > "$OPERATOR_AUTO_INSTALL_STATE/state"
 : > "$CALLS"; REMOTE_SHA=c0ffee "$DEPLOY" tick >/dev/null 2>&1
-check "stale reinstalls" 'rtk proxy grep -q "devicectl device install" "$CALLS"'
+check "stale reinstalls" 'grep -q "devicectl device install" "$CALLS"'
 
 # A failed build notifies and leaves the recorded install untouched.
 : > "$CALLS"; XCODEBUILD_EXIT=65 REMOTE_SHA=deadbeef "$DEPLOY" tick >/dev/null 2>&1
-check "build failure exits 1"   '[[ $? -ne 0 ]] || true; ! rtk proxy grep -q "devicectl device install" "$CALLS"'
-check "build failure notifies"  'rtk proxy grep -q "osascript.*Failed" "$CALLS"'
-check "build failure keeps sha" 'rtk proxy grep -q "installed_sha=c0ffee" "$OPERATOR_AUTO_INSTALL_STATE/state"'
+check "build failure exits 1"   '[[ $? -ne 0 ]] || true; ! grep -q "devicectl device install" "$CALLS"'
+check "build failure notifies"  'grep -q "osascript.*Failed" "$CALLS"'
+check "build failure keeps sha" 'grep -q "installed_sha=c0ffee" "$OPERATOR_AUTO_INSTALL_STATE/state"'
+
+# The launchd job cannot read the repo folder (macOS blocks ~/Documents for
+# background jobs). Given the repo's address and a staged runtime, a first
+# tick works with the repo path missing and never points git at it.
+reset; mkdir -p "$T/staged/native-node"
+: > "$CALLS"; OPERATOR_REPO="$T/unreadable" OPERATOR_ORIGIN_URL="https://example.invalid/repo.git" \
+  OPERATOR_STAGED_BUILD="$T/staged" REMOTE_SHA=abc123 "$DEPLOY" tick >/dev/null 2>&1
+check "no repo still installs" 'grep -q "devicectl device install" "$CALLS"'
+check "no repo never read"     '! grep -q "unreadable" "$CALLS"'
+check "no repo links runtime"  '[[ "$(readlink "$OPERATOR_AUTO_INSTALL_STATE/checkout/ios/build")" == "$T/staged" ]]'
 
 # No certificate: stops before building with a message naming the fix.
 stub security 'exit 1'
 : > "$CALLS"; REMOTE_SHA=feed01 "$DEPLOY" tick >"$T/out" 2>&1
-check "no cert explains" 'rtk proxy grep -q "sign into Xcode" "$T/out" && ! rtk proxy grep -q "^xcodebuild" "$CALLS"'
+check "no cert explains" 'grep -q "sign into Xcode" "$T/out" && ! grep -q "^xcodebuild" "$CALLS"'
 
 print "passed=$pass failed=$failn"
 rm -rf "$T"
