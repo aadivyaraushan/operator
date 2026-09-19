@@ -175,6 +175,9 @@ final class ScenarioDriverUITests: XCTestCase {
             // until the owner taps Continue. Nothing is granted by that tap.
             let cover = app.buttons["permissions-done"]
             if cover.exists, cover.isHittable { cover.tap() }
+            // The Home Screen widget step follows it once per install.
+            let widgetStep = app.buttons["widget-setup-done"]
+            if widgetStep.exists, widgetStep.isHittable { widgetStep.tap() }
             if app.buttons["Connect ChatGPT"].exists { throw DriverError.blocked("model-not-signed-in") }
             if app.staticTexts["Operator, Ready on this iPhone"].exists { return }
             Thread.sleep(forTimeInterval: 1)

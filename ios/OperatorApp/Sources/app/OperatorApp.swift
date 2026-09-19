@@ -60,6 +60,8 @@ struct OperatorApp: App {
     @StateObject private var conversations: MessageConversationService
     @StateObject private var messagesReadSetup: MessagesReadSetupModel
     @StateObject private var permissions: ConnectorPermissionCenter
+    @StateObject private var widgetSetup = WidgetSetupModel(
+        store: UserDefaultsWidgetSetupStore(), placement: SystemWidgetPlacement())
     @StateObject private var shortcutSend: ShortcutSendCoordinator
     private let locationNode: LocalLocationNodeGateway
     /// Answers the "Send to X on WhatsApp?" and "Operator has a question"
@@ -368,7 +370,7 @@ struct OperatorApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, discord: self.discord, canvas: self.canvas, canvasSession: self.canvasSession, permissions: self.permissions)
+            ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, discord: self.discord, canvas: self.canvas, canvasSession: self.canvasSession, permissions: self.permissions, widgetSetup: self.widgetSetup)
                 .environmentObject(self.messagesReadSetup)
                 .environmentObject(self.conversations)
                 .task(id: self.scenePhase) {
@@ -402,6 +404,7 @@ struct OperatorApp: App {
                     if phase == .active {
                         self.runtimeIsForeground = true
                         self.permissions.ownerReturnedToApp()
+                        Task { await self.widgetSetup.refresh() }
                     } else if phase == .background, !self.continuation.isActive, !self.shortcutSend.isSending {
                         self.runtimeIsForeground = false
                     }

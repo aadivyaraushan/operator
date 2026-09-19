@@ -63,6 +63,7 @@ struct ChatScreen: View {
     @ObservedObject var canvas: CanvasAccountSetupModel
     let canvasSession: CanvasSessionStore
     @ObservedObject var permissions: ConnectorPermissionCenter
+    @ObservedObject var widgetSetup: WidgetSetupModel
     @EnvironmentObject private var conversations: MessageConversationService
     @State private var isConnectionsPresented = false
     @State private var isPermissionsPresented = false
@@ -78,6 +79,12 @@ struct ChatScreen: View {
     /// True from the person's touch until the scroll it started comes to
     /// rest; the app's own animated scrolls never set it.
     @State private var isPersonScrolling = false
+
+    private var firstRunStep: FirstRunStep? {
+        FirstRunStep(
+            permissionsDone: self.permissions.hasCompletedOnboarding,
+            widgetStepDue: self.widgetSetup.isDue)
+    }
 
     /// "Signed in" / "Not signed in" for the Permissions page's account rows.
     private func accountStatus(_ id: ConnectorID) -> String? {
@@ -277,6 +284,7 @@ struct ChatScreen: View {
         .preferredColorScheme(.dark)
         .task {
             self.model.restore()
+            await self.widgetSetup.refresh()
             await self.setup.check()
         }
         .sheet(
@@ -288,17 +296,25 @@ struct ChatScreen: View {
                     .operatorSheetStyle()
         }
         // First launch: the Permissions page before anything else, with
-        // nothing selected. A cover rather than a sheet so it can coexist with
-        // the model-setup sheet on the same view and cannot be swiped away.
+        // nothing selected, then the Home Screen widget step. One cover whose
+        // content changes, so moving between steps does not close and reopen
+        // it. A cover rather than a sheet so it can coexist with the
+        // model-setup sheet on the same view and cannot be swiped away.
         .fullScreenCover(isPresented: Binding(
-            get: { !self.permissions.hasCompletedOnboarding },
-            set: { if !$0 { self.permissions.completeOnboarding() } }))
+            get: { self.firstRunStep != nil },
+            set: { _ in }))
         {
-            ConnectorPermissionsScreen(
-                center: self.permissions, mode: .onboarding,
-                accountStatus: self.accountStatus,
-                onDone: { self.permissions.completeOnboarding() })
+            switch self.firstRunStep {
+            case .permissions, nil:
+                ConnectorPermissionsScreen(
+                    center: self.permissions, mode: .onboarding,
+                    accountStatus: self.accountStatus,
+                    onDone: { self.permissions.completeOnboarding() })
                     .operatorSheetStyle()
+            case .widget:
+                WidgetSetupScreen(model: self.widgetSetup)
+                    .operatorSheetStyle()
+            }
         }
     }
 }
