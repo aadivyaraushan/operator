@@ -92,6 +92,15 @@ final class ForegroundIncomingMessagesServiceTests: XCTestCase {
         XCTAssertNil(RecordIncomingMessageIntent.sharedShortcut(forBundleID: nil))
     }
 
+    func testASavedNameFromAnotherBuildsShortcutIsDropped() {
+        let phone = "app.operator.d847cbtr4k.ios"
+        XCTAssertNil(RecordIncomingMessageIntent.savedNameToKeep("Automation 6A0C5F28-28AA-4920-88F5-9ADCE0CFEDC8", bundleID: phone))
+        XCTAssertNil(RecordIncomingMessageIntent.savedNameToKeep("OperatorRecordMessage", bundleID: phone))
+        XCTAssertNil(RecordIncomingMessageIntent.savedNameToKeep("  ", bundleID: phone))
+        XCTAssertEqual(RecordIncomingMessageIntent.savedNameToKeep("My own name", bundleID: phone), "My own name")
+        XCTAssertEqual(RecordIncomingMessageIntent.savedNameToKeep("Operator Read Messages", bundleID: phone), "Operator Read Messages")
+    }
+
     func testTheCatalogGatesTheFeedBehindTheMessagesReadGrant() throws {
         let messages = ConnectorCatalog.descriptor(.messages)
         XCTAssertEqual(messages.readCommands, ["messages.incoming", "messages.conversations", "messages.conversation.review"])

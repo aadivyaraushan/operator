@@ -54,7 +54,12 @@ struct MessagesReadSetupCard: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(OperatorBrand.fill, in: RoundedRectangle(cornerRadius: 12))
-        .onAppear { self.model.refresh() }
+        .onAppear {
+            if RecordIncomingMessageIntent.savedNameToKeep(self.shortcutName, bundleID: Bundle.main.bundleIdentifier) == nil {
+                self.shortcutName = RecordIncomingMessageIntent.installedShortcutName
+            }
+            self.model.refresh()
+        }
         .onChange(of: self.scenePhase) { _, phase in
             if phase == .active { self.model.refresh() }
         }

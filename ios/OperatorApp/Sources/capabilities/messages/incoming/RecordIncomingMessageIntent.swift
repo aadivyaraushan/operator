@@ -62,6 +62,16 @@ struct RecordIncomingMessageIntent: AppIntent {
         self.sharedShortcut(forBundleID: Bundle.main.bundleIdentifier)?.name ?? self.shortcutName
     }
 
+    /// A saved name that is only an old default (another build's shortcut, or
+    /// the pre-link name) points at nothing on this phone, so it is dropped
+    /// and the build's own default applies. A name the person chose is kept.
+    static func savedNameToKeep(_ saved: String?, bundleID: String?) -> String? {
+        guard let name = saved?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else { return nil }
+        let own = self.sharedShortcut(forBundleID: bundleID)?.name
+        let oldDefaults = Set(self.sharedShortcuts.values.map(\.name) + [self.shortcutName]).subtracting([own].compactMap { $0 })
+        return oldDefaults.contains(name) ? nil : name
+    }
+
     static var parameterSummary: some ParameterSummary {
         Summary("Record \(\.$text) from \(\.$sender)")
     }
