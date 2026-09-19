@@ -63,6 +63,7 @@
 		510FE7CC8405903186315A37 /* 8-incoming.wav in Resources */ = {isa = PBXBuildFile; fileRef = C6869C7C2A35040D0FD75CA5 /* 8-incoming.wav */; };
 		51CA3CEBD2D01EEDDDE59361 /* NativeNodePolicySetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC48EC3F7F6A86D929580925 /* NativeNodePolicySetup.swift */; };
 		5261B89CDC4B182A3DD354CD /* OperatorChatAppIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0BE63C783B303D5917456BF /* OperatorChatAppIntent.swift */; };
+		52EA35981C5E3B285D565DC2 /* ConnectorSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DBDD82392AE761A2DA8CDAA /* ConnectorSearch.swift */; };
 		52EE676125D9AE8A4C2C7739 /* EmbeddedNodeBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = D95163B738996C27B0B31D3E /* EmbeddedNodeBridge.mm */; };
 		52FFFBC4FEC8F639AAEBC743 /* MessageConversationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30C38F75D8715290D5C162D /* MessageConversationService.swift */; };
 		53B4DE4EF165DB133FA8D2EC /* ForegroundMessageDispatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BECAAB613F39B7900BC7D5 /* ForegroundMessageDispatchService.swift */; };
@@ -90,6 +91,7 @@
 		6C9023EB6B08D517592E775B /* ChatSessionModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1593E68D6DA83F3D5323D640 /* ChatSessionModelTests.swift */; };
 		6F7C298CE357A811ECDE14F0 /* CanvasSchoolFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60EC1BB7DB0F5BA6E7B552BD /* CanvasSchoolFinder.swift */; };
 		712D9DC4FDCABF688DC15ED6 /* ForegroundWhatsAppComposeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 024EB25ABFAFDEDC1DC27761 /* ForegroundWhatsAppComposeService.swift */; };
+		718FD2C9B1B1327A7B9D3D74 /* ConnectorSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFF6553E80E3274159C3D0B1 /* ConnectorSearchTests.swift */; };
 		7397AF59998DAA6CE46F6CBD /* WidgetSetupModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278BEFE13A3080849B226FA3 /* WidgetSetupModelTests.swift */; };
 		76ACD6E1A4470AC81B451EE2 /* android-handoff-catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = E10DAC4EEE0D33DB1BF4B953 /* android-handoff-catalog.json */; };
 		772E73F811680AF7BE4D6BBC /* AppLaunchByNameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EF10EFF9B95D4B5220783B /* AppLaunchByNameTests.swift */; };
@@ -327,6 +329,7 @@
 		4BAB6C47A3CB9EBFF1FBFE7C /* OperatorBrandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorBrandTests.swift; sourceTree = "<group>"; };
 		4BE69740E2DDC14AE4876FE3 /* LoopbackPort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopbackPort.swift; sourceTree = "<group>"; };
 		4CB89572B23DFFD774B38433 /* LocalOpenClawChatGateway.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalOpenClawChatGateway.swift; sourceTree = "<group>"; };
+		4DBDD82392AE761A2DA8CDAA /* ConnectorSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorSearch.swift; sourceTree = "<group>"; };
 		4E74572867DECC093943D68B /* ReplyContinuationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyContinuationTests.swift; sourceTree = "<group>"; };
 		4F4D32786B344D6642DF4CC5 /* ChatContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatContracts.swift; sourceTree = "<group>"; };
 		4F9492520A3BA851A694A077 /* NativeAccountConnectionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAccountConnectionSheet.swift; sourceTree = "<group>"; };
@@ -398,6 +401,7 @@
 		ACA417B76B5DE642B37CAF40 /* ForegroundMessageSendService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMessageSendService.swift; sourceTree = "<group>"; };
 		ACD3BF174C61DCD51A284D39 /* ReplyNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyNotifier.swift; sourceTree = "<group>"; };
 		ACFF1BFA1B93A23124BC4821 /* OAuthTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthTypes.swift; sourceTree = "<group>"; };
+		AFF6553E80E3274159C3D0B1 /* ConnectorSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorSearchTests.swift; sourceTree = "<group>"; };
 		B190A75E3B7CA632BCC26163 /* MessageConversationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageConversationServiceTests.swift; sourceTree = "<group>"; };
 		B2AC238B49B32CBE9B26A294 /* WhatsAppSendGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsAppSendGuard.swift; sourceTree = "<group>"; };
 		B3ABBDCA8280EFA20982CA4B /* NativeWhatsAppReadClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWhatsAppReadClient.swift; sourceTree = "<group>"; };
@@ -648,6 +652,14 @@
 				EE6353F222861E64E1856902 /* ModelSetupFlow.swift */,
 			);
 			path = "model-setup";
+			sourceTree = "<group>";
+		};
+		26BF149B229E3A1F3D7254AC /* search */ = {
+			isa = PBXGroup;
+			children = (
+				4DBDD82392AE761A2DA8CDAA /* ConnectorSearch.swift */,
+			);
+			path = search;
 			sourceTree = "<group>";
 		};
 		296C5B82D3FBACAFC0770301 /* widget-setup */ = {
@@ -919,6 +931,7 @@
 			isa = PBXGroup;
 			children = (
 				3EF11DDA8E39598571DF3662 /* ConnectorPermissionCenterTests.swift */,
+				ADC5AFD52F4B3FC2C4594848 /* search */,
 			);
 			path = permissions;
 			sourceTree = "<group>";
@@ -1334,6 +1347,14 @@
 			path = connections;
 			sourceTree = "<group>";
 		};
+		ADC5AFD52F4B3FC2C4594848 /* search */ = {
+			isa = PBXGroup;
+			children = (
+				AFF6553E80E3274159C3D0B1 /* ConnectorSearchTests.swift */,
+			);
+			path = search;
+			sourceTree = "<group>";
+		};
 		B36DD4380A3EBE0DF88E96A6 /* notion */ = {
 			isa = PBXGroup;
 			children = (
@@ -1489,6 +1510,7 @@
 				F0F154D523ECF9750E20A2FF /* ConnectorPermissionCenter.swift */,
 				DDB2224A771339FACE9D92A1 /* ConnectorPermissionsScreen.swift */,
 				9C1F2FCE90E94275E45355B3 /* SystemPermissionStatus.swift */,
+				26BF149B229E3A1F3D7254AC /* search */,
 			);
 			path = permissions;
 			sourceTree = "<group>";
@@ -1665,7 +1687,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_1629429D-28EC-4AA2-9DD6-866CFB1414D9" /* embedded */ = {
+		"TEMP_F66B4529-548E-4E1F-83E7-ED9EFD2D5C34" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1869,6 +1891,7 @@
 				2530AFBDD691D4AF8E09F995 /* ChatThoughtTests.swift in Sources */,
 				C769F0BD6B3A535DF4FBF71B /* ConnectionDiscoveryServiceTests.swift in Sources */,
 				632B8D75D08511C4EA7504B4 /* ConnectorPermissionCenterTests.swift in Sources */,
+				718FD2C9B1B1327A7B9D3D74 /* ConnectorSearchTests.swift in Sources */,
 				B3F1BA861DEC2AF017E5D534 /* DirectAccountReaderTests.swift in Sources */,
 				395D50541DEC9FDE178F3E26 /* DirectAccountWriterTests.swift in Sources */,
 				D2FE39CC2CD3BFD24A275863 /* DiscordAnnouncementsTests.swift in Sources */,
@@ -1941,6 +1964,7 @@
 				E22D73D46AE2578EC82732C5 /* ChatThought.swift in Sources */,
 				A6E6C7B92112253D286B93C1 /* ConnectorPermissionCenter.swift in Sources */,
 				ECBBBC8D9BA30AE9CE677123 /* ConnectorPermissionsScreen.swift in Sources */,
+				52EA35981C5E3B285D565DC2 /* ConnectorSearch.swift in Sources */,
 				21ED022EAD1A55D2D1865494 /* CoreChatPersistence.swift in Sources */,
 				7C1396A6AB48DB5C2765FA5C /* DirectAccountReader.swift in Sources */,
 				86356378289DD18125034702 /* DirectAccountWriter.swift in Sources */,

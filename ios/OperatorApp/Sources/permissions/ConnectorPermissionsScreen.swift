@@ -12,11 +12,38 @@ struct ConnectorPermissionsScreen: View {
     /// "Signed in" / "Not signed in" for connectors that need an account; nil otherwise.
     let accountStatus: (ConnectorID) -> String?
     let onDone: () -> Void
+    @State private var query = ""
+
+    private var isSearching: Bool {
+        !self.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var found: [ConnectorDescriptor] {
+        ConnectorSearch.matches(in: ConnectorCatalog.all, query: self.query)
+    }
 
     var body: some View {
         NavigationStack {
             List {
                 Group {
+                Section {
+                    ConnectorSearchField(query: self.$query)
+                }
+                .listRowSeparator(.hidden)
+                if self.isSearching {
+                    Section {
+                        if self.found.isEmpty {
+                            Text("Nothing called \u{201C}\(self.query.trimmingCharacters(in: .whitespacesAndNewlines))\u{201D}.")
+                                .font(OperatorLettering.font(.subheadline))
+                                .foregroundStyle(OperatorBrand.muted)
+                        }
+                        ForEach(self.found) { descriptor in
+                            ConnectorRow(
+                                descriptor: descriptor, center: self.center,
+                                status: descriptor.requiresAccount ? self.accountStatus(descriptor.id) : nil)
+                        }
+                    }
+                } else {
                 Section {
                     Text(self.mode == .onboarding
                         ? "Operator starts with no access to anything on this iPhone. Turn on only what you want it to reach. Nothing is selected yet, and you can allow anything later from Settings, or when Operator asks in chat."
@@ -58,6 +85,7 @@ struct ConnectorPermissionsScreen: View {
                     } header: { SectionKicker("This session") }
                 }
                 }
+                }
                 .listRowBackground(Color.clear)
             }
             .listStyle(.plain)
@@ -86,6 +114,36 @@ struct ConnectorPermissionsScreen: View {
                 }
             }
         }
+    }
+}
+
+/// The search field at the top of the page, in the composer's shape.
+private struct ConnectorSearchField: View {
+    @Binding var query: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(OperatorBrand.dim)
+                .keepsShape()
+            TextField("Search apps", text: self.$query)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .accessibilityIdentifier("permissions-search")
+            if !self.query.isEmpty {
+                Button { self.query = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(OperatorBrand.dim)
+                        .keepsShape()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(OperatorBrand.fill, in: Capsule())
     }
 }
 
