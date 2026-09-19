@@ -51,6 +51,13 @@ struct RecordIncomingMessageIntent: AppIntent {
 
     func perform() async throws -> some IntentResult {
         let logger = Logger(subsystem: "app.operator.ios", category: "incoming-messages")
+        if self.text.trimmingCharacters(in: .whitespacesAndNewlines) == ShortcutCheck.recordMarker {
+            // A test run from Permissions: proof the shortcut is installed
+            // and reaches Operator. Nothing is filed.
+            UserDefaultsShortcutCheckStore().noteRecordActionRan(at: Date())
+            logger.info("[shortcut-check] record action ran for a check")
+            return .result()
+        }
         let recorded = IncomingMessageStore.standard().record(sender: self.sender ?? "", text: self.text)
         if let recorded {
             do {

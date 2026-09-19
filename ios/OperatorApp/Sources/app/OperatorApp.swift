@@ -63,6 +63,7 @@ struct OperatorApp: App {
     @StateObject private var widgetSetup = WidgetSetupModel(
         store: UserDefaultsWidgetSetupStore(), placement: SystemWidgetPlacement())
     @StateObject private var shortcutSend: ShortcutSendCoordinator
+    @StateObject private var shortcutCheck: ShortcutInstallChecker
     private let locationNode: LocalLocationNodeGateway
     /// Answers the "Send to X on WhatsApp?" and "Operator has a question"
     /// notifications; the notification center holds its delegate weakly, so
@@ -364,6 +365,7 @@ struct OperatorApp: App {
         self.canvasSession = canvasSession
         _permissions = StateObject(wrappedValue: permissions)
         _shortcutSend = StateObject(wrappedValue: shortcutSend)
+        _shortcutCheck = StateObject(wrappedValue: ShortcutInstallChecker(coordinator: shortcutSend, store: UserDefaultsShortcutCheckStore()))
         _whatsapp = StateObject(wrappedValue: WhatsAppLinkFlowModel(
             gateway: NativeWhatsAppLinkClient(supportDirectory: supportDirectory)))
     }
@@ -372,6 +374,7 @@ struct OperatorApp: App {
         WindowGroup {
             ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, discord: self.discord, canvas: self.canvas, canvasSession: self.canvasSession, permissions: self.permissions, widgetSetup: self.widgetSetup)
                 .environmentObject(self.messagesReadSetup)
+                .environmentObject(self.shortcutCheck)
                 .environmentObject(self.conversations)
                 .task(id: self.scenePhase) {
                     guard self.scenePhase == .active else { return }
@@ -391,11 +394,16 @@ struct OperatorApp: App {
                         case "error": .error
                         default: .cancel
                         }
+                        // A test run from Permissions is not a send, so it
+                        // stays out of the activity log.
+                        let wasCheck = self.shortcutCheck.isChecking
                         self.shortcutSend.resolve(resolved, message: detail.message)
-                        self.permissions.recordExternalOutcome(
-                            connector: .messagesAutosend, access: .write,
-                            command: "\(GatewayNativeNodeSurface.messageSendCommand) shortcut \(detail.outcome)",
-                            succeeded: detail.outcome == "success")
+                        if !wasCheck {
+                            self.permissions.recordExternalOutcome(
+                                connector: .messagesAutosend, access: .write,
+                                command: "\(GatewayNativeNodeSurface.messageSendCommand) shortcut \(detail.outcome)",
+                                succeeded: detail.outcome == "success")
+                        }
                     }
                 }
                 .onChange(of: self.scenePhase, initial: true) { _, phase in
@@ -403,7 +411,6 @@ struct OperatorApp: App {
                     self.lifecycleLogger.info("[scene] phase=\(String(describing: phase), privacy: .public) continuation=\(self.continuation.isActive)")
                     if phase == .active {
                         self.runtimeIsForeground = true
-                        self.permissions.ownerReturnedToApp()
                         Task { await self.widgetSetup.refresh() }
                     } else if phase == .background, !self.continuation.isActive, !self.shortcutSend.isSending {
                         self.runtimeIsForeground = false

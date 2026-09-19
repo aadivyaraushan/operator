@@ -122,12 +122,18 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
         guard let input = try? JSONSerialization.data(withJSONObject: ["to": to, "body": body], options: [.sortedKeys]),
               let text = String(data: input, encoding: .utf8)
         else { return nil }
+        return self.runURL(shortcutName: self.shortcutName, text: text)
+    }
+
+    /// Runs the named shortcut with `text` as its input and Operator's own
+    /// scheme as the return address.
+    static func runURL(shortcutName: String, text: String) -> URL? {
         var components = URLComponents()
         components.scheme = "shortcuts"
         components.host = "x-callback-url"
         components.path = "/run-shortcut"
         components.queryItems = [
-            .init(name: "name", value: self.shortcutName),
+            .init(name: "name", value: shortcutName),
             .init(name: "input", value: "text"),
             .init(name: "text", value: text),
             .init(name: "x-success", value: "\(self.callbackScheme)://\(self.callbackHost)/success"),

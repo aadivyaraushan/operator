@@ -47,8 +47,10 @@ final class ShortcutSendCoordinator: ObservableObject {
     }
 
     /// Opens the shortcut and waits for its callback. Returns `couldNotOpen`
-    /// when the URL will not open (no shortcut), without ever waiting.
-    func send(_ url: URL) async -> Completion {
+    /// when the URL will not open (no shortcut), without ever waiting. A test
+    /// run passes a shorter `timeout` than a real send gets.
+    func send(_ url: URL, timeout: Duration? = nil) async -> Completion {
+        let timeout = timeout ?? self.timeout
         guard self.pending == nil else {
             // One send at a time; the guard (20 s apart) makes overlap rare,
             // and a second send while one is out is treated as unopenable
@@ -67,7 +69,7 @@ final class ShortcutSendCoordinator: ObservableObject {
         let completion = await withCheckedContinuation { (continuation: CheckedContinuation<Completion, Never>) in
             self.pending = continuation
             self.timeoutTask = Task { [weak self] in
-                try? await Task.sleep(for: self?.timeout ?? .seconds(180))
+                try? await Task.sleep(for: timeout)
                 self?.resolve(.timedOut)
             }
         }

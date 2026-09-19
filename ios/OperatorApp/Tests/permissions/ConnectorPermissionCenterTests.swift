@@ -245,22 +245,4 @@ final class ConnectorPermissionCenterTests: XCTestCase {
         XCTAssertEqual(PermissionGuardedNodeCommandHandler.decisionWait(maximum: .seconds(45), timeoutMilliseconds: 2_000), .zero)
         XCTAssertEqual(PermissionGuardedNodeCommandHandler.decisionWait(maximum: .seconds(45), timeoutMilliseconds: nil), .seconds(25))
     }
-
-    func testComingBackFromInstallingTheShortcutAsksForTheAutosendGrant() async throws {
-        let center = ConnectorPermissionCenter(store: MemoryStore())
-        center.ownerReturnedToApp()
-        XCTAssertFalse(center.isGranted(.messagesAutosend, .write), "returning without an install changes nothing")
-        XCTAssertNil(center.acknowledgementRequired)
-
-        center.shortcutInstallStarted(for: .messagesAutosend)
-        center.ownerReturnedToApp()
-        // Through requestGrant: granted outright, or held behind its warning.
-        XCTAssertTrue(center.isGranted(.messagesAutosend, .write) || center.acknowledgementRequired?.connector == .messagesAutosend)
-
-        center.declineAcknowledgement()
-        center.set(.messagesAutosend, .write, allowed: false)
-        center.ownerReturnedToApp()
-        XCTAssertFalse(center.isGranted(.messagesAutosend, .write), "one install, one ask")
-        XCTAssertNil(center.acknowledgementRequired)
-    }
 }

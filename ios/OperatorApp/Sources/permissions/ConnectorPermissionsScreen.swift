@@ -309,15 +309,19 @@ private struct ConnectorRow: View {
                             .font(OperatorLettering.font(.caption))
                             .foregroundStyle(OperatorBrand.muted)
                     }
+                    ShortcutInstallStatusRow(shortcut: .record)
                     MessagesReadSetupStatus(readGranted: self.readGranted)
+                }
+                if self.descriptor.id == .messagesAutosend {
+                    ShortcutInstallStatusRow(shortcut: .send) {
+                        if !self.center.isGranted(.messagesAutosend, .write) {
+                            self.center.requestGrant(.messagesAutosend, .write, allowed: true)
+                        }
+                    }
                 }
                 HStack(spacing: 16) {
                     if self.descriptor.id == .messagesAutosend {
-                        Button("Install shortcut") {
-                            self.center.shortcutInstallStarted(for: self.descriptor.id)
-                            self.openURL(ForegroundMessageSendService.installURL)
-                        }
-                            .buttonStyle(.borderless)
+                        Link("Install shortcut", destination: ForegroundMessageSendService.installURL)
                             .font(OperatorLettering.font(.caption, .medium))
                             .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-install")
                     }
@@ -453,7 +457,7 @@ private struct MessagesReadSetupStatus: View {
 }
 
 private struct MessagesAutomationPrompt: View {
-    @State private var shortcutName = RecordIncomingMessageIntent.installedShortcutName
+    @AppStorage(ShortcutInstallStatusRow.recordNameKey) private var shortcutName = RecordIncomingMessageIntent.installedShortcutName
     @State private var copied = false
 
     private var selectedName: String {
