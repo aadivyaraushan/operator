@@ -26,7 +26,7 @@ push to main ──▶ Mac job (every 5 min) ──▶ new commit or install >6 
    `xcrun devicectl list devices`.
 4. Register the job:
    ```
-   ios/Tools/auto-install/install.sh
+   OPERATOR_AUTO_INSTALL_BRANCH=<branch> ios/Tools/auto-install/install.sh
    ```
    It runs a first build and install straight away.
 

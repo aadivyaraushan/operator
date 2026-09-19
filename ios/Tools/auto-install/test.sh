@@ -12,7 +12,8 @@ export OPERATOR_AUTO_INSTALL_DERIVED="$T/derived"
 export OPERATOR_REPO="$T/repo"
 export OPERATOR_DEVICE_ID="DEVICE-1"
 export CALLS="$T/calls"
-mkdir -p "$OPERATOR_REPO"
+# The build borrows the staged runtime from the repo's ios/build.
+mkdir -p "$OPERATOR_REPO/ios/build/native-node"
 : > "$CALLS"
 
 stub() { printf '#!/bin/zsh\nprint -r -- "%s $*" >> "$CALLS"\n%s\n' "$1" "$2" > "$STUBS/$1"; chmod +x "$STUBS/$1"; }
@@ -20,7 +21,7 @@ stub git '
 case "$*" in
   *"rev-parse origin/main"*) print "$REMOTE_SHA" ;;
   *"remote get-url"*) print "https://example.invalid/repo.git" ;;
-  *"clone"*) mkdir -p "${@[-1]}/.git" ;;
+  *"clone"*) mkdir -p "${@[-1]}/.git" "${@[-1]}/ios" ;;
   *"log -1"*) print "subject line" ;;
 esac
 exit 0'

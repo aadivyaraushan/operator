@@ -7,6 +7,8 @@ SCRIPT_DIR="${0:A:h}"
 LABEL="app.operator.auto-install"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 STATE_DIR="$HOME/Library/Application Support/Operator/auto-install"
+# The branch the job follows is fixed when it is registered.
+BRANCH="${OPERATOR_AUTO_INSTALL_BRANCH:-main}"
 
 if [[ "${1:-}" == remove ]]; then
   launchctl bootout "gui/$(id -u)" "$PLIST" 2>/dev/null || true
@@ -29,11 +31,14 @@ cat > "$PLIST" <<EOF
   <key>StandardOutPath</key><string>$STATE_DIR/launchd.out</string>
   <key>StandardErrorPath</key><string>$STATE_DIR/launchd.err</string>
   <key>EnvironmentVariables</key>
-  <dict><key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin</string></dict>
+  <dict>
+    <key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin</string>
+    <key>OPERATOR_AUTO_INSTALL_BRANCH</key><string>$BRANCH</string>
+  </dict>
 </dict>
 </plist>
 EOF
 
 launchctl bootout "gui/$(id -u)" "$PLIST" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
-print "installed $LABEL: polls origin/main every 5 minutes; log at $STATE_DIR/deploy.log"
+print "installed $LABEL: polls origin/$BRANCH every 5 minutes; log at $STATE_DIR/deploy.log"
