@@ -446,9 +446,7 @@ private struct MessageBubble: View {
                         .background(OperatorBrand.fillStrong, in: PersonBubbleShape())
                         .padding(.leading, 48)
                 } else {
-                    Text(ChatMessageText.displayText(for: self.message))
-                        .textSelection(.enabled)
-                        .lineSpacing(4)
+                    AssistantReplyView(text: self.message.text)
                         .padding(.horizontal, 2)
                 }
             }
@@ -500,9 +498,7 @@ private struct ActivityBubble: View {
             }
             if let text {
                 HStack(alignment: .bottom, spacing: 8) {
-                    Text(ChatMessageText.assistantText(text))
-                        .textSelection(.enabled)
-                        .lineSpacing(4)
+                    AssistantReplyView(text: text)
                         .padding(.horizontal, 2)
                     ProgressView()
                         .controlSize(.small)

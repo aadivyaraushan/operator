@@ -9,6 +9,9 @@ settings:
 packages:
   OperatorCore:
     path: OperatorCore
+  SwiftMath:
+    url: https://github.com/mgriebling/SwiftMath
+    exactVersion: 1.7.3
 schemes:
   OperatorApp:
     build:
@@ -104,6 +107,7 @@ targets:
       - framework: build/native-node/NodeMobile.xcframework
         embed: true
       - package: OperatorCore
+      - package: SwiftMath
       - target: OperatorWidget
         embed: true
       - sdk: AVFAudio.framework
