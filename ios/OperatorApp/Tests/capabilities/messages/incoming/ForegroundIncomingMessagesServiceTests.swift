@@ -82,11 +82,12 @@ final class ForegroundIncomingMessagesServiceTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: checkedIn.path), checkedIn.path)
     }
 
-    func testTheCatalogGatesTheFeedBehindTheMessagesReadGrant() {
+    func testTheCatalogGatesTheFeedBehindTheMessagesReadGrant() throws {
         let messages = ConnectorCatalog.descriptor(.messages)
         XCTAssertEqual(messages.readCommands, ["messages.incoming", "messages.conversations", "messages.conversation.review"])
         XCTAssertNil(messages.readAcknowledgement, "Apple's own automation: no ban warning")
-        XCTAssertTrue((messages.setupInstructions ?? "").contains("Check setup"))
+        let setup = try XCTUnwrap(messages.setupInstructions)
+        XCTAssertLessThan(setup.count, 200, "the steps live in the setup card; this is one short line above it")
         XCTAssertEqual(ConnectorCatalog.requirement(for: "messages.incoming", paramsJSON: nil), .access(.messages, .read))
         XCTAssertTrue(GatewayNativeNodeSurface.commands.contains("messages.incoming"))
         XCTAssertTrue(GatewayNativeNodeSurface.commandPolicyAllow.contains("messages.incoming"))

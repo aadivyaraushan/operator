@@ -150,13 +150,7 @@ public enum ConnectorCatalog {
               writeSummary: "Open a text with the recipient and message filled in. You tap Send.",
               readCommands: ["messages.incoming", "messages.conversations", "messages.conversation.review"], writeCommands: ["sms.compose", "messages.conversation"],
               systemPermission: nil, requiresAccount: false,
-              setupInstructions: """
-              1. Turn on Read. Tap Install shortcut, then Add Shortcut. Keep this shortcut: the automation will call it.
-              2. Tap Copy setup prompt below. In Shortcuts on iOS 27, tap + → Describe a Shortcut and paste it.
-              3. Generate the automation. When the first matching text arrives, tap Allow to let the installed shortcut run Operator’s actions.
-              4. Receive a new two-word text, return here, and tap Check setup. Confirm that new text and its time appear below; an older saved text does not verify this automation.
-              The prompt matches texts containing a space. One-word and emoji-only texts may be missed. Texts are kept for up to 14 days; messages sent directly in Messages are unavailable.
-              """),
+              setupInstructions: "Reading texts needs a shortcut that hands each new text to Operator. One-word texts are missed. Texts are kept for 14 days."),
         .init(id: .messagesAutosend, title: "Messages, sent for you",
               readSummary: nil,
               writeSummary: "When the agent texts someone, or a group of up to ten, send it with no confirmation tap through a shortcut you install once, instead of opening the composer. Also needs Messages > Act. Operator cannot see whether it was delivered, and a message the agent was tricked into writing goes out the same way.",

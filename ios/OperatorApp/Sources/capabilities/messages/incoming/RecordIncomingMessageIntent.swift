@@ -36,7 +36,7 @@ struct RecordIncomingMessageIntent: AppIntent {
             : nil
     }
     static let buildByHandSteps = """
-        This copy of Operator cannot use the shared shortcut, so make it once by hand: in Shortcuts tap +, add Operator's "Record incoming message" action, set Message to Shortcut Input and Sender to Shortcut Input's Sender, and name the shortcut. Enter that name under "Renamed the installed shortcut?" and tap Check.
+        This copy of Operator has no install link. In Shortcuts tap +, then Automation, then Message, and set "Message contains" to one space. Add Operator's "Record incoming message" with Message and the Message's Sender. Enter the shortcut's name below.
         """
     /// Actual title served by installURL; update together when re-sharing.
     static let installedShortcutName = "Automation 6A0C5F28-28AA-4920-88F5-9ADCE0CFEDC8"

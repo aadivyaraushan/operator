@@ -106,6 +106,7 @@
 		76ACD6E1A4470AC81B451EE2 /* android-handoff-catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = E10DAC4EEE0D33DB1BF4B953 /* android-handoff-catalog.json */; };
 		772E73F811680AF7BE4D6BBC /* AppLaunchByNameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EF10EFF9B95D4B5220783B /* AppLaunchByNameTests.swift */; };
 		79D6EEA191EB7EA5D764E9F0 /* OperatorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243883C3810544B3A49A5C08 /* OperatorApp.swift */; };
+		7A124B4143768745840315E5 /* MessagesReadSetupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 106395F9B718921F6DF2F2B9 /* MessagesReadSetupCard.swift */; };
 		7A5FC37C38EB66A613C815EB /* WidgetSetupModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4159839B06859323F405C0F /* WidgetSetupModel.swift */; };
 		7C1396A6AB48DB5C2765FA5C /* DirectAccountReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC37EE7F222735D21673BC20 /* DirectAccountReader.swift */; };
 		7E7266219A2988B47B66BD18 /* NodeMobile.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1EF691B8528973A5181E5FD0 /* NodeMobile.xcframework */; };
@@ -295,6 +296,7 @@
 		0D110B013C1385F86E6F737B /* Simulator.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Simulator.entitlements; sourceTree = "<group>"; };
 		0E77E76B97FC6B2426E17FD3 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		0FCA0F3AC82EAE545D2FA2D2 /* DiscordAnnouncementsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordAnnouncementsTests.swift; sourceTree = "<group>"; };
+		106395F9B718921F6DF2F2B9 /* MessagesReadSetupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesReadSetupCard.swift; sourceTree = "<group>"; };
 		113233474842E4002A937715 /* ShortcutCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutCheck.swift; sourceTree = "<group>"; };
 		118FA0ABECAC9C00434C1F4B /* 3-done.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "3-done.wav"; sourceTree = "<group>"; };
 		157651016BAB0A979CB17300 /* ForegroundContactCreateServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundContactCreateServiceTests.swift; sourceTree = "<group>"; };
@@ -1082,6 +1084,14 @@
 			path = discord;
 			sourceTree = "<group>";
 		};
+		6B7E0ABA98D0918DC70F1ADB /* messages-read-setup */ = {
+			isa = PBXGroup;
+			children = (
+				106395F9B718921F6DF2F2B9 /* MessagesReadSetupCard.swift */,
+			);
+			path = "messages-read-setup";
+			sourceTree = "<group>";
+		};
 		6D6899722BAF147CD0E71BB4 /* contacts */ = {
 			isa = PBXGroup;
 			children = (
@@ -1589,6 +1599,7 @@
 				D8F565757F221328C3309CBA /* MessageWriteModePicker.swift */,
 				C763A4845631FA3BD81FC6CE /* ShortcutInstallStatusRow.swift */,
 				9C1F2FCE90E94275E45355B3 /* SystemPermissionStatus.swift */,
+				6B7E0ABA98D0918DC70F1ADB /* messages-read-setup */,
 				26BF149B229E3A1F3D7254AC /* search */,
 			);
 			path = permissions;
@@ -1788,7 +1799,7 @@
 			path = "shortcut-check";
 			sourceTree = "<group>";
 		};
-		"TEMP_1608A518-E2AB-4432-BC1C-91539462B6C0" /* embedded */ = {
+		"TEMP_9B2CBC35-A1E0-4642-B338-CAD83FB01918" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -2125,6 +2136,7 @@
 				0F0225498A2C22204C5423D6 /* MessageConversationsScreen.swift in Sources */,
 				6C6FC8897EAF42DECBB7C37F /* MessageWriteMode.swift in Sources */,
 				067C3D8534E6180AF8239A0E /* MessageWriteModePicker.swift in Sources */,
+				7A124B4143768745840315E5 /* MessagesReadSetupCard.swift in Sources */,
 				2B20BD39CD07536C0CF37535 /* MessagesReadSetupModel.swift in Sources */,
 				5F8D5118B87FA4BADFB5C490 /* ModelSetupContracts.swift in Sources */,
 				49892E375D6B50BFCC40736B /* ModelSetupFlow.swift in Sources */,

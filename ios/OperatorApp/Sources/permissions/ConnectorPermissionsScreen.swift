@@ -310,33 +310,9 @@ private struct ConnectorRow: View {
                     .font(OperatorLettering.font(.caption))
                     .foregroundStyle(OperatorBrand.muted)
                 if self.descriptor.id == .messages {
-                    MessagesAutomationPrompt()
-                    if RecordIncomingMessageIntent.installURL == nil {
-                        Text(RecordIncomingMessageIntent.buildByHandSteps)
-                            .font(OperatorLettering.font(.caption))
-                            .foregroundStyle(OperatorBrand.muted)
-                    }
-                    ShortcutInstallStatusRow(shortcut: .record)
-                    MessagesReadSetupStatus(readGranted: self.readGranted)
-                }
-                HStack(spacing: 16) {
-                    if self.descriptor.id == .messages {
-                        if let install = RecordIncomingMessageIntent.installURL {
-                            Link("Install shortcut", destination: install)
-                                .font(OperatorLettering.font(.caption, .medium))
-                                .accessibilityIdentifier("permission-messages-install")
-                        }
-                        if #available(iOS 27, *) {
-                            // iOS 27 adds triggers in the shortcut editor.
-                        } else {
-                            Link("Create automation", destination: RecordIncomingMessageIntent.createAutomationURL)
-                                .font(OperatorLettering.font(.caption, .medium))
-                                .accessibilityIdentifier("permission-messages-automation")
-                        }
-                    }
-                    if let url = URL(string: "shortcuts://") {
-                        Link("Open Shortcuts", destination: url).font(OperatorLettering.font(.caption))
-                    }
+                    MessagesReadSetupCard(readGranted: self.readGranted)
+                } else if let url = URL(string: "shortcuts://") {
+                    Link("Open Shortcuts", destination: url).font(OperatorLettering.font(.caption))
                 }
             }
         }
@@ -415,69 +391,5 @@ struct PermissionRequestBanner: View {
         .padding(12)
         .background(OperatorBrand.fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .contain)
-    }
-}
-
-private struct MessagesReadSetupStatus: View {
-    @EnvironmentObject private var model: MessagesReadSetupModel
-    @Environment(\.scenePhase) private var scenePhase
-    let readGranted: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button("Check setup") { self.model.refresh() }
-                .buttonStyle(.borderless)
-                .accessibilityIdentifier("permission-messages-check")
-            if !self.readGranted {
-                Text("Turn on Read so Operator can summarise your texts.")
-            }
-            if let last = self.model.lastReceived {
-                Label("Automation received a text", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(OperatorBrand.vermilion)
-                Text("\(last.sender.isEmpty ? "Unknown sender" : last.sender): \(String(last.text.prefix(120)))")
-                    .lineLimit(3)
-                Text("Last received \(last.receivedAt, style: .relative) ago · \(self.model.recordedCount) received texts saved")
-                    .foregroundStyle(OperatorBrand.muted)
-            } else {
-                Text("No texts recorded yet. Send yourself a text with two words, then tap Check. If it still does not appear, check Run Immediately and the shortcut selected in Shortcuts.")
-            }
-        }
-        .font(OperatorLettering.font(.caption))
-        .accessibilityIdentifier("permission-messages-setup-status")
-        .onAppear { self.model.refresh() }
-        .onChange(of: self.scenePhase) { _, phase in
-            if phase == .active { self.model.refresh() }
-        }
-    }
-}
-
-private struct MessagesAutomationPrompt: View {
-    @AppStorage(ShortcutInstallStatusRow.recordNameKey) private var shortcutName = RecordIncomingMessageIntent.installedShortcutName
-    @State private var copied = false
-
-    private var selectedName: String {
-        self.shortcutName.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(self.copied ? "Prompt copied" : "Copy setup prompt") {
-                UIPasteboard.general.string = RecordIncomingMessageIntent.automationPrompt(shortcutName: self.selectedName)
-                self.copied = true
-            }
-            .buttonStyle(.borderless)
-            .disabled(self.selectedName.isEmpty)
-            .accessibilityIdentifier("permission-messages-copy-prompt")
-            DisclosureGroup("Renamed the installed shortcut?") {
-                Text("The name must match the installed shortcut exactly. If you renamed it or installed a duplicate, enter the name shown in Shortcuts before copying the prompt.")
-                    .foregroundStyle(OperatorBrand.muted)
-                TextField("Installed shortcut name", text: self.$shortcutName)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .accessibilityIdentifier("permission-messages-shortcut-name")
-            }
-        }
-        .font(OperatorLettering.font(.caption))
-        .onChange(of: self.shortcutName) { _, _ in self.copied = false }
     }
 }
