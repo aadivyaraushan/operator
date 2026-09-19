@@ -39,32 +39,32 @@ struct WhatsAppLinkSheet: View {
                     .font(.system(size: 44))
                     .foregroundStyle(.tint)
                 Text("Link your phone")
-                    .font(.title2.weight(.semibold))
+                    .font(OperatorLettering.font(.title2, .bold))
                 Text("Enter the phone number you use with WhatsApp. The temporary link code stays only on this phone.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(OperatorLettering.font(.subheadline))
+                    .foregroundStyle(OperatorBrand.muted)
                     .multilineTextAlignment(.center)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("First, in WhatsApp: Settings, Linked Devices, Link a Device, then \"Link with phone number instead\". Leave that screen open, come back, and get the code here.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(OperatorLettering.font(.footnote))
+                        .foregroundStyle(OperatorBrand.muted)
                         .multilineTextAlignment(.center)
                     Text("Phone number")
-                        .font(.subheadline)
+                        .font(OperatorLettering.font(.subheadline))
                     TextField("", text: self.$phone)
                         .accessibilityLabel("Phone number")
                         .textContentType(.telephoneNumber)
                         .keyboardType(.phonePad)
                         .textFieldStyle(.roundedBorder)
                     Text(self.model.phoneError ?? "Include + and country code. Spaces and dashes are welcome.")
-                        .font(.caption)
-                        .foregroundStyle(self.model.phoneError == nil ? Color.secondary : Color.red)
+                        .font(OperatorLettering.font(.caption))
+                        .foregroundStyle(self.model.phoneError == nil ? OperatorBrand.muted : OperatorBrand.vermilion)
                         .accessibilityIdentifier("whatsapp-phone-guidance")
                 }
                 Button("Get link code") {
                     Task { await self.model.start(phone: self.phone) }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OperatorPrimaryButtonStyle())
                 .disabled(self.phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         case .starting:
@@ -73,10 +73,10 @@ struct WhatsAppLinkSheet: View {
             VStack(spacing: 16) {
                 ProgressView()
                 Text("Waiting for a link code…")
-                    .font(.title3.weight(.semibold))
+                    .font(OperatorLettering.font(.title3, .bold))
                 Text("Stay here until the code appears.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(OperatorLettering.font(.subheadline))
+                    .foregroundStyle(OperatorBrand.muted)
                     .multilineTextAlignment(.center)
             }
         case .codeReady:
@@ -85,7 +85,7 @@ struct WhatsAppLinkSheet: View {
                     .font(.system(size: 40))
                     .foregroundStyle(.tint)
                 Text("Enter this code in WhatsApp")
-                    .font(.title2.weight(.semibold))
+                    .font(OperatorLettering.font(.title2, .bold))
                 if let code = self.model.pairCode {
                     Text(code)
                         .font(.title.monospaced().weight(.semibold))
@@ -96,8 +96,8 @@ struct WhatsAppLinkSheet: View {
                     ProgressView("Refreshing link code…")
                 }
                 Text("In WhatsApp: Settings, Linked Devices, Link a Device, then \"Link with phone number instead\". Type the code within about 30 seconds and come back here; Operator stays awake that long to finish the link.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(OperatorLettering.font(.caption))
+                    .foregroundStyle(OperatorBrand.muted)
                     .multilineTextAlignment(.center)
             }
         case .finishing:
@@ -108,19 +108,19 @@ struct WhatsAppLinkSheet: View {
             VStack(spacing: 16) {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 44))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(OperatorBrand.muted)
                 Text("WhatsApp link could not continue")
-                    .font(.title2.weight(.semibold))
+                    .font(OperatorLettering.font(.title2, .bold))
                 if let message = self.model.failureMessage {
                     Text(message)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(OperatorLettering.font(.subheadline))
+                        .foregroundStyle(OperatorBrand.muted)
                         .multilineTextAlignment(.center)
                 }
                 Button("Try again") {
                     Task { await self.model.retry(phone: self.phone) }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OperatorPrimaryButtonStyle())
             }
         case .linked:
             self.terminalContent(title: "WhatsApp is linked", symbol: "checkmark.circle.fill")
@@ -131,11 +131,11 @@ struct WhatsAppLinkSheet: View {
         VStack(spacing: 16) {
             Image(systemName: symbol)
                 .font(.system(size: 44))
-                .foregroundStyle(symbol == "checkmark.circle.fill" ? .green : .secondary)
+                .foregroundStyle(symbol == "checkmark.circle.fill" ? OperatorBrand.vermilion : OperatorBrand.muted)
             Text(title)
-                .font(.title2.weight(.semibold))
+                .font(OperatorLettering.font(.title2, .bold))
             Button("Done", action: self.model.dismissTerminalState)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OperatorPrimaryButtonStyle())
         }
     }
 }

@@ -51,6 +51,11 @@ final class ChatSessionModel: ObservableObject {
     /// The steps behind each reply of this launch, keyed by the reply's id.
     /// Not persisted: it is a record of what was done, not of what was said.
     @Published private(set) var stepsByReply: [UUID: [ChatActivityStep]] = [:]
+    /// How long Operator thought before each reply, this launch.
+    @Published private(set) var thoughtsByReply: [UUID: ChatThought] = [:]
+    /// When the run in flight began thinking, and the thought once writing began.
+    private var thinkingStartedAt: Date?
+    private var thoughtInFlight: ChatThought?
     @Published private(set) var approvals: [GatewayApprovalSnapshot] = []
     /// Questions the model is waiting on, oldest first. Each is a card in the
     /// thread; the reply cannot continue until it is answered or skipped.
@@ -538,6 +543,7 @@ final class ChatSessionModel: ObservableObject {
             case .accepted, .working:
                 self.inFlight.insert(entryID)
                 if self.liveActivity == nil { self.liveActivity = ChatLiveActivity() }
+                if self.thinkingStartedAt == nil { self.thinkingStartedAt = Date() }
                 self.connectionState = .working
                 self.continuation?.report(progress: 10, subtitle: "Thinking…")
             case let .activity(activity):
@@ -559,6 +565,9 @@ final class ChatSessionModel: ObservableObject {
                 self.inFlight.insert(entryID)
                 self.streamingReply = text
                 var live = self.liveActivity ?? ChatLiveActivity()
+                if self.thoughtInFlight == nil, let start = self.thinkingStartedAt {
+                    self.thoughtInFlight = ChatThought(from: start, to: Date(), activity: live)
+                }
                 live.phase = .writing
                 self.liveActivity = live
                 self.connectionState = .working
@@ -567,6 +576,13 @@ final class ChatSessionModel: ObservableObject {
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.apply(try await self.store.appendAssistant(text))
                 self.sounds.play(.done)
+                let thought = self.thoughtInFlight ?? self.thinkingStartedAt.flatMap { ChatThought(from: $0, to: Date(), activity: self.liveActivity) }
+                if let thought, let reply = self.messages.last, reply.role == .assistant {
+                    self.thoughtsByReply[reply.id] = thought
+                    self.logger.info("[chat] thought for \(thought.seconds)s before replying")
+                }
+                self.thinkingStartedAt = nil
+                self.thoughtInFlight = nil
                 if let steps = self.liveActivity?.steps, !steps.isEmpty,
                    let reply = self.messages.last, reply.role == .assistant
                 {
@@ -585,11 +601,15 @@ final class ChatSessionModel: ObservableObject {
                 self.liveActivity = nil
                 self.inFlight.remove(entryID)
                 self.lastError = message
+                self.thinkingStartedAt = nil
+                self.thoughtInFlight = nil
                 self.connectionState = .ready
                 self.continuation?.finish(success: false)
                 if !self.isInForeground() { self.onReplyInBackground?(message) }
             case .stopped, .joinedEarlierReply:
                 if case .stopped = update { self.sounds.play(.leftIt) }
+                self.thinkingStartedAt = nil
+                self.thoughtInFlight = nil
                 self.apply(try await self.store.markAccepted(id: entryID))
                 self.streamingReply = nil
                 self.liveActivity = nil

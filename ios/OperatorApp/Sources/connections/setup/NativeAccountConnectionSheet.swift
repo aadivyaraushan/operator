@@ -15,7 +15,7 @@ struct NativeAccountConnectionSheet: View {
                 Section {
                     ForEach(OAuthProvider.allCases, id: \.rawValue) { provider in
                         Button { model.connect(provider) } label: {
-                            HStack { Text(Self.name(provider)); Spacer(); if model.activeProvider == provider { ProgressView() } else { Text(Self.status(model.state(for: provider))).font(.caption).foregroundStyle(.secondary) } }
+                            HStack { Text(Self.name(provider)); Spacer(); if model.activeProvider == provider { ProgressView() } else { Text(Self.status(model.state(for: provider))).font(OperatorLettering.font(.caption)).foregroundStyle(OperatorBrand.muted) } }
                         }
                         .disabled(model.activeProvider != nil || model.state(for: provider) == .needsSetup)
                     }
@@ -28,8 +28,8 @@ struct NativeAccountConnectionSheet: View {
                             Text("Discord (your account)")
                             Spacer()
                             Text(self.discord.statusText)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(OperatorLettering.font(.caption))
+                                .foregroundStyle(OperatorBrand.muted)
                         }
                     }
                 }
@@ -41,8 +41,8 @@ struct NativeAccountConnectionSheet: View {
                             Text("Canvas")
                             Spacer()
                             Text(self.canvas.statusText)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(OperatorLettering.font(.caption))
+                                .foregroundStyle(OperatorBrand.muted)
                         }
                     }
                 }
@@ -54,8 +54,8 @@ struct NativeAccountConnectionSheet: View {
                             Text("YouTube")
                             Spacer()
                             Text(self.youtube.statusText)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(OperatorLettering.font(.caption))
+                                .foregroundStyle(OperatorBrand.muted)
                         }
                     }
                 }

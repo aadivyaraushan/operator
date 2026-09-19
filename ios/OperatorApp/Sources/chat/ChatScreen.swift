@@ -176,6 +176,7 @@ struct ChatScreen: View {
                             MessageBubble(
                                 message: message,
                                 steps: self.model.stepsByReply[message.id] ?? [],
+                                thought: self.model.thoughtsByReply[message.id],
                                 inFlight: self.model.inFlight.contains(message.id))
                                 .id(message.id)
                         }
@@ -406,6 +407,7 @@ private struct MessageBubble: View {
     /// What the agent did to produce this reply, this launch. Empty for
     /// anything restored from disk.
     var steps: [ChatActivityStep] = []
+    var thought: ChatThought?
     /// The runtime has taken this message; the activity bubble shows the rest.
     var inFlight = false
 
@@ -413,6 +415,9 @@ private struct MessageBubble: View {
         VStack(alignment: self.message.role == .user ? .trailing : .leading, spacing: 4) {
             ForEach(self.steps) { step in
                 ActivityStepRow(step: step)
+            }
+            if let thought = self.thought {
+                ThinkingBox(label: thought.label, commentary: thought.commentary, reasoning: thought.reasoning)
             }
             if case let .weather(card) = self.message.attachment {
                 WeatherResultCard(card: card)
@@ -540,6 +545,7 @@ private struct ActivityStepRow: View {
 /// tail of its reasoning, quiet and italic. Present only until the reply
 /// text starts; the steps above it are what remain afterwards.
 private struct ThinkingBox: View {
+    var label = "Thinking"
     let commentary: [String]
     let reasoning: String
 
@@ -559,7 +565,7 @@ private struct ThinkingBox: View {
                         .font(.system(size: 9))
                         .foregroundStyle(OperatorBrand.rust)
                         .rotationEffect(.degrees(self.isOpen ? 90 : 0))
-                    Text("Thinking")
+                    Text(self.label)
                         .font(OperatorLettering.font(.footnote))
                         .foregroundStyle(OperatorBrand.muted)
                 }
@@ -569,7 +575,7 @@ private struct ThinkingBox: View {
             .buttonStyle(.plain)
             .padding(.vertical, -14)
             .accessibilityHint(self.isOpen ? "Hides what Operator is thinking" : "Shows what Operator is thinking")
-            if self.isOpen { self.thoughts.padding(.leading, 17) }
+            if self.isOpen, !self.commentary.isEmpty || !self.reasoning.isEmpty { self.thoughts.padding(.leading, 17) }
         }
         .padding(.horizontal, 2)
     }

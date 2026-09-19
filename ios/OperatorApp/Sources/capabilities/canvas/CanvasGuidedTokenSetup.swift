@@ -121,8 +121,8 @@ struct CanvasGuidedTokenSetupView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Text(self.stage.text)
-                    .font(.footnote)
-                    .foregroundStyle(self.isProblem ? .red : .secondary)
+                    .font(OperatorLettering.font(.footnote))
+                    .foregroundStyle(self.isProblem ? OperatorBrand.vermilion : OperatorBrand.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)

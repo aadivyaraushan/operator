@@ -125,7 +125,7 @@ struct YouTubeAPIKeySetupView: View {
                 Text(self.model.state == .keySaved
                      ? "A YouTube API key is saved on this iPhone. Entering a new key replaces it."
                      : "Add a YouTube API key to enable YouTube search.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(OperatorBrand.muted)
                 SecureField(
                     self.model.state == .keySaved ? "Replace YouTube API key" : "YouTube API key",
                     text: self.$key)
@@ -135,8 +135,8 @@ struct YouTubeAPIKeySetupView: View {
 #endif
                 if let message = self.model.message {
                     Text(message)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
+                        .font(OperatorLettering.font(.footnote))
+                        .foregroundStyle(OperatorBrand.vermilion)
                 }
                 Button("Save key") {
                     Task {

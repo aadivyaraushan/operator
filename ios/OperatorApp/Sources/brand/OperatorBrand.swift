@@ -70,6 +70,9 @@ extension View {
     func operatorSheetStyle() -> some View {
         self
             .font(OperatorLettering.font(.body))
+            .foregroundStyle(OperatorBrand.light)
+            .narrowedLettering()
+            .background(OperatorBrand.nearBlack)
             .tint(OperatorBrand.vermilion)
             .preferredColorScheme(.dark)
     }

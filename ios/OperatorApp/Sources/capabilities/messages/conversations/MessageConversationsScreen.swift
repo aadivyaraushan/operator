@@ -9,11 +9,11 @@ struct MessageConversationCards: View {
         ForEach(self.service.tasks.filter { $0.status != .cancelled && $0.status != .expired }) { task in
             VStack(alignment: .leading, spacing: 10) {
                 Label("\(task.recipientName) · \(self.title(for: task))", systemImage: "message")
-                    .font(.subheadline.weight(.semibold))
+                    .font(OperatorLettering.font(.subheadline, .medium))
                 Text(task.initialMessage)
-                    .font(.subheadline)
+                    .font(OperatorLettering.font(.subheadline))
                 Text(self.progressDescription(for: task))
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(OperatorLettering.font(.footnote)).foregroundStyle(OperatorBrand.muted)
                 if task.status == .proposed {
                     Button("Start") { Task { await self.service.approve(task.id, automatic: true) } }
                         .disabled(!self.service.automaticMessagingEnabled || self.service.isSending)
@@ -24,14 +24,14 @@ struct MessageConversationCards: View {
                     if [.proposed, .active, .paused, .needsAttention].contains(task.status) {
                         Button("Cancel", role: .destructive) { self.service.control(task.id, action: "cancel") }
                     }
-                }.font(.footnote)
+                }.font(OperatorLettering.font(.footnote))
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
         }
         if let error = self.service.error {
-            Text(error).font(.footnote).foregroundStyle(.orange)
+            Text(error).font(OperatorLettering.font(.footnote)).foregroundStyle(OperatorBrand.vermilion)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }

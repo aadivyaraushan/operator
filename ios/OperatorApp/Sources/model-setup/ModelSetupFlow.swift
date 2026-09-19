@@ -219,11 +219,11 @@ struct ModelSetupSheet: View {
                     .font(.system(size: 44))
                     .foregroundStyle(.tint)
                 Text(step.title ?? "Authorize ChatGPT")
-                    .font(.title2.weight(.semibold))
+                    .font(OperatorLettering.font(.title2, .bold))
                 if let message = step.deviceCode?.message ?? step.message {
                     Text(message)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(OperatorLettering.font(.subheadline))
+                        .foregroundStyle(OperatorBrand.muted)
                         .multilineTextAlignment(.center)
                 }
                 if let code = step.deviceCode?.code {
@@ -238,37 +238,37 @@ struct ModelSetupSheet: View {
                 }
                 if let minutes = step.deviceCode?.expiresInMinutes {
                     Text("Expires in \(minutes) minutes")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(OperatorLettering.font(.caption))
+                        .foregroundStyle(OperatorBrand.muted)
                 }
                 if let url = step.externalURL {
                     Link("Open sign-in page", destination: url)
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(OperatorPrimaryButtonStyle())
                 }
                 Button("Continue") {
                     Task { await self.model.continueSignIn() }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OperatorPrimaryButtonStyle())
             }
         case let .failed(message):
             VStack(spacing: 16) {
                 Image(systemName: "exclamationmark.triangle")
-                    .font(.largeTitle)
+                    .font(OperatorLettering.font(.largeTitle, .bold))
                 Text(message)
                     .multilineTextAlignment(.center)
                 Button("Try again") {
                     Task { await self.model.retry() }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OperatorPrimaryButtonStyle())
             }
         case .ready:
             Label("ChatGPT is connected", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(OperatorBrand.vermilion)
         case .needsSignIn, .unavailable:
             Button("Start secure sign-in") {
                 Task { await self.model.beginChatGPTSignIn() }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(OperatorPrimaryButtonStyle())
         }
     }
 }

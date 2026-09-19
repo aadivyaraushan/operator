@@ -204,8 +204,8 @@ struct DiscordAccountSetupView: View {
         Form {
             Section {
                 Text("Reads announcement channels through a Discord account's own login, which Discord's terms forbid. Use a second account that has joined the same servers, not your main one. Reading is turned on separately on the Permissions page, behind a warning.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(OperatorLettering.font(.footnote))
+                    .foregroundStyle(OperatorBrand.muted)
                 SecureField(self.model.isConnected ? "Replace token" : "Discord token", text: self.$token)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -214,7 +214,7 @@ struct DiscordAccountSetupView: View {
                 }
                 .disabled(self.token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || self.isWorking)
                 if let message = self.model.message {
-                    Text(message).font(.footnote).foregroundStyle(.red)
+                    Text(message).font(OperatorLettering.font(.footnote)).foregroundStyle(OperatorBrand.vermilion)
                 }
             } header: {
                 Text("Account")
@@ -226,7 +226,7 @@ struct DiscordAccountSetupView: View {
                 ForEach(self.model.channels) { channel in
                     VStack(alignment: .leading, spacing: 2) {
                         Text("#\(channel.name)")
-                        Text(channel.guildName).font(.caption).foregroundStyle(.secondary)
+                        Text(channel.guildName).font(OperatorLettering.font(.caption)).foregroundStyle(OperatorBrand.muted)
                     }
                 }
                 .onDelete { offsets in

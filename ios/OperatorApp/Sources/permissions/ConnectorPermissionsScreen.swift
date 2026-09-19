@@ -16,12 +16,13 @@ struct ConnectorPermissionsScreen: View {
     var body: some View {
         NavigationStack {
             List {
+                Group {
                 Section {
                     Text(self.mode == .onboarding
                         ? "Operator starts with no access to anything on this iPhone. Turn on only what you want it to reach. Nothing is selected yet, and you can allow anything later from Settings, or when Operator asks in chat."
                         : "What Operator may reach on this iPhone. Changes apply immediately.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(OperatorLettering.font(.subheadline))
+                        .foregroundStyle(OperatorBrand.muted)
                 }
                 Section {
                     Toggle(isOn: Binding(
@@ -33,32 +34,39 @@ struct ConnectorPermissionsScreen: View {
                 } footer: {
                     Text("Blocks every action below - sending, opening, creating - even where it is allowed. Reading is unaffected.")
                 }
-                Section("On this iPhone") {
+                Section {
                     ForEach(ConnectorCatalog.all.filter { !$0.requiresAccount }) { descriptor in
                         ConnectorRow(descriptor: descriptor, center: self.center, status: nil)
                     }
-                }
-                Section("Accounts") {
+                } header: { SectionKicker("On this iPhone") }
+                Section {
                     ForEach(ConnectorCatalog.all.filter(\.requiresAccount)) { descriptor in
                         ConnectorRow(descriptor: descriptor, center: self.center, status: self.accountStatus(descriptor.id))
                     }
-                }
+                } header: { SectionKicker("Accounts") }
                 if self.mode == .settings {
-                    Section("This session") {
+                    Section {
                         if self.center.activity.isEmpty {
                             Text("Operator has not read or done anything yet.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
+                                .font(OperatorLettering.font(.footnote))
+                                .foregroundStyle(OperatorBrand.muted)
                         } else {
                             ForEach(self.center.activity.prefix(50)) { record in
                                 ActivityRow(record: record)
                             }
                         }
-                    }
+                    } header: { SectionKicker("This session") }
                 }
+                }
+                .listRowBackground(Color.clear)
             }
+            .listStyle(.plain)
+            .listRowSeparatorTint(OperatorBrand.fillStrong)
+            .scrollContentBackground(.hidden)
+            .background(OperatorBrand.nearBlack)
             .navigationTitle("Permissions")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(OperatorBrand.nearBlack, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(self.mode == .onboarding ? "Continue" : "Done") { self.onDone() }
@@ -78,6 +86,20 @@ struct ConnectorPermissionsScreen: View {
                 }
             }
         }
+    }
+}
+
+/// A section's name, small and spaced, the way the chat screen marks a day.
+private struct SectionKicker: View {
+    let title: String
+    init(_ title: String) { self.title = title }
+
+    var body: some View {
+        Text(self.title.uppercased())
+            .font(OperatorLettering.font(.caption2))
+            .kerning(1.3)
+            .foregroundStyle(OperatorBrand.dim)
+            .padding(.top, 10)
     }
 }
 
@@ -106,21 +128,21 @@ struct ConnectorRiskAcknowledgementSheet: View {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack(spacing: 12) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.largeTitle)
-                            .foregroundStyle(.red)
+                            .font(OperatorLettering.font(.largeTitle, .bold))
+                            .foregroundStyle(OperatorBrand.vermilion)
                         Text(self.acknowledgement.title)
-                            .font(.title2.weight(.bold))
+                            .font(OperatorLettering.font(.title2, .bold))
                     }
                     ForEach(Array(self.acknowledgement.paragraphs.enumerated()), id: \.offset) { _, paragraph in
                         Text(paragraph)
-                            .font(.body)
+                            .font(OperatorLettering.font(.body))
                     }
                     Divider()
                     Text("Before this turns on, confirm each of these:")
-                        .font(.headline)
+                        .font(OperatorLettering.font(.headline, .bold))
                     ForEach(Array(self.acknowledgement.statements.enumerated()), id: \.offset) { index, statement in
                         Toggle(isOn: self.$accepted[index]) {
-                            Text(statement).font(.callout)
+                            Text(statement).font(OperatorLettering.font(.callout))
                         }
                         .toggleStyle(.switch)
                         .accessibilityIdentifier("acknowledgement-statement-\(index)")
@@ -129,8 +151,7 @@ struct ConnectorRiskAcknowledgementSheet: View {
                         Text(self.acknowledgement.confirmLabel)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
+                    .buttonStyle(OperatorPrimaryButtonStyle())
                     .disabled(!self.allAccepted)
                     .accessibilityIdentifier("acknowledgement-confirm")
                     .padding(.top, 8)
@@ -164,9 +185,9 @@ private struct ConnectorRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(self.descriptor.title).font(.headline)
+                Text(self.descriptor.title).font(OperatorLettering.font(.subheadline, .medium))
                 Spacer()
-                if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
+                if let status { Text(status).font(OperatorLettering.font(.caption)).foregroundStyle(OperatorBrand.muted) }
             }
             if let readSummary = self.descriptor.readSummary {
                 // Through requestGrant, not set: a read that carries a warning
@@ -201,18 +222,19 @@ private struct ConnectorRow: View {
             if let systemState {
                 HStack(spacing: 8) {
                     Image(systemName: systemState == .denied ? "exclamationmark.triangle" : "iphone")
-                        .foregroundStyle(systemState == .denied ? Color.orange : Color.secondary)
+                        .foregroundStyle(systemState == .denied ? OperatorBrand.vermilion : OperatorBrand.muted)
                     Text(systemState.label)
                     if systemState == .denied, let url = URL(string: UIApplication.openSettingsURLString) {
                         Spacer()
                         Link("Open iOS Settings", destination: url)
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(OperatorLettering.font(.caption))
+                .foregroundStyle(OperatorBrand.muted)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
+        .listRowBackground(Color.clear)
     }
 
     @ViewBuilder
@@ -220,14 +242,14 @@ private struct ConnectorRow: View {
         if let setup = self.descriptor.setupInstructions {
             VStack(alignment: .leading, spacing: 6) {
                 Text(setup)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(OperatorLettering.font(.caption))
+                    .foregroundStyle(OperatorBrand.muted)
                 if self.descriptor.id == .messages {
                     MessagesAutomationPrompt()
                     DisclosureGroup("Set up manually or on older iOS") {
                         Text("On older iOS, tap Create automation → Message → Run Immediately → Next, then choose the installed shortcut. If a filter is required, leave Sender empty and enter one space in Message Contains. This catches texts containing a space. Optional e, a, o, i and u triggers catch more one-word texts, but some texts may still be missed. Duplicate arrivals are combined. Test with a two-word text, then tap Check setup.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(OperatorLettering.font(.caption))
+                            .foregroundStyle(OperatorBrand.muted)
                     }
                     MessagesReadSetupStatus(readGranted: self.readGranted)
                 }
@@ -238,25 +260,25 @@ private struct ConnectorRow: View {
                             self.openURL(ForegroundMessageSendService.installURL)
                         }
                             .buttonStyle(.borderless)
-                            .font(.caption.weight(.semibold))
+                            .font(OperatorLettering.font(.caption, .medium))
                             .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-install")
                     }
                     if self.descriptor.id == .messages {
                         if let install = RecordIncomingMessageIntent.installURL {
                             Link("Install shortcut", destination: install)
-                                .font(.caption.weight(.semibold))
+                                .font(OperatorLettering.font(.caption, .medium))
                                 .accessibilityIdentifier("permission-messages-install")
                         }
                         if #available(iOS 27, *) {
                             // iOS 27 adds triggers in the shortcut editor.
                         } else {
                             Link("Create automation", destination: RecordIncomingMessageIntent.createAutomationURL)
-                                .font(.caption.weight(.semibold))
+                                .font(OperatorLettering.font(.caption, .medium))
                                 .accessibilityIdentifier("permission-messages-automation")
                         }
                     }
                     if let url = URL(string: "shortcuts://") {
-                        Link("Open Shortcuts", destination: url).font(.caption)
+                        Link("Open Shortcuts", destination: url).font(OperatorLettering.font(.caption))
                     }
                 }
             }
@@ -266,7 +288,7 @@ private struct ConnectorRow: View {
     private func label(_ title: String, _ summary: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-            Text(summary).font(.footnote).foregroundStyle(.secondary)
+            Text(summary).font(OperatorLettering.font(.footnote)).foregroundStyle(OperatorBrand.muted)
         }
     }
 }
@@ -286,14 +308,14 @@ private struct ActivityRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(ConnectorCatalog.descriptor(self.record.connector).title) - \(self.record.access == .read ? "read" : "act")")
-                Text(self.record.command).font(.caption2).foregroundStyle(.secondary)
+                Text(self.record.command).font(OperatorLettering.font(.caption2)).foregroundStyle(OperatorBrand.muted)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 Text(self.outcomeLabel)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(self.record.outcome == .ran ? Color.primary : Color.orange)
-                Text(self.record.date, style: .time).font(.caption2).foregroundStyle(.secondary)
+                    .font(OperatorLettering.font(.caption, .medium))
+                    .foregroundStyle(self.record.outcome == .ran ? OperatorBrand.light : OperatorBrand.vermilion)
+                Text(self.record.date, style: .time).font(OperatorLettering.font(.caption2)).foregroundStyle(OperatorBrand.muted)
             }
         }
         .accessibilityElement(children: .combine)
@@ -313,28 +335,28 @@ struct PermissionRequestBanner: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "hand.raised")
-                    .font(.title3)
+                    .font(OperatorLettering.font(.title3, .bold))
                     .foregroundStyle(.tint)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Operator wants to \(self.request.access == .read ? "read" : "use") \(self.descriptor.title)")
-                        .font(.subheadline.weight(.semibold))
+                        .font(OperatorLettering.font(.subheadline, .medium))
                     Text((self.request.access == .read ? self.descriptor.readSummary : self.descriptor.writeSummary) ?? "")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(OperatorLettering.font(.footnote))
+                        .foregroundStyle(OperatorBrand.muted)
                 }
             }
             HStack {
                 Button("Allow", action: self.onAllow)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(OperatorPrimaryButtonStyle())
                     .accessibilityIdentifier("permission-banner-allow")
                 Button("Not now", action: self.onDismiss)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(OperatorQuietButtonStyle())
                 Spacer()
-                Text("Then ask again.").font(.caption).foregroundStyle(.secondary)
+                Text("Then ask again.").font(OperatorLettering.font(.caption)).foregroundStyle(OperatorBrand.muted)
             }
         }
         .padding(12)
-        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+        .background(OperatorBrand.fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .contain)
     }
 }
@@ -354,16 +376,16 @@ private struct MessagesReadSetupStatus: View {
             }
             if let last = self.model.lastReceived {
                 Label("Automation received a text", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(OperatorBrand.vermilion)
                 Text("\(last.sender.isEmpty ? "Unknown sender" : last.sender): \(String(last.text.prefix(120)))")
                     .lineLimit(3)
                 Text("Last received \(last.receivedAt, style: .relative) ago · \(self.model.recordedCount) received texts saved")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(OperatorBrand.muted)
             } else {
                 Text("No texts recorded yet. Send yourself a text with two words, then tap Check. If it still does not appear, check Run Immediately and the shortcut selected in Shortcuts.")
             }
         }
-        .font(.caption)
+        .font(OperatorLettering.font(.caption))
         .accessibilityIdentifier("permission-messages-setup-status")
         .onAppear { self.model.refresh() }
         .onChange(of: self.scenePhase) { _, phase in
@@ -391,14 +413,14 @@ private struct MessagesAutomationPrompt: View {
             .accessibilityIdentifier("permission-messages-copy-prompt")
             DisclosureGroup("Renamed the installed shortcut?") {
                 Text("The name must match the installed shortcut exactly. If you renamed it or installed a duplicate, enter the name shown in Shortcuts before copying the prompt.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(OperatorBrand.muted)
                 TextField("Installed shortcut name", text: self.$shortcutName)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("permission-messages-shortcut-name")
             }
         }
-        .font(.caption)
+        .font(OperatorLettering.font(.caption))
         .onChange(of: self.shortcutName) { _, _ in self.copied = false }
     }
 }

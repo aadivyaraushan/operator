@@ -268,18 +268,18 @@ struct CanvasAccountSetupView: View {
         Form {
             Section {
                 Text("Reads your courses, what is due and announcements. Sign in to Canvas once here; Operator makes an access token for you, or keeps the sign-in where a school allows no tokens, on this iPhone only. Reading is turned on separately on the Permissions page.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(OperatorLettering.font(.footnote))
+                    .foregroundStyle(OperatorBrand.muted)
                 if let school = self.model.chosenSchool {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(school.name)
-                            if school.name != school.domain { Text(school.domain).font(.caption).foregroundStyle(.secondary) }
+                            if school.name != school.domain { Text(school.domain).font(OperatorLettering.font(.caption)).foregroundStyle(OperatorBrand.muted) }
                         }
                         Spacer()
                         if !self.model.isConnected {
                             Button("Change") { self.schoolQuery = ""; self.model.clearChosenSchool() }
-                                .font(.callout)
+                                .font(OperatorLettering.font(.callout))
                         }
                     }
                     .accessibilityIdentifier("canvas-chosen-school")
@@ -296,7 +296,7 @@ struct CanvasAccountSetupView: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(school.name).foregroundStyle(.primary)
-                                Text(school.domain).font(.caption).foregroundStyle(.secondary)
+                                Text(school.domain).font(OperatorLettering.font(.caption)).foregroundStyle(OperatorBrand.muted)
                             }
                         }
                     }
@@ -336,12 +336,12 @@ struct CanvasAccountSetupView: View {
             }
 
             if let message = self.model.message {
-                Section { Text(message).font(.footnote).foregroundStyle(.red) }
+                Section { Text(message).font(OperatorLettering.font(.footnote)).foregroundStyle(OperatorBrand.vermilion) }
             }
 
             if self.model.isConnected {
                 Section {
-                    Text(self.model.statusText).foregroundStyle(.secondary)
+                    Text(self.model.statusText).foregroundStyle(OperatorBrand.muted)
                     Button("Sign out", role: .destructive) { self.isClearConfirmationPresented = true }
                         .disabled(self.isWorking)
                 }
