@@ -59,12 +59,22 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
     private let store: IncomingMessageStore
     private let coordinator: ShortcutSendCoordinator
     private let isAppActive: @MainActor @Sendable () -> Bool
+    private let writeMode: @MainActor () -> MessageWriteMode
+    private let customPrompt: CustomMessagePrompt?
     private let logger = Logger(subsystem: "app.operator.ios", category: "message-send")
 
-    init(store: IncomingMessageStore = .standard(), coordinator: ShortcutSendCoordinator, isAppActive: @escaping @MainActor @Sendable () -> Bool) {
+    init(
+        store: IncomingMessageStore = .standard(),
+        coordinator: ShortcutSendCoordinator,
+        isAppActive: @escaping @MainActor @Sendable () -> Bool,
+        writeMode: @escaping @MainActor () -> MessageWriteMode = { .auto },
+        customPrompt: CustomMessagePrompt? = nil)
+    {
         self.store = store
         self.coordinator = coordinator
         self.isAppActive = isAppActive
+        self.writeMode = writeMode
+        self.customPrompt = customPrompt
     }
 
     func handleNodeCommand(_ command: String, paramsJSON: String?, timeoutMilliseconds _: Int?) async -> GatewayNodeCommandResult {
@@ -79,10 +89,22 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
             self.logger.info("[message-send] rejected while app inactive")
             return .failure(code: "APP_NOT_ACTIVE", message: "Open Operator to send a message")
         }
-        guard let url = Self.shortcutURL(recipients: parameters.recipients, body: parameters.body) else {
+        // Custom message: the person writes it. The model's body is dropped.
+        var body = parameters.body
+        var writtenByPerson = false
+        if self.writeMode() == .custom, let customPrompt = self.customPrompt {
+            guard let words = await customPrompt.write(to: parameters.recipients) else {
+                return .success(payloadJSON: """
+                {"handedToShortcut":false,"sent":false,"outcome":"declined","deliveryVerified":false,"nextStep":"The person writes their own texts and chose not to send this one. Nothing was sent. Do not try again unless they ask."}
+                """)
+            }
+            body = words
+            writtenByPerson = true
+        }
+        guard let url = Self.shortcutURL(recipients: parameters.recipients, body: body) else {
             return .failure(code: "INVALID_REQUEST", message: "The message could not be encoded for the shortcut")
         }
-        self.logger.info("[message-send] handing to shortcut recipients=\(parameters.recipients.count) body_bytes=\(parameters.body.utf8.count)")
+        self.logger.info("[message-send] handing to shortcut recipients=\(parameters.recipients.count) body_bytes=\(body.utf8.count) writtenByPerson=\(writtenByPerson)")
         // Waits for the shortcut to come back, so the model can continue after
         // the send. The process is kept alive across the hop; see the coordinator.
         let completion = await self.coordinator.send(url)
@@ -93,7 +115,12 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
                 code: "SHORTCUT_UNAVAILABLE",
                 message: "The \"\(Self.shortcutName)\" shortcut could not be opened. The person has to create it once in the Shortcuts app; the steps are on Operator's Permissions page under \"\(ConnectorCatalog.descriptor(.messagesAutosend).title)\". Nothing was sent.")
         case .success:
-            self.store.record(sender: parameters.recipients.joined(separator: ", "), text: parameters.body, direction: .sent)
+            self.store.record(sender: parameters.recipients.joined(separator: ", "), text: body, direction: .sent)
+            if writtenByPerson {
+                return .success(payloadJSON: """
+                {"handedToShortcut":true,"sent":true,"outcome":"success","writtenByPerson":true\(Self.jsonField("body", body)),"deliveryVerified":false,"nextStep":"The person wrote this message themselves and it was handed to Messages. Your draft was not used. Say it was sent; do not say it was delivered."}
+                """)
+            }
             return .success(payloadJSON: """
             {"handedToShortcut":true,"sent":true,"outcome":"success","deliveryVerified":false,"nextStep":"The shortcut ran and handed the message to Messages without asking. Say it was sent; do not say it was delivered, because delivery is not reported. You may continue with anything else the person asked."}
             """)
@@ -155,6 +182,14 @@ final class ForegroundMessageSendService: GatewayNodeCommandHandler {
     static func errorPayloadField(_ message: String?) -> String {
         guard let message, !message.isEmpty,
               let data = try? JSONSerialization.data(withJSONObject: ["shortcutError": String(message.prefix(300))]),
+              let object = String(data: data, encoding: .utf8), object.hasPrefix("{"), object.hasSuffix("}")
+        else { return "" }
+        return "," + object.dropFirst().dropLast()
+    }
+
+    /// `,"name":"value"` with the value escaped, or empty if it cannot be.
+    static func jsonField(_ name: String, _ value: String) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: [name: value]),
               let object = String(data: data, encoding: .utf8), object.hasPrefix("{"), object.hasSuffix("}")
         else { return "" }
         return "," + object.dropFirst().dropLast()

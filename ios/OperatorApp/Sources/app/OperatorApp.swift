@@ -64,6 +64,7 @@ struct OperatorApp: App {
         store: UserDefaultsWidgetSetupStore(), placement: SystemWidgetPlacement())
     @StateObject private var shortcutSend: ShortcutSendCoordinator
     @StateObject private var shortcutCheck: ShortcutInstallChecker
+    @StateObject private var customMessage: CustomMessagePrompt
     private let locationNode: LocalLocationNodeGateway
     /// Answers the "Send to X on WhatsApp?" and "Operator has a question"
     /// notifications; the notification center holds its delegate weakly, so
@@ -284,10 +285,14 @@ struct OperatorApp: App {
         UNUserNotificationCenter.current().delegate = notificationResponses
         let incomingMessages = IncomingMessageStore(supportDirectory: supportDirectory)
         _messagesReadSetup = StateObject(wrappedValue: MessagesReadSetupModel(store: incomingMessages))
+        let customMessage = CustomMessagePrompt()
+        _customMessage = StateObject(wrappedValue: customMessage)
         let messageSend = ForegroundMessageSendService(
             store: incomingMessages,
             coordinator: shortcutSend,
-            isAppActive: { UIApplication.shared.applicationState == .active })
+            isAppActive: { UIApplication.shared.applicationState == .active },
+            writeMode: { UserDefaultsMessageWriteModeStore().load() },
+            customPrompt: customMessage)
         let conversations = MessageConversationService(
             store: MessageConversationStore(supportDirectory: supportDirectory), incoming: incomingMessages, sender: messageSend,
             canRead: { permissions.grants.permits(.messages, .read) },
@@ -315,7 +320,16 @@ struct OperatorApp: App {
                         presenter: SystemMessageComposer(store: incomingMessages),
                         isAppActive: { UIApplication.shared.applicationState == .active }),
                     send: messageSend,
-                    autosendAllowed: { permissions.grants.permits(.messagesAutosend, .write) },
+                    // A send shortcut that has never answered a check counts as
+                    // missing, so the composer opens instead of a send that
+                    // would go nowhere. "Problem" still means it answered.
+                    autosendAllowed: {
+                        guard permissions.grants.permits(.messagesAutosend, .write) else { return false }
+                        switch UserDefaultsShortcutCheckStore().loadStatus(of: .send) {
+                        case .installed, .problem: return true
+                        case .notChecked, .notFound: return false
+                        }
+                    },
                     recordAutosend: { command in
                         permissions.recordExternalOutcome(connector: .messagesAutosend, access: .write, command: command, succeeded: true)
                     }),
@@ -375,6 +389,9 @@ struct OperatorApp: App {
             ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, discord: self.discord, canvas: self.canvas, canvasSession: self.canvasSession, permissions: self.permissions, widgetSetup: self.widgetSetup)
                 .environmentObject(self.messagesReadSetup)
                 .environmentObject(self.shortcutCheck)
+                .sheet(item: Binding(get: { self.customMessage.pending }, set: { _ in })) { request in
+                    CustomMessageSheet(request: request, prompt: self.customMessage)
+                }
                 .environmentObject(self.conversations)
                 .task(id: self.scenePhase) {
                     guard self.scenePhase == .active else { return }

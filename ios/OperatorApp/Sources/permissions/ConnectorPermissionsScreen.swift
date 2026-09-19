@@ -19,7 +19,7 @@ struct ConnectorPermissionsScreen: View {
     }
 
     private var found: [ConnectorDescriptor] {
-        ConnectorSearch.matches(in: ConnectorCatalog.all, query: self.query)
+        ConnectorSearch.matches(in: ConnectorCatalog.all.filter { $0.id != .messagesAutosend }, query: self.query)
     }
 
     var body: some View {
@@ -62,7 +62,7 @@ struct ConnectorPermissionsScreen: View {
                     Text("Blocks every action below - sending, opening, creating - even where it is allowed. Reading is unaffected.")
                 }
                 Section {
-                    ForEach(ConnectorCatalog.all.filter { !$0.requiresAccount }) { descriptor in
+                    ForEach(ConnectorCatalog.all.filter { !$0.requiresAccount && $0.id != .messagesAutosend }) { descriptor in
                         ConnectorRow(descriptor: descriptor, center: self.center, status: nil)
                     }
                 } header: { SectionKicker("On this iPhone") }
@@ -265,7 +265,11 @@ private struct ConnectorRow: View {
             if let writeSummary = self.descriptor.writeSummary {
                 Toggle(isOn: Binding(
                     get: { self.writeGranted && !self.center.grants.readOnly },
-                    set: { self.center.requestGrant(self.descriptor.id, .write, allowed: $0) }))
+                    set: {
+                        self.center.requestGrant(self.descriptor.id, .write, allowed: $0)
+                        // Sending for you lives under Messages > Act, so it goes off with it.
+                        if self.descriptor.id == .messages, !$0 { self.center.set(.messagesAutosend, .write, allowed: false) }
+                    }))
                 {
                     self.label(self.writeBlockedByReadOnly ? "Act - blocked by Read-only" : "Act", writeSummary)
                 }
@@ -273,6 +277,9 @@ private struct ConnectorRow: View {
                 // the write on grants the read too, so only Read-only disables.
                 .disabled(self.center.grants.readOnly)
                 .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-write")
+                if self.descriptor.id == .messages, self.writeGranted, !self.center.grants.readOnly {
+                    MessageWriteModePicker(center: self.center)
+                }
             }
             if self.descriptor.id != .messages {
                 self.setupSection
@@ -312,19 +319,7 @@ private struct ConnectorRow: View {
                     ShortcutInstallStatusRow(shortcut: .record)
                     MessagesReadSetupStatus(readGranted: self.readGranted)
                 }
-                if self.descriptor.id == .messagesAutosend {
-                    ShortcutInstallStatusRow(shortcut: .send) {
-                        if !self.center.isGranted(.messagesAutosend, .write) {
-                            self.center.requestGrant(.messagesAutosend, .write, allowed: true)
-                        }
-                    }
-                }
                 HStack(spacing: 16) {
-                    if self.descriptor.id == .messagesAutosend {
-                        Link("Install shortcut", destination: ForegroundMessageSendService.installURL)
-                            .font(OperatorLettering.font(.caption, .medium))
-                            .accessibilityIdentifier("permission-\(self.descriptor.id.rawValue)-install")
-                    }
                     if self.descriptor.id == .messages {
                         if let install = RecordIncomingMessageIntent.installURL {
                             Link("Install shortcut", destination: install)
