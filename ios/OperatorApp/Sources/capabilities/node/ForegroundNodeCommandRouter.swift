@@ -22,6 +22,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
     private let notion: any GatewayNodeCommandHandler
     private let media: (any GatewayNodeCommandHandler)?
     private let discord: (any GatewayNodeCommandHandler)?
+    private let conversations: (any GatewayNodeCommandHandler)?
     private let incomingMessages: (any GatewayNodeCommandHandler)?
     private let contactCreate: (any GatewayNodeCommandHandler)?
     private let canvas: (any GatewayNodeCommandHandler)?
@@ -48,6 +49,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         notion: any GatewayNodeCommandHandler,
         discord: (any GatewayNodeCommandHandler)? = nil,
         incomingMessages: (any GatewayNodeCommandHandler)? = nil,
+        conversations: (any GatewayNodeCommandHandler)? = nil,
         contactCreate: (any GatewayNodeCommandHandler)? = nil,
         canvas: (any GatewayNodeCommandHandler)? = nil)
     {
@@ -72,6 +74,7 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
         self.notion = notion
         self.discord = discord
         self.incomingMessages = incomingMessages
+        self.conversations = conversations
         self.contactCreate = contactCreate
         self.canvas = canvas
     }
@@ -169,6 +172,12 @@ final class ForegroundNodeCommandRouter: GatewayNodeCommandHandler {
                 await canvas.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
             } else {
                 .failure(code: "UNSUPPORTED_COMMAND", message: "This iPhone node does not support \(command)")
+            }
+        case "messages.conversations", "messages.conversation", "messages.conversation.review":
+            if let conversations {
+                await conversations.handleNodeCommand(command, paramsJSON: paramsJSON, timeoutMilliseconds: timeoutMilliseconds)
+            } else {
+                .failure(code: "UNSUPPORTED_COMMAND", message: "Conversation tasks are unavailable")
             }
         case "messages.incoming":
             if let incomingMessages {

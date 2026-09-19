@@ -40,7 +40,7 @@ final class ReplyContinuationTests: XCTestCase {
         let id = UUID()
         XCTAssertTrue(continuation.begin(messageID: id, subtitle: "Working on your reply"))
         XCTAssertTrue(continuation.isActive)
-        XCTAssertEqual(scheduler.submitted.map(\.identifier), ["app.operator.ios.reply." + id.uuidString.lowercased()])
+        XCTAssertTrue(scheduler.submitted[0].identifier.hasPrefix("app.operator.ios.reply." + id.uuidString.lowercased() + "."))
         XCTAssertFalse(continuation.begin(messageID: UUID(), subtitle: "again"), "one at a time")
 
         continuation.report(progress: 10, subtitle: "Thinking…")
@@ -68,6 +68,24 @@ final class ReplyContinuationTests: XCTestCase {
         XCTAssertEqual(task.progress.count, delivered, "the heartbeat stops with the finish")
         continuation.report(progress: 90, subtitle: "late")
         XCTAssertEqual(continuation.lastProgress, 40, "nothing after the finish")
+    }
+
+    func testRetryOfSameMessageUsesFreshRegistrationAndRejectsOldTask() {
+        let scheduler = Scheduler()
+        let continuation = ReplyContinuation(scheduler: scheduler)
+        let messageID = UUID()
+        XCTAssertTrue(continuation.begin(messageID: messageID, subtitle: "First attempt"))
+        let first = scheduler.submitted[0].identifier
+        continuation.finish(success: false)
+        XCTAssertTrue(continuation.begin(messageID: messageID, subtitle: "Recovery"))
+        let second = scheduler.submitted[1].identifier
+        XCTAssertNotEqual(first, second, "iOS aborts on duplicate registration, even after completion")
+        let stale = scheduler.start(first)
+        XCTAssertEqual(stale.completed, [false])
+        let current = scheduler.start(second)
+        XCTAssertTrue(current.completed.isEmpty)
+        continuation.finish(success: true)
+        XCTAssertEqual(current.completed, [true])
     }
 
     func testARefusedSubmissionLeavesTheReplyForegroundOnly() {

@@ -1,6 +1,8 @@
 import AppIntents
 import Foundation
 import OSLog
+import OperatorCore
+import UserNotifications
 
 /// What a Shortcuts "When I get a message" automation runs: it hands the
 /// received text and sender here, and this files them for the
@@ -50,6 +52,18 @@ struct RecordIncomingMessageIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         let logger = Logger(subsystem: "app.operator.ios", category: "incoming-messages")
         let recorded = IncomingMessageStore.standard().record(sender: self.sender ?? "", text: self.text)
+        if let recorded {
+            do {
+                let changed = try MessageConversationStore.standard().receive(.init(id: recorded.id, sender: recorded.sender, text: recorded.text, receivedAt: recorded.receivedAt))
+                for id in changed {
+                    let content = UNMutableNotificationContent()
+                    content.title = "Conversation reply received"
+                    content.body = "Open Operator to review the reply and continue your conversation task."
+                    content.sound = .default
+                    try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "conversation-" + id, content: content, trigger: nil))
+                }
+            } catch { logger.error("[incoming-messages] conversation capture failed") }
+        }
         logger.info("[incoming-messages] intent recorded=\(recorded != nil) characters=\(self.text.count)")
         return .result()
     }

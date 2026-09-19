@@ -16,6 +16,7 @@
 		0A1C488A56BB8EC44AF34AEC /* LocalLocationNodeGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46B72B71A8F5A948B06185B /* LocalLocationNodeGateway.swift */; };
 		0B0FAA7524FE0381259D49D9 /* SystemContactCreatePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF4E7F6DCFD0B1441C04DF8C /* SystemContactCreatePresenter.swift */; };
 		0D90B8B694A054830BCB3F5D /* OperatorMarkStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21A5761CD2F7292F26BCE791 /* OperatorMarkStateTests.swift */; };
+		0F0225498A2C22204C5423D6 /* MessageConversationsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA37FB4449B648B5ACBEBBDF /* MessageConversationsScreen.swift */; };
 		0F14AEC8176D74B7EDA4E7DE /* ForegroundIncomingMessagesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A849B9A7AA254F4E9C972274 /* ForegroundIncomingMessagesService.swift */; };
 		12A9E93ADE3E8BBCD132B5D7 /* DiscordReadPace.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCE70C0845DA0C0556AF0F86 /* DiscordReadPace.swift */; };
 		133C16E08009346B7D374155 /* ForegroundAppHandoffService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D442566C1D40BDCD8DCD8459 /* ForegroundAppHandoffService.swift */; };
@@ -53,6 +54,7 @@
 		51CA3CEBD2D01EEDDDE59361 /* NativeNodePolicySetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC48EC3F7F6A86D929580925 /* NativeNodePolicySetup.swift */; };
 		5261B89CDC4B182A3DD354CD /* OperatorChatAppIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0BE63C783B303D5917456BF /* OperatorChatAppIntent.swift */; };
 		52EE676125D9AE8A4C2C7739 /* EmbeddedNodeBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = D95163B738996C27B0B31D3E /* EmbeddedNodeBridge.mm */; };
+		52FFFBC4FEC8F639AAEBC743 /* MessageConversationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30C38F75D8715290D5C162D /* MessageConversationService.swift */; };
 		53B4DE4EF165DB133FA8D2EC /* ForegroundMessageDispatchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BECAAB613F39B7900BC7D5 /* ForegroundMessageDispatchService.swift */; };
 		5796006793180C597B6B0F5C /* GoogleDriveContentReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD8E98D2432240D788CF4F2A /* GoogleDriveContentReaderTests.swift */; };
 		5A47B05B547DA8F74C543B96 /* CanvasClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8770BA2B59B9D7357626FC3 /* CanvasClient.swift */; };
@@ -97,6 +99,7 @@
 		8DAA325B2CE2A7D6BB1A96AC /* ChatScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 996961BE0B62984DE5354052 /* ChatScreen.swift */; };
 		8DB4E9251F29950ED07953BE /* ScenarioDriverUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61FC1CAA927881E1E5A7D049 /* ScenarioDriverUITests.swift */; };
 		8ECB3416679F87B98DB20431 /* ForegroundAccountReadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEBFC827D5CF6DD89F8A2B9 /* ForegroundAccountReadService.swift */; };
+		904B7A89319EBA988124CAA3 /* MessageConversationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B190A75E3B7CA632BCC26163 /* MessageConversationServiceTests.swift */; };
 		91BDE8406392591410390C6E /* SystemPermissionStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C1F2FCE90E94275E45355B3 /* SystemPermissionStatus.swift */; };
 		927E4629901EF1BA4F78240B /* NativeNotionSetupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D490F4DB23A72D1FB9731241 /* NativeNotionSetupCoordinator.swift */; };
 		92BFBCCD34A8D9FE09040AD7 /* LoopbackPort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BE69740E2DDC14AE4876FE3 /* LoopbackPort.swift */; };
@@ -352,6 +355,7 @@
 		ACA417B76B5DE642B37CAF40 /* ForegroundMessageSendService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMessageSendService.swift; sourceTree = "<group>"; };
 		ACD3BF174C61DCD51A284D39 /* ReplyNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyNotifier.swift; sourceTree = "<group>"; };
 		ACFF1BFA1B93A23124BC4821 /* OAuthTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthTypes.swift; sourceTree = "<group>"; };
+		B190A75E3B7CA632BCC26163 /* MessageConversationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageConversationServiceTests.swift; sourceTree = "<group>"; };
 		B2AC238B49B32CBE9B26A294 /* WhatsAppSendGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsAppSendGuard.swift; sourceTree = "<group>"; };
 		B3ABBDCA8280EFA20982CA4B /* NativeWhatsAppReadClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWhatsAppReadClient.swift; sourceTree = "<group>"; };
 		B3EFCEC0ED2A7FEA62302B8D /* NativeAccountSetupCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAccountSetupCoordinatorTests.swift; sourceTree = "<group>"; };
@@ -377,6 +381,7 @@
 		CFC5B2EA0AD82A07C35958C4 /* ShortcutSendCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutSendCoordinator.swift; sourceTree = "<group>"; };
 		CFD68089BBBF22747CF5D120 /* SystemMessageComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemMessageComposer.swift; sourceTree = "<group>"; };
 		D1A0C43953E827ADD2C2E944 /* CanvasGuidedTokenSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasGuidedTokenSetup.swift; sourceTree = "<group>"; };
+		D30C38F75D8715290D5C162D /* MessageConversationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageConversationService.swift; sourceTree = "<group>"; };
 		D442566C1D40BDCD8DCD8459 /* ForegroundAppHandoffService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundAppHandoffService.swift; sourceTree = "<group>"; };
 		D490F4DB23A72D1FB9731241 /* NativeNotionSetupCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNotionSetupCoordinator.swift; sourceTree = "<group>"; };
 		D5BBE65B3C8115DF59F3CA4E /* OperatorWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorWidget.swift; sourceTree = "<group>"; };
@@ -391,6 +396,7 @@
 		E4FBE1DFD856CDECDE957353 /* OutlookCalendarWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlookCalendarWriterTests.swift; sourceTree = "<group>"; };
 		E788A2294E792FA66F0324F5 /* RecordIncomingMessageIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordIncomingMessageIntent.swift; sourceTree = "<group>"; };
 		E8494D608BFF220294347A7F /* ChatEndToEndUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatEndToEndUITests.swift; sourceTree = "<group>"; };
+		EA37FB4449B648B5ACBEBBDF /* MessageConversationsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageConversationsScreen.swift; sourceTree = "<group>"; };
 		EA855847FA0C15621EBE0F2F /* SystemWhatsAppComposePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemWhatsAppComposePresenter.swift; sourceTree = "<group>"; };
 		EC2AE4F1A079DCA963DA0725 /* NotionLoopbackCallbackServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotionLoopbackCallbackServer.swift; sourceTree = "<group>"; };
 		EC532C1EC6518F0D874328D8 /* PendingSendCenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingSendCenterTests.swift; sourceTree = "<group>"; };
@@ -786,6 +792,15 @@
 			path = node;
 			sourceTree = "<group>";
 		};
+		5C3D0E85C02AAC842F5132DA /* conversations */ = {
+			isa = PBXGroup;
+			children = (
+				D30C38F75D8715290D5C162D /* MessageConversationService.swift */,
+				EA37FB4449B648B5ACBEBBDF /* MessageConversationsScreen.swift */,
+			);
+			path = conversations;
+			sourceTree = "<group>";
+		};
 		5C9D06A449CAEB6BCC3FA2E4 /* location */ = {
 			isa = PBXGroup;
 			children = (
@@ -1068,6 +1083,7 @@
 				C9D30E9FCFEEAAFDF887AC2C /* ForegroundMessageComposeServiceTests.swift */,
 				1C542C3D9A7B154880733C45 /* ForegroundMessageDispatchServiceTests.swift */,
 				19CABBF8C5516FFD8ECDFA3E /* ForegroundMessageSendServiceTests.swift */,
+				A0B178FC4E9C416DB0B3B716 /* conversations */,
 				BDB020B728020138E547C16C /* incoming */,
 			);
 			path = messages;
@@ -1195,6 +1211,14 @@
 				9088F3D9851BAD2CF4EE0A2A /* CanvasConnectorTests.swift */,
 			);
 			path = canvas;
+			sourceTree = "<group>";
+		};
+		A0B178FC4E9C416DB0B3B716 /* conversations */ = {
+			isa = PBXGroup;
+			children = (
+				B190A75E3B7CA632BCC26163 /* MessageConversationServiceTests.swift */,
+			);
+			path = conversations;
 			sourceTree = "<group>";
 		};
 		A62755BA6412C20B0441A5E9 /* connections */ = {
@@ -1386,6 +1410,7 @@
 				ACA417B76B5DE642B37CAF40 /* ForegroundMessageSendService.swift */,
 				CFC5B2EA0AD82A07C35958C4 /* ShortcutSendCoordinator.swift */,
 				CFD68089BBBF22747CF5D120 /* SystemMessageComposer.swift */,
+				5C3D0E85C02AAC842F5132DA /* conversations */,
 				0D8ADAEEBA012EDA302A0337 /* incoming */,
 			);
 			path = messages;
@@ -1698,6 +1723,7 @@
 				C3512DBBB74F4E7B8460FC83 /* LocalModelSetupGatewayTests.swift in Sources */,
 				FF8DBD1712E44931AC36FDB1 /* LocalOpenClawChatGatewayTests.swift in Sources */,
 				88573980BCFBB4421850EC00 /* MediaServicesTests.swift in Sources */,
+				904B7A89319EBA988124CAA3 /* MessageConversationServiceTests.swift in Sources */,
 				EF86947BAF2338DA9D9AD674 /* ModelSetupModelTests.swift in Sources */,
 				9DD7EB7D50A1F516DA87BC40 /* NativeAccountSetupCoordinatorTests.swift in Sources */,
 				4036FD59E9CB0DA5D132A387 /* NativeNodePolicySetupTests.swift in Sources */,
@@ -1781,6 +1807,8 @@
 				8CA2E8E840C22B680681DD6E /* LocalModelSetupGateway.swift in Sources */,
 				9FFAEA362A6B83E9C383E7A4 /* LocalOpenClawChatGateway.swift in Sources */,
 				92BFBCCD34A8D9FE09040AD7 /* LoopbackPort.swift in Sources */,
+				52FFFBC4FEC8F639AAEBC743 /* MessageConversationService.swift in Sources */,
+				0F0225498A2C22204C5423D6 /* MessageConversationsScreen.swift in Sources */,
 				2B20BD39CD07536C0CF37535 /* MessagesReadSetupModel.swift in Sources */,
 				5F8D5118B87FA4BADFB5C490 /* ModelSetupContracts.swift in Sources */,
 				49892E375D6B50BFCC40736B /* ModelSetupFlow.swift in Sources */,

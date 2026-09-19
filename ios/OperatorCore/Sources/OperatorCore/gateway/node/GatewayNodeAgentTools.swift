@@ -25,7 +25,7 @@ import Foundation
 public enum GatewayNodeAgentTools {
     public static let pluginID = "operator-ios"
 
-    /// Reads only.
+    /// Read tools and the bounded review of existing owner-requested conversations.
     ///
     /// Publishing a tool is what lets the model decide on its own to call a
     /// command, so this list is where "reads before writes" is actually
@@ -33,6 +33,17 @@ public enum GatewayNodeAgentTools {
     /// connection or anything in the hand-off pack stays off it deliberately:
     /// those are reachable only through a surface the person drove.
     public static let descriptors: [GatewayNodeAgentToolDescriptor] = [
+        .init(name: "messages_conversation_review", command: "messages.conversation.review",
+              description: "Review an existing owner-requested conversation after reading messages_conversations. Record evidenced answers, optionally write a natural followupMessage, or omit it to wait. Cannot create tasks or change recipients. Sending requires the owner's automatic messaging permission.",
+              parameters: .init(properties: [
+                "taskID": .string("Existing task ID."),
+                "revision": .integer("Latest task revision from messages_conversations."),
+                "answersJSON": .string("JSON array of {questionID,messageID,quote,answer,remainingQuestion?}. Use [] if no answers."),
+                "followupMessage": .string("Optional natural-language reply if another message would help. Omit to wait."),
+                "stopReason": .string("Optional reason to stop for owner attention, such as recipient refusal.")
+              ], required: ["taskID", "revision", "answersJSON"])),
+        .init(name: "messages_conversations", command: "messages.conversations",
+              description: "Read persistent conversation tasks, their approved questions, recipient handles, captured replies, revisions and answer evidence. Use for conversation progress and app-generated task reviews. Use messages_conversation_review to review replies. To propose use messages.conversation through the phone node. Never send separately: the task scheduler owns sends.", parameters: .init()),
         .init(
             name: "reminders_list",
             command: "reminders.list",

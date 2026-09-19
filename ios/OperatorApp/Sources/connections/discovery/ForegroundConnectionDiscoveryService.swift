@@ -177,6 +177,12 @@ final class ForegroundConnectionDiscoveryService: GatewayNodeCommandHandler {
         case "contacts.create":
             parameters = schema(required: ["name"], optional: ["phones", "emails"], limits: ["name": "1...100 characters", "phones": "up to 3", "emails": "up to 3", "note": "at least one phone or email"])
             note = "Saves a new contact after the person sees it and taps Save. Refuses a number or email already in Contacts; never changes an existing contact."
+        case "messages.conversations":
+            parameters = schema(required: [], optional: [])
+            note = "Persistent conversation tasks and captured replies. Read each revision before reviewing. Dates are RFC3339."
+        case "messages.conversation":
+            parameters = schema(required: ["operation"], optional: ["requestID", "recipient", "recipientName", "questions", "initialMessage", "taskID", "revision", "answers", "stopReason"])
+            note = "propose: requestID (stable unique key), recipient (exact international +phone or email resolved from Contacts), recipientName, questions (1–5 standalone questions), initialMessage. Use only for an owner-requested conversation. With automatic messaging enabled the first message starts immediately; progress appears in the main chat. review: taskID, revision from latest read, answers [{questionID,messageID,quote,answer,remainingQuestion?}], optional followupMessage (your natural-language reply if another message would help fulfill the owner’s goal), optional stopReason for refusal, ambiguity or owner intervention. Quotes must exactly match captured evidence. Record partial answers; remainingQuestion asks only for missing details, omitted when resolved. Do not invent stricter requirements or repeat already answered parts. Omit followupMessage to wait; there is no generated template. Review prior followupMessages to avoid repetition. pause/cancel: taskID. Never separately send task messages with sms.send/compose; the native scheduler sends your reply with permission and duplicate checks."
         case "messages.incoming":
             parameters = schema(required: [], optional: ["sinceRFC3339", "limit"], limits: ["limit": "1...100", "sinceRFC3339": "RFC3339"])
             note = "Texts the person received since they set up the message automation, newest first. A feed, not the inbox: no earlier history or read state. Includes texts sent through Operator with direction sent and to recipients, but not texts sent directly in Messages."

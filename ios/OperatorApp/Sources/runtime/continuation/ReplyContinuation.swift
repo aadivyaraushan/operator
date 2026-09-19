@@ -69,7 +69,11 @@ final class ReplyContinuation: ObservableObject {
     @discardableResult
     func begin(messageID: UUID, subtitle: String) -> Bool {
         guard !self.isActive else { return false }
-        let identifier = Self.identifierPrefix + messageID.uuidString.lowercased()
+        // Registration survives completion and even a refused submission for the
+        // lifetime of this process. Recovery can retry the same message, so
+        // each attempt needs a fresh identifier (duplicate registration aborts
+        // inside BGTaskScheduler rather than throwing a Swift error).
+        let identifier = Self.identifierPrefix + messageID.uuidString.lowercased() + "." + UUID().uuidString.lowercased()
         do {
             try self.scheduler.submit(identifier: identifier, title: Self.title, subtitle: subtitle) { [weak self] task in
                 self?.attach(task)

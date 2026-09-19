@@ -57,6 +57,7 @@ struct OperatorApp: App {
     @StateObject private var discord: DiscordAccountSetupModel
     @StateObject private var canvas: CanvasAccountSetupModel
     private let canvasSession: CanvasSessionStore
+    @StateObject private var conversations: MessageConversationService
     @StateObject private var messagesReadSetup: MessagesReadSetupModel
     @StateObject private var permissions: ConnectorPermissionCenter
     @StateObject private var shortcutSend: ShortcutSendCoordinator
@@ -284,6 +285,12 @@ struct OperatorApp: App {
             store: incomingMessages,
             coordinator: shortcutSend,
             isAppActive: { UIApplication.shared.applicationState == .active })
+        let conversations = MessageConversationService(
+            store: MessageConversationStore(supportDirectory: supportDirectory), incoming: incomingMessages, sender: messageSend,
+            canRead: { permissions.grants.permits(.messages, .read) },
+            canSend: { permissions.grants.permits(.messages, .write) && permissions.grants.permits(.messagesAutosend, .write) },
+            isActive: { UIApplication.shared.applicationState == .active })
+        _conversations = StateObject(wrappedValue: conversations)
         let locationNode = LocalLocationNodeGateway(
             url: gatewayURL,
             vault: vault,
@@ -327,6 +334,7 @@ struct OperatorApp: App {
                 notion: notionService,
                 discord: discordService,
                 incomingMessages: ForegroundIncomingMessagesService(store: incomingMessages),
+                conversations: conversations,
                 contactCreate: ForegroundContactCreateService(
                     directory: contactDirectory,
                     presenter: SystemContactCreatePresenter(),
@@ -362,6 +370,14 @@ struct OperatorApp: App {
         WindowGroup {
             ChatScreen(model: self.chat, setup: self.setup, whatsapp: self.whatsapp, accounts: self.accounts, notion: self.notion, youtube: self.youtube, discord: self.discord, canvas: self.canvas, canvasSession: self.canvasSession, permissions: self.permissions)
                 .environmentObject(self.messagesReadSetup)
+                .environmentObject(self.conversations)
+                .task(id: self.scenePhase) {
+                    guard self.scenePhase == .active else { return }
+                    while !Task.isCancelled {
+                        await self.conversations.tick(chat: self.chat)
+                        do { try await Task.sleep(for: .seconds(5)) } catch { break }
+                    }
+                }
                 .onOpenURL { url in
                     // Shortcuts returning from sms.send. The only thing known
                     // is what Shortcuts reported; it goes in the session log.

@@ -4,6 +4,25 @@ import XCTest
 
 @MainActor
 final class ChatSessionModelTests: XCTestCase {
+    func testConversationReviewWaitsForReadinessAndNeverOverwritesDraft() async {
+        let model = ChatSessionModel(store: RecordingPersistence(), gateway: RuntimeGateGateway())
+        XCTAssertFalse(model.canReviewConversationTasks)
+        await model.reviewConversationTask(id: "task")
+        XCTAssertTrue(model.messages.isEmpty)
+        model.runtimeBecameReady()
+        await waitUntil { model.connectionState == .ready }
+        XCTAssertTrue(model.canReviewConversationTasks)
+        model.draft = "My unfinished question"
+        await model.reviewConversationTask(id: "task")
+        XCTAssertEqual(model.draft, "My unfinished question")
+        XCTAssertTrue(model.messages.isEmpty)
+        model.draft = ""
+        await model.reviewConversationTask(id: "task")
+        XCTAssertTrue(model.messages.contains { $0.text.contains("Operator conversation task review: task") })
+        model.runtimeDidSuspend()
+        XCTAssertFalse(model.canReviewConversationTasks)
+    }
+
     func testWeatherCardAccessibilityIncludesActualConditions() {
         let card = WeatherCard(
             temperatureCelsius: 18.5, apparentCelsius: nil, condition: "Cloudy",

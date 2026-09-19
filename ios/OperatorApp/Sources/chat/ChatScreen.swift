@@ -63,6 +63,7 @@ struct ChatScreen: View {
     @ObservedObject var canvas: CanvasAccountSetupModel
     let canvasSession: CanvasSessionStore
     @ObservedObject var permissions: ConnectorPermissionCenter
+    @EnvironmentObject private var conversations: MessageConversationService
     @State private var isConnectionsPresented = false
     @State private var isPermissionsPresented = false
     /// Whether the transcript follows new content to its end. Set by the
@@ -175,6 +176,7 @@ struct ChatScreen: View {
                                 inFlight: self.model.inFlight.contains(message.id))
                                 .id(message.id)
                         }
+                        MessageConversationCards(service: self.conversations)
                         ForEach(self.model.approvals) { approval in
                             ApprovalCard(approval: approval, model: self.model)
                                 .id("approval-\(approval.id)")

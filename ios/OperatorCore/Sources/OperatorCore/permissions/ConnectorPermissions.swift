@@ -148,7 +148,7 @@ public enum ConnectorCatalog {
         .init(id: .messages, title: "Messages",
               readSummary: "Texts you receive from now on, through a Shortcuts automation you set up once. Also includes texts sent through Operator, but not older messages or texts sent directly in Messages.",
               writeSummary: "Open a text with the recipient and message filled in. You tap Send.",
-              readCommands: ["messages.incoming"], writeCommands: ["sms.compose"],
+              readCommands: ["messages.incoming", "messages.conversations", "messages.conversation.review"], writeCommands: ["sms.compose", "messages.conversation"],
               systemPermission: nil, requiresAccount: false,
               setupInstructions: """
               1. Turn on Read. Tap Install shortcut, then Add Shortcut. Keep this shortcut: the automation will call it.
@@ -289,6 +289,13 @@ public enum ConnectorCatalog {
     /// this node knows, which the caller must treat as denied.
     public static func requirement(for command: String, paramsJSON: String?) -> ConnectorRequirement? {
         switch command {
+        case "messages.conversation":
+            guard let operation = Self.field("operation", in: paramsJSON) else { return nil }
+            switch operation {
+            case "propose": return .access(.messages, .write)
+            case "review", "pause", "cancel": return .access(.messages, .read)
+            default: return nil
+            }
         case "connections.describe":
             // Which providers are set up. State about Operator, not about the person.
             return .exempt

@@ -84,7 +84,7 @@ final class ForegroundIncomingMessagesServiceTests: XCTestCase {
 
     func testTheCatalogGatesTheFeedBehindTheMessagesReadGrant() {
         let messages = ConnectorCatalog.descriptor(.messages)
-        XCTAssertEqual(messages.readCommands, ["messages.incoming"])
+        XCTAssertEqual(messages.readCommands, ["messages.incoming", "messages.conversations", "messages.conversation.review"])
         XCTAssertNil(messages.readAcknowledgement, "Apple's own automation: no ban warning")
         XCTAssertTrue((messages.setupInstructions ?? "").contains("Check setup"))
         XCTAssertEqual(ConnectorCatalog.requirement(for: "messages.incoming", paramsJSON: nil), .access(.messages, .read))

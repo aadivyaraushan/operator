@@ -6,6 +6,7 @@ final class ConnectorPermissionsTests: XCTestCase {
     /// Representative payloads for the commands whose connector depends on the
     /// payload. Every other registered command resolves from its name alone.
     private static let representativeParams: [String: String] = [
+        "messages.conversation": #"{"operation":"propose"}"#,
         "connections.read": #"{"operation":"googleCalendarEvents"}"#,
         "connections.write": #"{"operation":"slackPostMessage","channelID":"C1","text":"hi"}"#,
         "notion.call": #"{"name":"notion-search","arguments":{}}"#,
@@ -69,6 +70,13 @@ final class ConnectorPermissionsTests: XCTestCase {
         XCTAssertEqual(grants.decision(for: "sms.compose", paramsJSON: nil), .allowed(.messages, .write))
     }
 
+    func testConversationReviewsAreLocalReadsAndProposalsNeedAct() {
+        XCTAssertEqual(ConnectorCatalog.requirement(for: "messages.conversations", paramsJSON: nil), .access(.messages, .read))
+        XCTAssertEqual(ConnectorCatalog.requirement(for: "messages.conversation", paramsJSON: #"{"operation":"review"}"#), .access(.messages, .read))
+        XCTAssertEqual(ConnectorCatalog.requirement(for: "messages.conversation", paramsJSON: #"{"operation":"propose"}"#), .access(.messages, .write))
+        XCTAssertNil(ConnectorCatalog.requirement(for: "messages.conversation", paramsJSON: #"{"operation":"send"}"#))
+    }
+
     func testPublishedToolsFollowReadGrants() {
         var grants = ConnectorGrants.none
         grants.set(.reminders, .read, allowed: true)
@@ -78,7 +86,7 @@ final class ConnectorPermissionsTests: XCTestCase {
             ["reminders_list", "music_now_playing", "music_search"])
         grants.set(.messages, .write, allowed: true)
         let published = GatewayNodeAgentTools.descriptors(permittedBy: grants).map(\.name)
-        XCTAssertEqual(published, ["reminders_list", "music_now_playing", "music_search", "messages_incoming"], "a write grant carries the read grant, so the texts feed appears; the compose write itself is never a tool")
+        XCTAssertEqual(published, ["messages_conversation_review", "messages_conversations", "reminders_list", "music_now_playing", "music_search", "messages_incoming"], "a write grant carries the read grant, so the texts feed appears; the compose write itself is never a tool")
         XCTAssertFalse(published.contains { $0.hasPrefix("sms_") }, "writes are never published as tools, granted or not")
     }
 
