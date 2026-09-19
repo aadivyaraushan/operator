@@ -109,10 +109,19 @@ struct ChatScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                Header(state: self.model.connectionState)
+                Header(
+                    state: self.model.connectionState,
+                    mark: OperatorMarkState(
+                        isWorking: self.model.connectionState == .working,
+                        needsPerson: !self.model.approvals.isEmpty || !self.model.questions.isEmpty))
+                Button { self.isPermissionsPresented = true } label: {
+                    Image(systemName: "shield")
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityLabel("Permissions")
+                .accessibilityIdentifier("open-permissions")
+                .disabled(self.setup.isPresented)
                 Menu {
-                    Button("Permissions") { self.isPermissionsPresented = true }
-                    Divider()
                     Button("Connect WhatsApp") { self.whatsapp.present() }
                     Button("Connect accounts") { self.isConnectionsPresented = true }
                     if self.notion.state == .needsSetup {
@@ -280,9 +289,11 @@ struct ChatScreen: View {
 
 private struct Header: View {
     let state: ConnectionState
+    let mark: OperatorMarkState
 
     var body: some View {
         HStack {
+            OperatorMark(state: self.mark)
             Text("Operator")
                 .font(.headline)
             Spacer()
@@ -778,7 +789,7 @@ private struct Composer: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .bottom, spacing: 10) {
                 TextField(
-                    "Message Operator",
+                    "Ask for something you want done",
                     text: Binding(
                         get: { self.model.draft },
                         set: { self.model.updateDraft($0) }

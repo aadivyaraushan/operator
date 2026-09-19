@@ -15,6 +15,7 @@
 		0A1C30B53C7F970919B154FA /* NativeAccountSetupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B6D712F69ADF6344534D5B5 /* NativeAccountSetupCoordinator.swift */; };
 		0A1C488A56BB8EC44AF34AEC /* LocalLocationNodeGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46B72B71A8F5A948B06185B /* LocalLocationNodeGateway.swift */; };
 		0B0FAA7524FE0381259D49D9 /* SystemContactCreatePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF4E7F6DCFD0B1441C04DF8C /* SystemContactCreatePresenter.swift */; };
+		0D90B8B694A054830BCB3F5D /* OperatorMarkStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21A5761CD2F7292F26BCE791 /* OperatorMarkStateTests.swift */; };
 		0F14AEC8176D74B7EDA4E7DE /* ForegroundIncomingMessagesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A849B9A7AA254F4E9C972274 /* ForegroundIncomingMessagesService.swift */; };
 		12A9E93ADE3E8BBCD132B5D7 /* DiscordReadPace.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCE70C0845DA0C0556AF0F86 /* DiscordReadPace.swift */; };
 		133C16E08009346B7D374155 /* ForegroundAppHandoffService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D442566C1D40BDCD8DCD8459 /* ForegroundAppHandoffService.swift */; };
@@ -70,6 +71,7 @@
 		69F60C5711AA56D80FA1FF83 /* SystemNotionToolConfirmationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8452F4937F242079ED343071 /* SystemNotionToolConfirmationPresenter.swift */; };
 		6A68EE8A2870354A95BB13DE /* WhatsAppLinkFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24C13B4FD25697ADEC95BCFD /* WhatsAppLinkFlow.swift */; };
 		6B15C5E70ADCEF61435BF35F /* ForegroundMediaNodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E260410CCF3BEE7038F1C3C /* ForegroundMediaNodeService.swift */; };
+		6B9D72367F0B7DB099E54BB3 /* OperatorMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C960371E217B65FD2CA18B12 /* OperatorMark.swift */; };
 		6BC1F46B1CC557DBF99034C8 /* NotionMCPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA31C7EBC7EC9ECF4CBE9267 /* NotionMCPClient.swift */; };
 		6C9023EB6B08D517592E775B /* ChatSessionModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1593E68D6DA83F3D5323D640 /* ChatSessionModelTests.swift */; };
 		6F7C298CE357A811ECDE14F0 /* CanvasSchoolFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60EC1BB7DB0F5BA6E7B552BD /* CanvasSchoolFinder.swift */; };
@@ -256,6 +258,7 @@
 		1FBDF296391AE0409FEE2701 /* WacliBridgeUnavailable.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = WacliBridgeUnavailable.c; sourceTree = "<group>"; };
 		201F5539139E8F77225201B4 /* ForegroundLocationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundLocationServiceTests.swift; sourceTree = "<group>"; };
 		20E252CBE9CBF5724E0D0A0F /* ForegroundContactsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundContactsServiceTests.swift; sourceTree = "<group>"; };
+		21A5761CD2F7292F26BCE791 /* OperatorMarkStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorMarkStateTests.swift; sourceTree = "<group>"; };
 		243883C3810544B3A49A5C08 /* OperatorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorApp.swift; sourceTree = "<group>"; };
 		24C13B4FD25697ADEC95BCFD /* WhatsAppLinkFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsAppLinkFlow.swift; sourceTree = "<group>"; };
 		251F85646597B5FF1146ED0C /* ForegroundPresentationHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundPresentationHost.swift; sourceTree = "<group>"; };
@@ -363,6 +366,7 @@
 		C275206C50044BA137626768 /* AppLaunchByName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLaunchByName.swift; sourceTree = "<group>"; };
 		C51BA6701E49DA24B88ABD88 /* OperatorApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OperatorApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6CA41572C591A851B4330A2 /* ForegroundMapsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMapsServiceTests.swift; sourceTree = "<group>"; };
+		C960371E217B65FD2CA18B12 /* OperatorMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperatorMark.swift; sourceTree = "<group>"; };
 		C9D30E9FCFEEAAFDF887AC2C /* ForegroundMessageComposeServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundMessageComposeServiceTests.swift; sourceTree = "<group>"; };
 		CBF593087E71EFAACE01A32C /* ForegroundAccountWriteConfirmationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundAccountWriteConfirmationService.swift; sourceTree = "<group>"; };
 		CD3FE19AC3D3C3A42203DC0A /* ForegroundCalendarServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundCalendarServiceTests.swift; sourceTree = "<group>"; };
@@ -994,6 +998,14 @@
 			path = dictation;
 			sourceTree = "<group>";
 		};
+		7F502A8874DBD909990C5441 /* header */ = {
+			isa = PBXGroup;
+			children = (
+				C960371E217B65FD2CA18B12 /* OperatorMark.swift */,
+			);
+			path = header;
+			sourceTree = "<group>";
+		};
 		7FF42659BE12CAFA5A58ABA4 /* node */ = {
 			isa = PBXGroup;
 			children = (
@@ -1391,6 +1403,7 @@
 		F69BADF1B43C11638CD7E791 /* chat */ = {
 			isa = PBXGroup;
 			children = (
+				FA07F7B34D039688D326A237 /* header */,
 				5B24393D75D13A84EF0CF460 /* questions */,
 			);
 			path = chat;
@@ -1434,9 +1447,18 @@
 				D77EFF62D4E8D94BF0C1BF91 /* ChatActivity.swift */,
 				996961BE0B62984DE5354052 /* ChatScreen.swift */,
 				3F9676D6F9E8AD88AAAC40E2 /* ChatSessionModel.swift */,
+				7F502A8874DBD909990C5441 /* header */,
 				7348DE5D84EFCF0C17D1F394 /* questions */,
 			);
 			path = chat;
+			sourceTree = "<group>";
+		};
+		FA07F7B34D039688D326A237 /* header */ = {
+			isa = PBXGroup;
+			children = (
+				21A5761CD2F7292F26BCE791 /* OperatorMarkStateTests.swift */,
+			);
+			path = header;
 			sourceTree = "<group>";
 		};
 		FAC3E19132E8A22964ADB66B /* youtube */ = {
@@ -1458,7 +1480,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_5ACA43CF-96AE-4A94-AE49-5661F484D289" /* embedded */ = {
+		"TEMP_07F2775B-6414-4B32-ACBF-9EE74E166855" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1682,6 +1704,7 @@
 				951A0E155F073F63DE0A69E9 /* NotionNodeTests.swift in Sources */,
 				F50494031EA799DF091E228F /* OfflineDictationModelTests.swift in Sources */,
 				CED0DD2CBF76656CC237E954 /* OperatorChatAppIntentTests.swift in Sources */,
+				0D90B8B694A054830BCB3F5D /* OperatorMarkStateTests.swift in Sources */,
 				C17A7540EEB6730A5D3591AC /* OutlookCalendarWriterTests.swift in Sources */,
 				AA41432EE6820F7979B54B41 /* PendingSendCenterTests.swift in Sources */,
 				63EB0E9E3C22DE2DF6E0B512 /* PhoneOAuthClientTests.swift in Sources */,
@@ -1772,6 +1795,7 @@
 				FEDFDE2079B92A33F5E712E6 /* OfflineDictation.swift in Sources */,
 				79D6EEA191EB7EA5D764E9F0 /* OperatorApp.swift in Sources */,
 				5261B89CDC4B182A3DD354CD /* OperatorChatAppIntent.swift in Sources */,
+				6B9D72367F0B7DB099E54BB3 /* OperatorMark.swift in Sources */,
 				6861395555DACD63E7AD4EA4 /* PendingSendCenter.swift in Sources */,
 				F3778B8382A2BA55F0B1CDFF /* PhoneOAuthClient.swift in Sources */,
 				BC3844E544DDEAA656919833 /* PodcastMediaServices.swift in Sources */,
