@@ -81,6 +81,15 @@ final class ShortcutInstallCheckerTests: XCTestCase {
         XCTAssertEqual(items?.first { $0.name == "text" }?.value, ShortcutCheck.recordMarker)
     }
 
+    /// A shortcut that takes its text from its own message trigger gets no
+    /// text when Operator runs it, so an empty run is a check too.
+    func testARunWithNoTextCountsAsACheckAndARealTextDoesNot() {
+        XCTAssertTrue(ShortcutCheck.isCheckRun(text: nil))
+        XCTAssertTrue(ShortcutCheck.isCheckRun(text: "  \n"))
+        XCTAssertTrue(ShortcutCheck.isCheckRun(text: " " + ShortcutCheck.recordMarker))
+        XCTAssertFalse(ShortcutCheck.isCheckRun(text: "on my way"))
+    }
+
     func testRecordShortcutThatRanWithoutReachingOperatorIsAProblem() async {
         let (checker, coordinator, runner) = self.parts()
         async let status = checker.check(.record, recordShortcutName: "My Recorder")

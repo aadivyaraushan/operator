@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Setting up "read my texts", as three short steps with their state beside
-/// them. The proof that it works is a text arriving, shown at the bottom.
+/// Setting up "read my texts", as two short steps with their state beside
+/// them. Step 1's check runs the shortcut and sees whether it reaches
+/// Operator; the last text received is shown once there is one.
 struct MessagesReadSetupCard: View {
     let readGranted: Bool
 
@@ -32,11 +33,6 @@ struct MessagesReadSetupCard: View {
             }
             if let note = self.automationNote {
                 self.note(note)
-            }
-            Divider().overlay(OperatorBrand.fillStrong)
-            self.step(3, "Get a text of two words or more", done: self.isWorking) {
-                Button("Check") { self.model.refresh() }
-                    .accessibilityIdentifier("permission-messages-check")
             }
             self.note(self.receivedNote)
                 .accessibilityIdentifier("permission-messages-setup-status")
@@ -141,7 +137,8 @@ struct MessagesReadSetupCard: View {
 
     private var receivedNote: String {
         guard let last = self.model.lastReceived else {
-            return self.readGranted ? "No texts recorded yet." : "Turn on Read first. No texts recorded yet."
+            let waiting = "No texts yet. One-word texts are missed. If none arrive, check the automation is still on."
+            return self.readGranted ? waiting : "Turn on Read first. " + waiting
         }
         let sender = last.sender.isEmpty ? "Unknown sender" : last.sender
         let when = last.receivedAt.formatted(.relative(presentation: .named))

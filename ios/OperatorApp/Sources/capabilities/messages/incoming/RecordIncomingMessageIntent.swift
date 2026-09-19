@@ -79,21 +79,21 @@ struct RecordIncomingMessageIntent: AppIntent {
     /// Connected to the automation's input by Shortcuts itself when this is
     /// the first action, so the received message needs no wiring by hand.
     @Parameter(title: "Message", description: "The received message's text. Filled from the automation's Shortcut Input.", inputConnectionBehavior: .connectToPreviousIntentResult)
-    var text: String
+    var text: String?
 
     @Parameter(title: "Sender", description: "Who sent it. Pass the Shortcut Input's Sender.")
     var sender: String?
 
     func perform() async throws -> some IntentResult {
         let logger = Logger(subsystem: "app.operator.ios", category: "incoming-messages")
-        if self.text.trimmingCharacters(in: .whitespacesAndNewlines) == ShortcutCheck.recordMarker {
+        guard let text = self.text, !ShortcutCheck.isCheckRun(text: text) else {
             // A test run from Permissions: proof the shortcut is installed
             // and reaches Operator. Nothing is filed.
             UserDefaultsShortcutCheckStore().noteRecordActionRan(at: Date())
             logger.info("[shortcut-check] record action ran for a check")
             return .result()
         }
-        let recorded = IncomingMessageStore.standard().record(sender: self.sender ?? "", text: self.text)
+        let recorded = IncomingMessageStore.standard().record(sender: self.sender ?? "", text: text)
         if let recorded {
             do {
                 let changed = try MessageConversationStore.standard().receive(.init(id: recorded.id, sender: recorded.sender, text: recorded.text, receivedAt: recorded.receivedAt))
@@ -106,7 +106,7 @@ struct RecordIncomingMessageIntent: AppIntent {
                 }
             } catch { logger.error("[incoming-messages] conversation capture failed") }
         }
-        logger.info("[incoming-messages] intent recorded=\(recorded != nil) characters=\(self.text.count)")
+        logger.info("[incoming-messages] intent recorded=\(recorded != nil) characters=\(text.count)")
         return .result()
     }
 }

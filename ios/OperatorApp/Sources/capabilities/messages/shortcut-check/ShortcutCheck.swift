@@ -29,6 +29,14 @@ enum ShortcutCheck {
     /// sees it, notes that it ran, and files nothing.
     static let recordMarker = "operator-shortcut-check-4f1c"
 
+    /// Whether a run of the record action is a check rather than a text. A
+    /// shortcut that takes its text from its own message trigger receives
+    /// none when Operator runs it, so a run with no text is a check as well.
+    static func isCheckRun(text: String?) -> Bool {
+        let text = (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty || text == self.recordMarker
+    }
+
     /// The send shortcut's test input: no recipient and no body, so there is
     /// nothing for Send Message to send.
     @MainActor
