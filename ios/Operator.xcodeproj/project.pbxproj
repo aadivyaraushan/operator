@@ -142,6 +142,7 @@
 		B300654E87D79A4B03A259F8 /* WhatsAppLinkFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 828C58FCF6EC83564AEA420E /* WhatsAppLinkFlowTests.swift */; };
 		B332B8019D1DAFF2C826C2D6 /* ForegroundContactsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20E252CBE9CBF5724E0D0A0F /* ForegroundContactsServiceTests.swift */; };
 		B3F1BA861DEC2AF017E5D534 /* DirectAccountReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85F96B9A535CAC3C5A1A3B55 /* DirectAccountReaderTests.swift */; };
+		B40739752578F0E134BFDFB7 /* DictationSystemCallbacksTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D14A0E2BB86EC5DAE73831ED /* DictationSystemCallbacksTests.swift */; };
 		B5F03420A4781111A8709015 /* EventKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6029915570905414A2A5FF2 /* EventKit.framework */; };
 		B72283677ABE1FBA924F3AFF /* NativeWhatsAppSendClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C15E65E440A54A03C877EBE2 /* NativeWhatsAppSendClient.swift */; };
 		B754CC661FB16CBA852D9ACE /* NativeWhatsAppReadClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3ABBDCA8280EFA20982CA4B /* NativeWhatsAppReadClient.swift */; };
@@ -193,6 +194,7 @@
 		EC69797A1889EF16C0F86508 /* ForegroundMapsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6CA41572C591A851B4330A2 /* ForegroundMapsServiceTests.swift */; };
 		ECBBBC8D9BA30AE9CE677123 /* ConnectorPermissionsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDB2224A771339FACE9D92A1 /* ConnectorPermissionsScreen.swift */; };
 		ED982CFD460E1DDFC4C260EC /* IncomingMessageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F39313C97E57CAD89A32CF8 /* IncomingMessageStoreTests.swift */; };
+		EF3AF4DD785CA25E097FFFC2 /* DictationSystemCallbacks.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0E53B6263AE3A8E5E4B2E0 /* DictationSystemCallbacks.swift */; };
 		EF86947BAF2338DA9D9AD674 /* ModelSetupModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03755826A1F5F57F5FD3EA1B /* ModelSetupModelTests.swift */; };
 		EF8A19A21AEE4D77855C5035 /* ForegroundMessageComposeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE395A0D665898A3DEE8B501 /* ForegroundMessageComposeService.swift */; };
 		EFB337E1E8C679ED7DB3FE70 /* OperatorCore in Frameworks */ = {isa = PBXBuildFile; productRef = 051ADE6419DBFF89743CCF5F /* OperatorCore */; };
@@ -413,6 +415,7 @@
 		BC37EE7F222735D21673BC20 /* DirectAccountReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectAccountReader.swift; sourceTree = "<group>"; };
 		BC48EC3F7F6A86D929580925 /* NativeNodePolicySetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNodePolicySetup.swift; sourceTree = "<group>"; };
 		BCE70C0845DA0C0556AF0F86 /* DiscordReadPace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordReadPace.swift; sourceTree = "<group>"; };
+		BD0E53B6263AE3A8E5E4B2E0 /* DictationSystemCallbacks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationSystemCallbacks.swift; sourceTree = "<group>"; };
 		BD8E98D2432240D788CF4F2A /* GoogleDriveContentReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleDriveContentReaderTests.swift; sourceTree = "<group>"; };
 		C15E65E440A54A03C877EBE2 /* NativeWhatsAppSendClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWhatsAppSendClient.swift; sourceTree = "<group>"; };
 		C275206C50044BA137626768 /* AppLaunchByName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLaunchByName.swift; sourceTree = "<group>"; };
@@ -430,6 +433,7 @@
 		CF4E7F6DCFD0B1441C04DF8C /* SystemContactCreatePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemContactCreatePresenter.swift; sourceTree = "<group>"; };
 		CFC5B2EA0AD82A07C35958C4 /* ShortcutSendCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutSendCoordinator.swift; sourceTree = "<group>"; };
 		CFD68089BBBF22747CF5D120 /* SystemMessageComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemMessageComposer.swift; sourceTree = "<group>"; };
+		D14A0E2BB86EC5DAE73831ED /* DictationSystemCallbacksTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationSystemCallbacksTests.swift; sourceTree = "<group>"; };
 		D1A0C43953E827ADD2C2E944 /* CanvasGuidedTokenSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasGuidedTokenSetup.swift; sourceTree = "<group>"; };
 		D30C38F75D8715290D5C162D /* MessageConversationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageConversationService.swift; sourceTree = "<group>"; };
 		D4159839B06859323F405C0F /* WidgetSetupModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSetupModel.swift; sourceTree = "<group>"; };
@@ -852,6 +856,7 @@
 		59E92122161E46B1D263B149 /* dictation */ = {
 			isa = PBXGroup;
 			children = (
+				D14A0E2BB86EC5DAE73831ED /* DictationSystemCallbacksTests.swift */,
 				8ACAACFE7B6DA3BFC9795838 /* OfflineDictationModelTests.swift */,
 			);
 			path = dictation;
@@ -1113,6 +1118,7 @@
 		7EB5B8EECE7914F58864B201 /* dictation */ = {
 			isa = PBXGroup;
 			children = (
+				BD0E53B6263AE3A8E5E4B2E0 /* DictationSystemCallbacks.swift */,
 				1DF224F395BA8CA84CDE93F7 /* OfflineDictation.swift */,
 			);
 			path = dictation;
@@ -1687,7 +1693,7 @@
 			path = OperatorApp/Resources/connections/handoff;
 			sourceTree = "<group>";
 		};
-		"TEMP_F66B4529-548E-4E1F-83E7-ED9EFD2D5C34" /* embedded */ = {
+		"TEMP_C8C1D86B-1168-4186-89E7-1DD5599C4EFE" /* embedded */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -1892,6 +1898,7 @@
 				C769F0BD6B3A535DF4FBF71B /* ConnectionDiscoveryServiceTests.swift in Sources */,
 				632B8D75D08511C4EA7504B4 /* ConnectorPermissionCenterTests.swift in Sources */,
 				718FD2C9B1B1327A7B9D3D74 /* ConnectorSearchTests.swift in Sources */,
+				B40739752578F0E134BFDFB7 /* DictationSystemCallbacksTests.swift in Sources */,
 				B3F1BA861DEC2AF017E5D534 /* DirectAccountReaderTests.swift in Sources */,
 				395D50541DEC9FDE178F3E26 /* DirectAccountWriterTests.swift in Sources */,
 				D2FE39CC2CD3BFD24A275863 /* DiscordAnnouncementsTests.swift in Sources */,
@@ -1966,6 +1973,7 @@
 				ECBBBC8D9BA30AE9CE677123 /* ConnectorPermissionsScreen.swift in Sources */,
 				52EA35981C5E3B285D565DC2 /* ConnectorSearch.swift in Sources */,
 				21ED022EAD1A55D2D1865494 /* CoreChatPersistence.swift in Sources */,
+				EF3AF4DD785CA25E097FFFC2 /* DictationSystemCallbacks.swift in Sources */,
 				7C1396A6AB48DB5C2765FA5C /* DirectAccountReader.swift in Sources */,
 				86356378289DD18125034702 /* DirectAccountWriter.swift in Sources */,
 				E1C5CF6D0363B1E18B6DE0F5 /* DiscordAccountSetup.swift in Sources */,

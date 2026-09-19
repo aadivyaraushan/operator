@@ -76,12 +76,16 @@ protocol OperatorSoundPlaying: AnyObject {
 final class OperatorSoundPlayer: OperatorSoundPlaying {
     private var players: [String: AVAudioPlayer] = [:]
     private let logger = Logger(subsystem: "app.operator.ios", category: "sounds")
-    private var isSessionReady = false
 
     func play(_ sound: OperatorSound) {
-        if !self.isSessionReady {
-            try? AVAudioSession.sharedInstance().setCategory(.ambient, options: .mixWithOthers)
-            self.isSessionReady = true
+        let session = AVAudioSession.sharedInstance()
+        if session.category == .record {
+            // Dictation owns the session; changing it would cut the recording.
+            self.logger.info("[sounds] skipped \(sound.fileName, privacy: .public) while dictating")
+            return
+        }
+        if session.category != .ambient {
+            try? session.setCategory(.ambient, options: .mixWithOthers)
         }
         guard let player = self.player(for: sound) else { return }
         player.volume = sound.volume

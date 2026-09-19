@@ -123,16 +123,19 @@ final class AppleOnDeviceDictationService: NSObject, OfflineDictationService {
 
     func start(eventHandler: @escaping @MainActor (OfflineDictationEvent) -> Void) async throws {
         guard self.task == nil else { return }
-        guard await self.speechPermissionGranted() else {
+        guard await DictationSystemCallbacks.speechAuthorization() == .authorized else {
+            self.logger.info("[dictation] not started: speech recognition not allowed")
             throw OfflineDictationError.speechPermissionDenied
         }
-        guard await self.microphonePermissionGranted() else {
+        guard await DictationSystemCallbacks.microphonePermission() else {
+            self.logger.info("[dictation] not started: microphone not allowed")
             throw OfflineDictationError.microphonePermissionDenied
         }
         guard let recognizer = self.recognizer,
               recognizer.isAvailable,
               recognizer.supportsOnDeviceRecognition
         else {
+            self.logger.info("[dictation] not started: recognizer available=\(self.recognizer?.isAvailable ?? false) onDevice=\(self.recognizer?.supportsOnDeviceRecognition ?? false) locale=\(self.recognizer?.locale.identifier ?? "none", privacy: .public)")
             throw OfflineDictationError.onDeviceRecognitionUnavailable
         }
 
@@ -147,18 +150,19 @@ final class AppleOnDeviceDictationService: NSObject, OfflineDictationService {
             try self.audioSession.setActive(true, options: .notifyOthersOnDeactivation)
             let input = self.audioEngine.inputNode
             let format = input.outputFormat(forBus: 0)
-            input.installTap(onBus: 0, bufferSize: 1_024, format: format) { [weak request] buffer, _ in
-                request?.append(buffer)
-            }
+            input.installTap(
+                onBus: 0, bufferSize: 1_024, format: format,
+                block: DictationSystemCallbacks.tap(feeding: request))
             self.audioEngine.prepare()
             try self.audioEngine.start()
-            self.task = recognizer.recognitionTask(with: request) { [weak self] result, error in
-                Task { @MainActor [weak self] in
-                    self?.handle(result: result, error: error)
-                }
-            }
+            self.task = recognizer.recognitionTask(
+                with: request,
+                resultHandler: DictationSystemCallbacks.recognitionHandler { [weak self] update in
+                    self?.handle(update)
+                })
             self.logger.info("[dictation] on-device recording started")
         } catch {
+            self.logger.error("[dictation] audio could not start errorType=\(String(reflecting: type(of: error)), privacy: .public)")
             self.stop()
             throw OfflineDictationError.microphoneUnavailable
         }
@@ -172,17 +176,17 @@ final class AppleOnDeviceDictationService: NSObject, OfflineDictationService {
         self.logger.info("[dictation] recording stopped")
     }
 
-    private func handle(result: SFSpeechRecognitionResult?, error: Error?) {
-        if let transcript = result?.bestTranscription.formattedString, !transcript.isEmpty {
+    private func handle(_ update: DictationRecognitionUpdate) {
+        if let transcript = update.transcript, !transcript.isEmpty {
             self.eventHandler?(.transcript(transcript))
         }
-        if error != nil {
+        if update.failed {
             let eventHandler = self.eventHandler
             self.tearDownAudio()
             self.eventHandler = nil
             eventHandler?(.unavailable("On-device dictation stopped unexpectedly."))
             self.logger.error("[dictation] recognition stopped with an error")
-        } else if result?.isFinal == true {
+        } else if update.isFinal {
             let eventHandler = self.eventHandler
             self.tearDownAudio()
             self.eventHandler = nil
@@ -197,33 +201,8 @@ final class AppleOnDeviceDictationService: NSObject, OfflineDictationService {
         self.request = nil
         self.task = nil
         try? self.audioSession.setActive(false, options: .notifyOthersOnDeactivation)
-    }
-
-    private func speechPermissionGranted() async -> Bool {
-        let status = SFSpeechRecognizer.authorizationStatus()
-        let resolvedStatus: SFSpeechRecognizerAuthorizationStatus
-        if status == .notDetermined {
-            resolvedStatus = await withCheckedContinuation { continuation in
-                SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
-            }
-        } else {
-            resolvedStatus = status
-        }
-        return resolvedStatus == .authorized
-    }
-
-    private func microphonePermissionGranted() async -> Bool {
-        switch AVAudioApplication.shared.recordPermission {
-        case .undetermined:
-            return await withCheckedContinuation { continuation in
-                AVAudioApplication.requestRecordPermission { granted in
-                    continuation.resume(returning: granted)
-                }
-            }
-        case .granted:
-            return true
-        default:
-            return false
-        }
+        // Hand the session back in the shape the app's sounds need; left on
+        // "record" they would play silently.
+        try? self.audioSession.setCategory(.ambient, options: .mixWithOthers)
     }
 }
